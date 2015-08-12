@@ -19,6 +19,7 @@ import hudson.FilePath;
 import hudson.model.*;
 import hudson.model.Descriptor.FormException;
 import hudson.model.queue.CauseOfBlockage;
+import hudson.slaves.ComputerLauncher;
 import hudson.slaves.EphemeralNode;
 import hudson.slaves.NodeProperty;
 import jenkins.model.Jenkins;

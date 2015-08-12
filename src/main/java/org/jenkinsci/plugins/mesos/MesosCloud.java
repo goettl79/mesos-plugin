@@ -56,6 +56,7 @@ public class MesosCloud extends Cloud {
   private String master;
   private String description;
   private String frameworkName;
+  private String role;
   private String slavesUser;
   private String principal;
   private String secret;
@@ -121,6 +122,7 @@ public class MesosCloud extends Cloud {
       String master,
       String description,
       String frameworkName,
+      String role,
       String slavesUser,
       String principal,
       String secret,
@@ -135,6 +137,7 @@ public class MesosCloud extends Cloud {
     this.master = master;
     this.description = description;
     this.frameworkName = frameworkName;
+    this.role = role;
     this.slavesUser = slavesUser;
     this.principal = principal;
     this.secret = secret;
@@ -325,7 +328,7 @@ public class MesosCloud extends Cloud {
 
 
     Mesos.JenkinsSlave jenkinsSlave = new Mesos.JenkinsSlave(name,slaveInfo.getLabelString(), numExecutors, linkedItem);
-    Mesos.SlaveRequest slaveRequest = new Mesos.SlaveRequest(jenkinsSlave, cpus, memory, slaveInfo);
+    Mesos.SlaveRequest slaveRequest = new Mesos.SlaveRequest(jenkinsSlave, cpus, memory, role, slaveInfo);
     Mesos mesos = Mesos.getInstance(this);
 
     mesos.startJenkinsSlave(slaveRequest, new Mesos.SlaveResult() {
@@ -378,10 +381,9 @@ public class MesosCloud extends Cloud {
   }
 
   public boolean isItemForMyFramework(String buildableItem) {
-      String foundFramework = "";
       MesosFrameworkToItemMapper mesosFrameworkToItemMapper = new MesosFrameworkToItemMapper();
-      foundFramework = mesosFrameworkToItemMapper.findFrameworkName(buildableItem);
-      return this.frameworkName.equals(foundFramework);
+      String foundFramework = mesosFrameworkToItemMapper.findFrameworkName(buildableItem);
+      return StringUtils.equals(frameworkName, foundFramework);
   }
 
   public String getFullNameOfItem(Queue.BuildableItem buildableItem) {
@@ -442,6 +444,14 @@ public class MesosCloud extends Cloud {
 
   public void setFrameworkName(String frameworkName) {
     this.frameworkName = frameworkName;
+  }
+
+  public String getRole() {
+    return role;
+  }
+
+  public void setRole(String role) {
+    this.role = role;
   }
 
   public String getSlavesUser() {
@@ -560,6 +570,7 @@ public class MesosCloud extends Cloud {
     private String master;
     private String description;
     private String frameworkName;
+    private String role;
     private String slavesUser;
     private String principal;
     private String secret;
@@ -583,6 +594,7 @@ public class MesosCloud extends Cloud {
       master = object.getString("master");
       description = object.getString("description");
       frameworkName = object.getString("frameworkName");
+      role = object.getString("role");
       principal = object.getString("principal");
       secret = object.getString("secret");
       slaveAttributes = object.getString("slaveAttributes");
