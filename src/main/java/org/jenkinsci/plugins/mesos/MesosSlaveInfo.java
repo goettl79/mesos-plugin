@@ -28,6 +28,7 @@ public class MesosSlaveInfo {
   private final int executorMem; // MB.
   private final String remoteFSRoot;
   private final int idleTerminationMinutes;
+  private final int maximumTimeToLiveMinutes;
   private final String jvmArgs;
   private final String jnlpArgs;
   // Slave attributes JSON representation.
@@ -45,22 +46,23 @@ public class MesosSlaveInfo {
 
   @DataBoundConstructor
   public MesosSlaveInfo(
-      String labelString,
-      Mode mode,
-      String slaveCpus,
-      String slaveMem,
-      String maxExecutors,
-      String executorCpus,
-      String executorMem,
-      String remoteFSRoot,
-      String idleTerminationMinutes,
-      String slaveAttributes,
-      String jvmArgs,
-      String jnlpArgs,
-      ExternalContainerInfo externalContainerInfo,
-      ContainerInfo containerInfo,
-      List<URI> additionalURIs,
-      RunAsUserInfo runAsUserInfo)
+          String labelString,
+          Mode mode,
+          String slaveCpus,
+          String slaveMem,
+          String maxExecutors,
+          String executorCpus,
+          String executorMem,
+          String remoteFSRoot,
+          String idleTerminationMinutes,
+          String maximumTimeToLiveMinutes,
+          String slaveAttributes,
+          String jvmArgs,
+          String jnlpArgs,
+          ExternalContainerInfo externalContainerInfo,
+          ContainerInfo containerInfo,
+          List<URI> additionalURIs,
+          RunAsUserInfo runAsUserInfo)
       throws NumberFormatException {
     this.slaveCpus = Double.parseDouble(slaveCpus);
     this.slaveMem = Integer.parseInt(slaveMem);
@@ -70,6 +72,7 @@ public class MesosSlaveInfo {
     this.remoteFSRoot = StringUtils.isNotBlank(remoteFSRoot) ? remoteFSRoot
         .trim() : "jenkins";
     this.idleTerminationMinutes = Integer.parseInt(idleTerminationMinutes);
+    this.maximumTimeToLiveMinutes = Integer.parseInt(maximumTimeToLiveMinutes);
     this.labelString = StringUtils.isNotBlank(labelString) ? labelString
         : DEFAULT_LABEL_NAME;
     this.mode = mode != null ? mode : Mode.NORMAL;
@@ -128,6 +131,10 @@ public class MesosSlaveInfo {
 
   public int getIdleTerminationMinutes() {
     return idleTerminationMinutes;
+  }
+
+  public int getMaximumTimeToLiveMinutes() {
+    return maximumTimeToLiveMinutes;
   }
 
   public JSONObject getSlaveAttributes() {
