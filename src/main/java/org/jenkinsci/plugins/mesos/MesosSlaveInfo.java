@@ -173,7 +173,6 @@ public class MesosSlaveInfo {
     return runAsUserInfo;
   }
 
-    /**
   public List<Command> getAdditionalCommands() {
     return additionalCommands;
   }

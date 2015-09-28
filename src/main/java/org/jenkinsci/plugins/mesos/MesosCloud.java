@@ -556,7 +556,8 @@ public void setJenkinsURL(String jenkinsURL) {
                 object.getString("jnlpArgs"),
                 externalContainerInfo,
                 containerInfo,
-                additionalURIs, 
+                additionalURIs,
+                runAsUserInfo,
                 additionalCommands);
             slaveInfos.add(slaveInfo);
           }
