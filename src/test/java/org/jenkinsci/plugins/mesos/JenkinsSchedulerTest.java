@@ -253,8 +253,11 @@ public class JenkinsSchedulerTest {
                 null,               // externalContainerInfo,
                 containerInfo,      // containerInfo,
                 null,               //additionalURIs
-                null                // runAsUserInfo
-                );
+                null,                // runAsUserInfo 
+                null            // additionalCommands
+        );
+
+
         Mesos.SlaveRequest slaveReq = new Mesos.SlaveRequest(new Mesos.JenkinsSlave(TEST_JENKINS_SLAVE_NAME),0.2d,TEST_JENKINS_SLAVE_MEM,mesosSlaveInfo);
         Mesos.SlaveResult slaveResult = Mockito.mock(Mesos.SlaveResult.class);
 

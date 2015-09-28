@@ -52,6 +52,9 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
+
+import java.util.*;
+
 public class MesosCloud extends Cloud {
   private String nativeLibraryPath;
   private String master;
@@ -525,6 +528,18 @@ public void setJenkinsURL(String jenkinsURL) {
                     URIJson.getBoolean("extract")));
               }
             }
+
+
+            List<MesosSlaveInfo.Command> additionalCommands = new ArrayList<MesosSlaveInfo.Command>();
+            if (label.has("additionalCommands")) {
+              JSONArray additionalCommandsJson = label.getJSONArray("additionalCommands");
+              for (Object obj : additionalCommandsJson) {
+                JSONObject additionalCommandJson = (JSONObject) obj;
+                additionalCommands.add(new MesosSlaveInfo.Command(
+                        additionalCommandJson.getString("value")));
+              }
+            }
+
             MesosSlaveInfo slaveInfo = new MesosSlaveInfo(
                 object.getString("labelString"),
                 (Mode) object.get("mode"),
@@ -541,8 +556,8 @@ public void setJenkinsURL(String jenkinsURL) {
                 object.getString("jnlpArgs"),
                 externalContainerInfo,
                 containerInfo,
-                additionalURIs,
-                runAsUserInfo);
+                additionalURIs, 
+                additionalCommands);
             slaveInfos.add(slaveInfo);
           }
         }
