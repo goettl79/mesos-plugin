@@ -30,54 +30,6 @@ public class MesosRetentionStrategyTest {
 
 
   @Test
-  public void should_not_set_slaves_to_pending_delete_when_younger_than_max_time_to_live() {
-    // Given
-    int idleTerminationMinutes = 0;
-    int maximumTimeToLive = 100;
-
-    MesosRetentionStrategy mesosRetentionStrategy = new MesosRetentionStrategy(idleTerminationMinutes, maximumTimeToLive);
-
-    MesosComputer mesosComputer = PowerMockito.mock(MesosComputer.class);
-    MesosSlave mesosSlave = mock(MesosSlave.class);
-
-    when(mesosComputer.getNode()).thenReturn(mesosSlave);
-    when(mesosComputer.getConnectTime()).thenReturn(new DateTime().minusMinutes(10).getMillis());
-    when(mesosComputer.isOffline()).thenReturn(false);
-    when(mesosComputer.isIdle()).thenReturn(true);
-
-    // When
-    mesosRetentionStrategy.check(mesosComputer);
-
-    // Then
-    verify(mesosSlave,never()).setPendingDelete(true);
-  }
-
-
-  @Test
-    public void should_set_slaves_to_pending_delete_when_older_than_max_time_to_live() {
-        // Given
-        int idleTerminationMinutes = 0;
-        int maximumTimeToLive = 1;
-
-        MesosRetentionStrategy mesosRetentionStrategy = new MesosRetentionStrategy(idleTerminationMinutes, maximumTimeToLive);
-
-        MesosComputer mesosComputer = PowerMockito.mock(MesosComputer.class);
-        MesosSlave mesosSlave = mock(MesosSlave.class);
-
-        when(mesosComputer.getNode()).thenReturn(mesosSlave);
-        when(mesosComputer.getConnectTime()).thenReturn(new DateTime().minusMinutes(10).getMillis());
-        when(mesosComputer.isOffline()).thenReturn(false);
-        when(mesosComputer.isIdle()).thenReturn(true);
-
-        // When
-        mesosRetentionStrategy.check(mesosComputer);
-
-        // Then
-        verify(mesosSlave).setPendingDelete(true);
-    }
-
-
-  @Test
   public void should_check_if_is_terminable() {
     assertThat(new MesosRetentionStrategy(0, 0).isTerminable()).isFalse();
     assertThat(new MesosRetentionStrategy(5, 0).isTerminable()).isTrue();
