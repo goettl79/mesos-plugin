@@ -11,7 +11,9 @@ import hudson.model.listeners.RunListener;
 import java.io.IOException;
 import java.util.logging.Logger;
 
+import hudson.slaves.OfflineCause;
 import org.jenkinsci.plugins.mesos.MesosSlave;
+import org.jenkinsci.plugins.mesos.Messages;
 
 @SuppressWarnings("rawtypes")
 @Extension
@@ -43,6 +45,9 @@ public class MesosRunListener extends RunListener<Run> {
         try {
           String hostname = node.toComputer().getHostName();
           listener.getLogger().println("Mesos slave(hostname): " + hostname);
+          // Force Use Once Only on all executors
+          node.toComputer().setTemporarilyOffline(true, OfflineCause.create(Messages._SingleUseCause()));
+
         } catch (IOException e) {
           LOGGER.warning("IOException while trying to get hostname: " + e);
           e.printStackTrace();
