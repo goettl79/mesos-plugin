@@ -6,7 +6,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
-import hudson.model.Node;
 import hudson.model.Node.Mode;
 
 import net.sf.json.JSONException;
@@ -16,10 +15,6 @@ import net.sf.json.JSONSerializer;
 import org.apache.commons.lang.StringUtils;
 import org.apache.mesos.Protos.ContainerInfo.DockerInfo.Network;
 import org.kohsuke.stapler.DataBoundConstructor;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.logging.Logger;
 
 public class MesosSlaveInfo {
   public static final int UNLIMITED_MAX_NODES = -1;
@@ -44,6 +39,7 @@ public class MesosSlaveInfo {
   private final Mode mode;
   private final RunAsUserInfo runAsUserInfo;
   private final List<Command> additionalCommands;
+  private boolean forceProvisioning;
 
   private String labelString = DEFAULT_LABEL_NAME;
 
@@ -69,7 +65,8 @@ public class MesosSlaveInfo {
       ContainerInfo containerInfo,
       List<URI> additionalURIs,
       RunAsUserInfo runAsUserInfo,
-      List<Command> additionalCommands)
+      List<Command> additionalCommands,
+      boolean forceProvisioning)
       throws NumberFormatException {
     this.slaveCpus = Double.parseDouble(slaveCpus);
     this.slaveMem = Integer.parseInt(slaveMem);
@@ -103,6 +100,7 @@ public class MesosSlaveInfo {
     }
     this.slaveAttributes = jsonObject;
     this.runAsUserInfo = runAsUserInfo;
+    this.forceProvisioning = forceProvisioning;
   }
 
   public String getLabelString() {
@@ -175,6 +173,10 @@ public class MesosSlaveInfo {
 
   public List<Command> getAdditionalCommands() {
     return additionalCommands;
+  }
+
+  public boolean isForceProvisioning() {
+      return forceProvisioning;
   }
 
     /**

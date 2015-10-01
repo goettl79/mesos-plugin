@@ -17,13 +17,10 @@ package org.jenkinsci.plugins.mesos;
 import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
-import hudson.model.Computer;
-import hudson.model.Descriptor;
-import hudson.model.Hudson;
-import hudson.model.Label;
-import hudson.model.Node;
+import hudson.model.*;
 import hudson.model.Node.Mode;
 import hudson.slaves.Cloud;
+import hudson.slaves.CloudProvisioningListener;
 import hudson.slaves.NodeProvisioner.PlannedNode;
 import hudson.util.FormValidation;
 
@@ -36,6 +33,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -51,9 +50,6 @@ import org.apache.mesos.Protos.ContainerInfo.DockerInfo.Network;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
-
-
-import java.util.*;
 
 public class MesosCloud extends Cloud {
   private String nativeLibraryPath;
@@ -211,8 +207,40 @@ public class MesosCloud extends Cloud {
 
   }
 
+  private boolean isThereAStuckItemInQueue(Label label) {
+    Jenkins jenkins = Jenkins.getInstance();
+    for (hudson.model.Queue.BuildableItem bi : jenkins.getQueue().getBuildableItems()) {
+      if (bi != null && bi.getAssignedLabel() != null) {
+        if (bi.getAssignedLabel().equals(label)) {
+          //if an item is longer than 1 Minute buildable in the queue, its count as stuck
+          if ((bi.buildableStartMilliseconds + TimeUnit.MINUTES.toMillis(1)) < System.currentTimeMillis()) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   @Override
   public Collection<PlannedNode> provision(Label label, int excessWorkload) {
+    final MesosSlaveInfo slaveInfo = getSlaveInfo(slaveInfos, label);
+    if (slaveInfo.isForceProvisioning()) {
+      if (isThereAStuckItemInQueue(label)) {
+        LOGGER.warning("There are Items waiting for more than 1 minute for a free slave executor for label " + label.getName());
+        LOGGER.info("Accepted Jenkins provisioning request for " + label.getName());
+        return provisionNodes(label, excessWorkload);
+      } else {
+        LOGGER.info("There are no stuck Items in the Queue, Jenkins provisioning request will be ignored");
+      }
+    } else {
+      return provisionNodes(label, excessWorkload);
+    }
+    return new ArrayList<PlannedNode>();
+  }
+
+
+  public Collection<PlannedNode> provisionNodes(Label label, int excessWorkload) {
     List<PlannedNode> list = new ArrayList<PlannedNode>();
     final MesosSlaveInfo slaveInfo = getSlaveInfo(slaveInfos, label);
 
@@ -365,7 +393,7 @@ public class MesosCloud extends Cloud {
     return checkpoint;
   }
 
-  private MesosSlaveInfo getSlaveInfo(List<MesosSlaveInfo> slaveInfos,
+  public MesosSlaveInfo getSlaveInfo(List<MesosSlaveInfo> slaveInfos,
       Label label) {
     for (MesosSlaveInfo slaveInfo : slaveInfos) {
       if (label.matches(Label.parse(slaveInfo.getLabelString()))) {
@@ -401,7 +429,33 @@ public void setJenkinsURL(String jenkinsURL) {
 	this.jenkinsURL = jenkinsURL;
 }
 
-@Extension
+  public void forceNewMesosNodes(Label label, int numExecutors) {
+    Collection<PlannedNode> additionalCapacities = provisionNodes(label, numExecutors);
+    label.nodeProvisioner.getPendingLaunches().addAll(additionalCapacities);
+
+    Jenkins jenkins = Jenkins.getInstance();
+
+    //Add Nodes to Jenkins
+    for (PlannedNode ac : additionalCapacities) {
+      try {
+        Node future = future = ac.future.get();
+        jenkins.addNode(future);
+        LOGGER.info("Added node " + future.getNodeName() + " for quick access");
+
+        for (CloudProvisioningListener cl : CloudProvisioningListener.all())
+          cl.onStarted(this, label, additionalCapacities);
+
+      } catch (IOException e) {
+        LOGGER.log(Level.SEVERE, "IOException while adding node to Jenkins", e);
+      } catch (InterruptedException e) {
+        LOGGER.log(Level.SEVERE, "InterruptedException while adding node to Jenkins", e);
+      } catch (ExecutionException e) {
+        LOGGER.log(Level.SEVERE, "ExecutionException while adding node to Jenkins", e);
+      }
+    }
+  }
+
+  @Extension
   public static class DescriptorImpl extends Descriptor<Cloud> {
     private String nativeLibraryPath;
     private String master;
@@ -558,7 +612,8 @@ public void setJenkinsURL(String jenkinsURL) {
                 containerInfo,
                 additionalURIs,
                 runAsUserInfo,
-                additionalCommands);
+                additionalCommands,
+                object.getBoolean("forceProvisioning"));
             slaveInfos.add(slaveInfo);
           }
         }
