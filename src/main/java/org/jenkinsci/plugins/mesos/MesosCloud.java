@@ -239,13 +239,29 @@ public class MesosCloud extends Cloud {
     return new ArrayList<PlannedNode>();
   }
 
+  public int getAllIdleExecutorsCount() {
+    int count = 0;
+    Jenkins jenkins = Jenkins.getInstance();
+
+    for(Computer computer : jenkins.getComputers()) {
+      if(computer instanceof MesosComputer) {
+        if(computer!=null && (computer.isOnline() || computer.isConnecting()) && computer.isAcceptingTasks()) {
+          count += computer.countIdle();
+        }
+      }
+    }
+
+    return count;
+  }
+
 
   public Collection<PlannedNode> provisionNodes(Label label, int excessWorkload) {
     List<PlannedNode> list = new ArrayList<PlannedNode>();
     final MesosSlaveInfo slaveInfo = getSlaveInfo(slaveInfos, label);
 
     try {
-      while (excessWorkload > 0 && !Jenkins.getInstance().isQuietingDown() && label.getIdleExecutors() < 5) {
+
+      while (excessWorkload > 0 && !Jenkins.getInstance().isQuietingDown() && (getAllIdleExecutorsCount()+list.size()) < 50 )  {
         // Start the scheduler if it's not already running.
         if (onDemandRegistration) {
           JenkinsScheduler.SUPERVISOR_LOCK.lock();
