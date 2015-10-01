@@ -284,7 +284,7 @@ public class MesosCloud extends Cloud {
   }
 
   private MesosSlave doProvision(int numExecutors, MesosSlaveInfo slaveInfo) throws Descriptor.FormException, IOException {
-    String name = "mesos-jenkins-" + UUID.randomUUID().toString();
+    String name = slaveInfo.getLabelString() + "-" + UUID.randomUUID().toString();
     return new MesosSlave(this, name, numExecutors, slaveInfo);
   }
 
