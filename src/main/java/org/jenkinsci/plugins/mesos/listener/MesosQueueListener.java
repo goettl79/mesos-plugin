@@ -1,14 +1,13 @@
 package org.jenkinsci.plugins.mesos.listener;
 
 import hudson.Extension;
-import hudson.model.Label;
-import hudson.model.Node;
-import hudson.model.Queue;
+import hudson.model.*;
 import hudson.model.queue.QueueListener;
 import hudson.slaves.Cloud;
 import hudson.slaves.CloudProvisioningListener;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.mesos.MesosCloud;
+import org.jenkinsci.plugins.mesos.MesosSingleUseSlave;
 import org.jenkinsci.plugins.mesos.MesosSlaveInfo;
 import java.util.logging.Logger;
 
@@ -25,7 +24,23 @@ public class MesosQueueListener extends QueueListener {
 
   @Override
   public void onEnterBuildable(Queue.BuildableItem bi) {
-    forceProvisionInNewThreadIfPossible(bi.getAssignedLabel());
+    boolean containsMesosSingleUseSlaveClass = false;
+
+    try {
+      Project proj = (Project) bi.task;
+      for (Object o : proj.getBuildWrappers().values()) {
+        if (o.getClass().equals(MesosSingleUseSlave.class)) {
+          containsMesosSingleUseSlaveClass = true;
+          break;
+        }
+      }
+    } catch (Exception e) {
+      LOGGER.warning("Error while evaluating BuildWrappers, force provisioning will be ignored" + e.getMessage());
+    }
+
+    if(containsMesosSingleUseSlaveClass) {
+      forceProvisionIfPossible(bi.getAssignedLabel());
+    }
   }
 
   public void forceProvisionInNewThreadIfPossible(final Label label) {
