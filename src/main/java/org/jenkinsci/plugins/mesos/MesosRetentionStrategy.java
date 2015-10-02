@@ -19,18 +19,19 @@ import static hudson.util.TimeUnit2.MINUTES;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
+import hudson.model.*;
+import hudson.slaves.SlaveComputer;
 import org.joda.time.DateTimeUtils;
 import hudson.slaves.OfflineCause;
 import org.kohsuke.stapler.DataBoundConstructor;
 
-import hudson.model.Descriptor;
 import hudson.slaves.RetentionStrategy;
 import hudson.util.TimeUnit2;
 
 /**
  * This is inspired by {@link hudson.slaves.CloudRetentionStrategy}.
  */
-public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> {
+public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> implements ExecutorListener {
 
   /**
    * Number of minutes of idleness before an instance should be terminated. A
@@ -108,7 +109,7 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> {
         LOGGER.info("Disconnecting computer greater maximum TTL " + c.getName());
 
         if (!c.isOffline()) {
-          c.setTemporarilyOffline(true, OfflineCause.create(Messages._DeletedCause()));
+          c.setAcceptingTasks(false);
         }
       }
     }
@@ -121,6 +122,43 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> {
   @Override
   public void start(MesosComputer c) {
     c.connect(false);
+  }
+
+  @Override
+  public void taskAccepted(Executor executor, Queue.Task task) {
+    Node node = executor.getOwner().getNode();
+    if(node != null && node instanceof MesosSlave) {
+      MesosSlave mesosSlave = (MesosSlave) executor.getOwner().getNode();
+      if (mesosSlave.getSlaveInfo().isUseSlaveOnce()) {
+        // Force Use Once Only on all executors
+        ((SlaveComputer) mesosSlave.getComputer()).setAcceptingTasks(false);
+      }
+    }
+  }
+
+  @Override
+  public void taskCompleted(Executor executor, Queue.Task task, long l) {
+    Node node = executor.getOwner().getNode();
+    if (node != null && node instanceof MesosSlave) {
+      try {
+        MesosSlave mesosSlave = (MesosSlave) node;
+        if(mesosSlave.getSlaveInfo().isUseSlaveOnce()) {
+          // Force Use Once Only on all executors
+          mesosSlave.getComputer().setTemporarilyOffline(true, OfflineCause.create(Messages._SingleUseCause()));
+          mesosSlave.setPendingDelete(true);
+        }
+      } catch (Exception e) {
+        LOGGER.warning("Exception while trying to set Computer temporarily Offline: " + e);
+        e.printStackTrace();
+      }
+    }
+  }
+
+  @Override
+  public void taskCompletedWithProblems(Executor executor, Queue.Task task, long l, Throwable throwable) {
+    LOGGER.warning("Task completed with Problems " + throwable.getMessage() + " on " + executor.getDisplayName());
+    throwable.printStackTrace();
+    taskCompleted(executor, task, l);
   }
 
   /**

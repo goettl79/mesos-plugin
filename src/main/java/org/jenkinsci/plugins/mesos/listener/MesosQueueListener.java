@@ -24,37 +24,22 @@ public class MesosQueueListener extends QueueListener {
 
   @Override
   public void onEnterBuildable(Queue.BuildableItem bi) {
-    boolean containsMesosSingleUseSlaveClass = false;
-    try {
-      Project proj = (Project) bi.task;
-      for (Object o : proj.getBuildWrappers().values()) {
-        if (o.getClass().equals(MesosSingleUseSlave.class)) {
-          containsMesosSingleUseSlaveClass = true;
-          break;
-        }
-      }
-    } catch (Exception e) {
-      LOGGER.warning("Error while evaluating BuildWrappers, force provisioning will be ignored" + e.getMessage());
-    }
-
-    if(containsMesosSingleUseSlaveClass) {
-      forceProvisionInNewThreadIfPossible(bi.getAssignedLabel(), bi);
-    }
+    forceProvisionInNewThreadIfPossible(bi.getAssignedLabel());
   }
 
-  public void forceProvisionInNewThreadIfPossible(final Label label, final Queue.BuildableItem bi) {
+  public void forceProvisionInNewThreadIfPossible(final Label label) {
     if(label != null) {
       Thread t = new Thread(new Runnable() {
         @Override
         public void run() {
-          forceProvisionIfPossible(label, bi);
+          forceProvisionIfPossible(label);
         }
       }, "ForceNewMesosNode for " + label.getName());
       t.start();
     }
   }
 
-  public void forceProvisionIfPossible(final Label label, Queue.BuildableItem bi) {
+  public void forceProvisionIfPossible(final Label label) {
     if(label != null) {
       Node future = null;
       CLOUD:

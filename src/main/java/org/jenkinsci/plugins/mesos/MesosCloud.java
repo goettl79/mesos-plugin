@@ -629,7 +629,8 @@ public void setJenkinsURL(String jenkinsURL) {
                 additionalURIs,
                 runAsUserInfo,
                 additionalCommands,
-                object.getBoolean("forceProvisioning"));
+                object.getBoolean("forceProvisioning"),
+                object.getBoolean("useSlaveOnce"));
             slaveInfos.add(slaveInfo);
           }
         }
@@ -681,6 +682,21 @@ public void setJenkinsURL(String jenkinsURL) {
         LOGGER.log(Level.WARNING, "Failed to connect to Mesos " + master, e);
         return FormValidation.error(e.getMessage());
       }
+    }
+
+    public FormValidation doCheckMaxExecutors(@QueryParameter("useSlaveOnce") final String strUseSlaveOnce,
+                                              @QueryParameter("maxExecutors") final String strMaxExecutors) {
+      boolean useSlaveOnce = false;
+      int maxExecutors = 1;
+      try {
+        useSlaveOnce = Boolean.parseBoolean(strUseSlaveOnce);
+        maxExecutors = Integer.parseInt(strMaxExecutors);
+      } catch (Exception e) {
+        return FormValidation.ok();
+      }
+
+      if(useSlaveOnce && maxExecutors > 1) return FormValidation.error("A UseSlaveOnce Slave can only have at least 1 executor.");
+      return FormValidation.ok();
     }
 
     public FormValidation doCheckSlaveCpus(@QueryParameter String value) {

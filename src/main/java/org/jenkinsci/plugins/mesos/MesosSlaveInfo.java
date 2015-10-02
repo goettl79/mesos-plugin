@@ -40,6 +40,7 @@ public class MesosSlaveInfo {
   private final RunAsUserInfo runAsUserInfo;
   private final List<Command> additionalCommands;
   private boolean forceProvisioning;
+  private boolean useSlaveOnce;
 
   private String labelString = DEFAULT_LABEL_NAME;
 
@@ -66,7 +67,8 @@ public class MesosSlaveInfo {
       List<URI> additionalURIs,
       RunAsUserInfo runAsUserInfo,
       List<Command> additionalCommands,
-      boolean forceProvisioning)
+      boolean forceProvisioning,
+      boolean useSlaveOnce)
       throws NumberFormatException {
     this.slaveCpus = Double.parseDouble(slaveCpus);
     this.slaveMem = Integer.parseInt(slaveMem);
@@ -101,6 +103,7 @@ public class MesosSlaveInfo {
     this.slaveAttributes = jsonObject;
     this.runAsUserInfo = runAsUserInfo;
     this.forceProvisioning = forceProvisioning;
+    this.useSlaveOnce = useSlaveOnce;
   }
 
   public String getLabelString() {
@@ -179,7 +182,11 @@ public class MesosSlaveInfo {
       return forceProvisioning;
   }
 
-    /**
+  public boolean isUseSlaveOnce() {
+    return useSlaveOnce;
+  }
+
+  /**
    * Removes any additional {@code -Xmx} JVM args from the provided JVM
    * arguments. This is to ensure that the logic that sets the maximum heap
    * sized based on the memory available to the slave is not overriden by a

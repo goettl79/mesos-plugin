@@ -255,7 +255,8 @@ public class JenkinsSchedulerTest {
                 null,               //additionalURIs
                 null,                // runAsUserInfo 
                 null,            // additionalCommands
-                false             //force provisioning
+                false,             //force provisioning
+                false             //UseSlaveOnce
         );
 
 
