@@ -39,15 +39,13 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
    * terminated.
    */
   public final int idleTerminationMinutes;
-  private final int maximumTimeToLive;
   private ReentrantLock checkLock = new ReentrantLock(false);
 
   private static final Logger LOGGER = Logger
       .getLogger(MesosRetentionStrategy.class.getName());
 
-  public MesosRetentionStrategy(int idleTerminationMinutes, int maximumTimeToLive) {
+  public MesosRetentionStrategy(int idleTerminationMinutes) {
     this.idleTerminationMinutes = idleTerminationMinutes;
-    this.maximumTimeToLive = maximumTimeToLive;
   }
 
 
@@ -102,7 +100,7 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
     // 'maximumTimeToLive'.
     final long timeLivedInMilliseconds =
             DateTimeUtils.currentTimeMillis() - c.getConnectTime();
-
+    /*
     if (c.isOnline()) {
 
       if (timeLivedInMilliseconds > MINUTES.toMillis(maximumTimeToLive)) {
@@ -112,7 +110,7 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
           c.setAcceptingTasks(false);
         }
       }
-    }
+    }*/
     return 1;
   }
 

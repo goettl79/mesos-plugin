@@ -51,7 +51,7 @@ public class MesosSlave extends Slave {
           slaveInfo.getMode(),
           slaveInfo.getLabelString(), // Label.
           new MesosComputerLauncher(cloud, name),
-          new MesosRetentionStrategy(slaveInfo.getIdleTerminationMinutes(), slaveInfo.getMaximumTimeToLiveMinutes()),
+          new MesosRetentionStrategy(slaveInfo.getIdleTerminationMinutes()),
           Collections.<NodeProperty<?>> emptyList());
     this.cloud = cloud;
     this.slaveInfo = slaveInfo;

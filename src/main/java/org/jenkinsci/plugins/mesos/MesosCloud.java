@@ -620,7 +620,6 @@ public void setJenkinsURL(String jenkinsURL) {
                 object.getString("executorMem"),
                 object.getString("remoteFSRoot"),
                 object.getString("idleTerminationMinutes"),
-                object.getString("maximumTimeToLiveMinutes"),
                 object.getString("slaveAttributes"),
                 object.getString("jvmArgs"),
                 object.getString("jnlpArgs"),

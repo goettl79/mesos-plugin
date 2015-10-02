@@ -28,8 +28,7 @@ public class MesosSlaveInfo {
   private final int executorMem; // MB.
   private final String remoteFSRoot;
   private final int idleTerminationMinutes;
-  private final int maximumTimeToLiveMinutes;
-  private final String jvmArgs;
+   private final String jvmArgs;
   private final String jnlpArgs;
   // Slave attributes JSON representation.
   private final JSONObject slaveAttributes;
@@ -58,7 +57,6 @@ public class MesosSlaveInfo {
       String executorMem,
       String remoteFSRoot,
       String idleTerminationMinutes,
-      String maximumTimeToLiveMinutes,
       String slaveAttributes,
       String jvmArgs,
       String jnlpArgs,
@@ -78,7 +76,6 @@ public class MesosSlaveInfo {
     this.remoteFSRoot = StringUtils.isNotBlank(remoteFSRoot) ? remoteFSRoot
         .trim() : "jenkins";
     this.idleTerminationMinutes = Integer.parseInt(idleTerminationMinutes);
-    this.maximumTimeToLiveMinutes = Integer.parseInt(maximumTimeToLiveMinutes);
     this.labelString = StringUtils.isNotBlank(labelString) ? labelString
         : DEFAULT_LABEL_NAME;
     this.mode = mode != null ? mode : Mode.NORMAL;
@@ -140,10 +137,6 @@ public class MesosSlaveInfo {
 
   public int getIdleTerminationMinutes() {
     return idleTerminationMinutes;
-  }
-
-  public int getMaximumTimeToLiveMinutes() {
-    return maximumTimeToLiveMinutes;
   }
 
   public JSONObject getSlaveAttributes() {
