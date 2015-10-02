@@ -74,7 +74,7 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
             if (MesosComputer.class.isInstance(c)) {
                 MesosSlave mesosSlave = (MesosSlave) c.getNode();
 
-                if (mesosSlave != null && mesosSlave.isPendingDelete()) {
+                if (mesosSlave != null && mesosSlave.isPendingDelete() && mesosSlave.getComputer().isIdle()) {
                     final MesosComputer comp = (MesosComputer) c;
                     computersToDeleteBuilder.add(comp);
                     logger.log(Level.INFO, "Marked " + comp.getName() + " for deletion");
