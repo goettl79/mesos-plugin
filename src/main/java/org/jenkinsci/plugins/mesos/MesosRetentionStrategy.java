@@ -127,8 +127,8 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
         MesosSlave mesosSlave = (MesosSlave) node;
         if(mesosSlave.getSlaveInfo().isUseSlaveOnce()) {
           // Force Use Once Only on all executors
-          mesosSlave.getComputer().setTemporarilyOffline(true, OfflineCause.create(Messages._SingleUseCause()));
-          mesosSlave.setPendingDelete(true);
+          // mesosSlave.getComputer().setTemporarilyOffline(true, OfflineCause.create(Messages._SingleUseCause()));
+          // mesosSlave.setPendingDelete(true);
         }
       } catch (Exception e) {
         LOGGER.warning("Exception while trying to set Computer temporarily Offline: " + e);
