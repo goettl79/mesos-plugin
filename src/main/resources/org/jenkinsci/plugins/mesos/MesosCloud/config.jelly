@@ -86,7 +86,7 @@
                     </f:entry>
 
                     <f:entry title="${%Idle Termination Minutes}" field="idleTerminationMinutes">
-                        <f:number field="idleTerminationMinutes" clazz="required number" default="3" value="${slaveInfo.maximumTimeToLiveMinutes}"/>
+                        <f:number field="idleTerminationMinutes" clazz="required number" default="3" value="${slaveInfo.idleTerminationMinutes}"/>
                     </f:entry>
 
                     <f:entry title="${%Force Provisioning}" description="This will force the creation of a new slave immediately after a build is triggered.">
