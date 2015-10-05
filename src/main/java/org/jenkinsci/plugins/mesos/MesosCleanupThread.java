@@ -68,7 +68,6 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
     protected void execute(TaskListener listener) {
         final ImmutableList.Builder<ListenableFuture<?>> deletedNodesBuilder = ImmutableList.<ListenableFuture<?>>builder();
         ListeningExecutorService executor = MoreExecutors.listeningDecorator(Computer.threadPoolForRemoting);
-        final ImmutableList.Builder<MesosComputer> computersToDeleteBuilder = ImmutableList.<MesosComputer>builder();
 
         for (final Computer c : Jenkins.getInstance().getComputers()) {
             if (MesosComputer.class.isInstance(c)) {
@@ -76,16 +75,16 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
 
                 if (mesosSlave != null && mesosSlave.isPendingDelete() && mesosSlave.getComputer().isIdle()) {
                     final MesosComputer comp = (MesosComputer) c;
-                    computersToDeleteBuilder.add(comp);
                     logger.log(Level.INFO, "Marked " + comp.getName() + " for deletion");
                     ListenableFuture<?> f = executor.submit(new Runnable() {
                         public void run() {
                             logger.log(Level.INFO, "Deleting pending node " + comp.getName());
                             try {
-                                comp.getNode().terminate();
-                            } catch (RuntimeException e) {
-                                logger.log(Level.WARNING, "Failed to disconnect and delete " + comp.getName() + ": " + e.getMessage());
-                                throw e;
+                                comp.deleteSlave();
+                            } catch (IOException e) {
+                              logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
+                            } catch (InterruptedException e) {
+                              logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
                             }
                         }
                     });
@@ -100,16 +99,5 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
         }
 
         Futures.getUnchecked(Futures.successfulAsList(deletedNodesBuilder.build()));
-
-        for (MesosComputer c : computersToDeleteBuilder.build()) {
-            try {
-                c.deleteSlave();
-            } catch (IOException e) {
-                logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
-            } catch (InterruptedException e) {
-                logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
-            }
-
-        }
     }
 }
