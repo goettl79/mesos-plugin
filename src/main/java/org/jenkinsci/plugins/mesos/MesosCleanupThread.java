@@ -12,6 +12,7 @@ import hudson.Extension;
 import hudson.model.AsyncPeriodicWork;
 import hudson.model.Computer;
 import hudson.model.TaskListener;
+import hudson.slaves.Cloud;
 import jenkins.model.Jenkins;
 
 /**
@@ -69,35 +70,48 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
         final ImmutableList.Builder<ListenableFuture<?>> deletedNodesBuilder = ImmutableList.<ListenableFuture<?>>builder();
         ListeningExecutorService executor = MoreExecutors.listeningDecorator(Computer.threadPoolForRemoting);
 
-        for (final Computer c : Jenkins.getInstance().getComputers()) {
-            if (MesosComputer.class.isInstance(c)) {
-                MesosSlave mesosSlave = (MesosSlave) c.getNode();
+        int deleteCount = 0;
 
-                if (mesosSlave != null && mesosSlave.isPendingDelete() && mesosSlave.getComputer().isIdle()) {
-                    final MesosComputer comp = (MesosComputer) c;
-                    logger.log(Level.INFO, "Marked " + comp.getName() + " for deletion");
-                    ListenableFuture<?> f = executor.submit(new Runnable() {
-                        public void run() {
-                            logger.log(Level.INFO, "Deleting pending node " + comp.getName());
-                            try {
-                                comp.deleteSlave();
-                            } catch (IOException e) {
-                              logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
-                            } catch (InterruptedException e) {
-                              logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
-                            }
-                        }
-                    });
-                    deletedNodesBuilder.add(f);
-                } else {
-                    logger.log(Level.FINE, c.getName() + " with slave " + mesosSlave +
-                            " is not pending deletion or the slave is null");
+        for (final Computer c : Jenkins.getInstance().getComputers()) {
+          if (MesosComputer.class.isInstance(c)) {
+            MesosSlave mesosSlave = (MesosSlave) c.getNode();
+            if (mesosSlave != null && mesosSlave.isPendingDelete()) {
+              final MesosComputer comp = (MesosComputer) c;
+              logger.log(Level.INFO, "Marked " + comp.getName() + " for deletion");
+              ListenableFuture<?> f = executor.submit(new Runnable() {
+                public void run() {
+                  logger.log(Level.INFO, "Deleting pending node " + comp.getName());
+                  try {
+                    comp.deleteSlave();
+                  } catch (IOException e) {
+                    logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
+                  } catch (InterruptedException e) {
+                    logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
+                  }
                 }
+              });
+              deletedNodesBuilder.add(f);
+              deleteCount++;
             } else {
-                logger.log(Level.FINER, c.getName() + " is not a mesos computer, it is a " + c.getClass().getName());
+              logger.log(Level.FINE, c.getName() + " with slave " + mesosSlave +
+                      " is not pending deletion or the slave is null");
             }
+
+          } else {
+            logger.log(Level.FINER, c.getName() + " is not a mesos computer, it is a " + c.getClass().getName());
+          }
         }
 
+
+        logger.log(Level.INFO, "Deleted Nodes: " + deleteCount);
         Futures.getUnchecked(Futures.successfulAsList(deletedNodesBuilder.build()));
+
+        for(Cloud c : Jenkins.getInstance().clouds) {
+          if(c instanceof MesosCloud) {
+            if (c != null) {
+              ((MesosCloud) c).resetProvisioningCount();
+            }
+          }
+        }
     }
 }

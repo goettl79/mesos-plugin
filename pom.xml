@@ -3,12 +3,12 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>1.609</version><!-- the minimum Jenkins core compatible version to run plugin on -->
+    <version>1.609.3</version><!-- the minimum Jenkins core compatible version to run plugin on -->
   </parent>
 
   <groupId>org.jenkins-ci.plugins</groupId>
   <artifactId>mesos</artifactId>
-  <version>0.9.9-INFONOVA-SNAPSHOT</version>
+  <version>0.9.3-INFONOVA-SNAPSHOT</version>
   <packaging>hpi</packaging>
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Mesos+Plugin</url>
 

@@ -62,6 +62,8 @@ public class MesosCloud extends Cloud {
   private final boolean checkpoint; // Set true to enable checkpointing. False by default.
   private boolean onDemandRegistration; // If set true, this framework disconnects when there are no builds in the queue and re-registers when there are.
   private String jenkinsURL;
+  private int provisioningThreshold;
+  private int provisioningCount = 0;
 
   // Find the default values for these variables in
   // src/main/resources/org/jenkinsci/plugins/mesos/MesosCloud/config.jelly.
@@ -122,7 +124,8 @@ public class MesosCloud extends Cloud {
       List<MesosSlaveInfo> slaveInfos,
       boolean checkpoint,
       boolean onDemandRegistration,
-      String jenkinsURL) throws NumberFormatException {
+      String jenkinsURL,
+      int provisioningThreshold) throws NumberFormatException {
     super("MesosCloud");
 
     this.nativeLibraryPath = nativeLibraryPath;
@@ -136,6 +139,7 @@ public class MesosCloud extends Cloud {
     this.checkpoint = checkpoint;
     this.onDemandRegistration = onDemandRegistration;
     this.setJenkinsURL(jenkinsURL);
+    this.provisioningThreshold = provisioningThreshold;
     if(!onDemandRegistration) {
 	    JenkinsScheduler.SUPERVISOR_LOCK.lock();
 	    try {
@@ -222,6 +226,10 @@ public class MesosCloud extends Cloud {
     return false;
   }
 
+  public void resetProvisioningCount() {
+    provisioningCount = 0;
+  }
+
   @Override
   public Collection<PlannedNode> provision(Label label, int excessWorkload) {
     final MesosSlaveInfo slaveInfo = getSlaveInfo(slaveInfos, label);
@@ -244,9 +252,16 @@ public class MesosCloud extends Cloud {
     Jenkins jenkins = Jenkins.getInstance();
 
     for(Computer computer : jenkins.getComputers()) {
-      if(computer instanceof MesosComputer) {
-        if(computer!=null && (computer.isOnline() || computer.isConnecting()) && computer.isAcceptingTasks()) {
-          count += computer.countIdle();
+      if(computer != null) {
+        if(computer instanceof MesosComputer) {
+          MesosSlave mesosSlave = ((MesosComputer) computer).getNode();
+          if(mesosSlave != null) {
+            if(this.equals(mesosSlave.getCloud())) {
+              if (computer.isOffline()) {
+                count++;
+              }
+            }
+          }
         }
       }
     }
@@ -261,7 +276,7 @@ public class MesosCloud extends Cloud {
 
     try {
 
-      while (excessWorkload > 0 && !Jenkins.getInstance().isQuietingDown() && (getAllIdleExecutorsCount()+list.size()) < 50 )  {
+      while (excessWorkload > 0 && !Jenkins.getInstance().isQuietingDown() && (getAllIdleExecutorsCount()+list.size()) < provisioningThreshold && provisioningCount < provisioningThreshold)  {
         // Start the scheduler if it's not already running.
         if (onDemandRegistration) {
           JenkinsScheduler.SUPERVISOR_LOCK.lock();
@@ -276,6 +291,7 @@ public class MesosCloud extends Cloud {
         }
         final int numExecutors = Math.min(excessWorkload, slaveInfo.getMaxExecutors());
         excessWorkload -= numExecutors;
+        provisioningCount += numExecutors;
         LOGGER.info("Provisioning Jenkins Slave on Mesos with " + numExecutors +
                     " executors. Remaining excess workload: " + excessWorkload + " executors)");
         list.add(new PlannedNode(this.getDisplayName(), Computer.threadPoolForRemoting
@@ -393,6 +409,14 @@ public class MesosCloud extends Cloud {
     this.onDemandRegistration = onDemandRegistration;
   }
 
+  public void setProvisioningThreshold(int provisioningThreshold) {
+    this.provisioningThreshold = provisioningThreshold;
+  }
+
+  public int getProvisioningThreshold() {
+    return provisioningThreshold;
+  }
+
   @Override
   public DescriptorImpl getDescriptor() {
     return (DescriptorImpl) super.getDescriptor();
@@ -483,6 +507,7 @@ public void setJenkinsURL(String jenkinsURL) {
     private String slaveAttributes;
     private boolean checkpoint;
     private String jenkinsURL;
+    private int provisioningThreshold;
     private List<MesosSlaveInfo> slaveInfos;
 
     @Override
@@ -503,6 +528,7 @@ public void setJenkinsURL(String jenkinsURL) {
       slaveAttributes = object.getString("slaveAttributes");
       checkpoint = object.getBoolean("checkpoint");
       jenkinsURL = object.getString("jenkinsURL");
+      provisioningThreshold = object.getInt("provisioningThreshold");
       slavesUser = object.getString("slavesUser");
       slaveInfos = new ArrayList<MesosSlaveInfo>();
       JSONArray labels = object.getJSONArray("slaveInfos");

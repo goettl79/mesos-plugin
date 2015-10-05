@@ -31,6 +31,10 @@
       <f:textbox field="jenkinsURL"/>
     </f:entry>
 
+    <f:entry title="${%Provisioning Threshold per Minute}">
+      <f:number field="provisioningThreshold" clazz="required positive-number" default="30" value="${provisioningThreshold}"/>
+    </f:entry>
+
     <f:advanced>
         <f:entry title="${%Checkpointing}" description="${%Enable Mesos framework checkpointing?}">
             <f:radio name="checkpoint" value="true" checked="${instance.checkpoint == true}" id="checkpoint.true"/>
