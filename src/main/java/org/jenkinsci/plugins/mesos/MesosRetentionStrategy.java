@@ -39,13 +39,15 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
    * terminated.
    */
   public final int idleTerminationMinutes;
+  private final int maximumTimeToLive;
   private ReentrantLock checkLock = new ReentrantLock(false);
 
   private static final Logger LOGGER = Logger
       .getLogger(MesosRetentionStrategy.class.getName());
 
-  public MesosRetentionStrategy(int idleTerminationMinutes) {
+  public MesosRetentionStrategy(int idleTerminationMinutes, int maximumTimeToLive) {
     this.idleTerminationMinutes = idleTerminationMinutes;
+    this.maximumTimeToLive = maximumTimeToLive;
   }
 
 

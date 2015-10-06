@@ -14,6 +14,7 @@
  */
 package org.jenkinsci.plugins.mesos;
 
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
@@ -21,6 +22,7 @@ import hudson.model.*;
 import hudson.model.Node.Mode;
 import hudson.slaves.Cloud;
 import hudson.slaves.CloudProvisioningListener;
+import hudson.slaves.EnvironmentVariablesNodeProperty;
 import hudson.slaves.NodeProvisioner.PlannedNode;
 import hudson.util.FormValidation;
 
@@ -190,7 +192,7 @@ public class MesosCloud extends Cloud {
 
     // If 'jenkinsURL' parameter is provided in mesos plugin configuration, then that should take precedence.
     if(StringUtils.isNotBlank(jenkinsURL)) {
-      jenkinsRootURL = jenkinsURL;
+      jenkinsRootURL = expandJenkinsUrlWithEnvVars();
     }
 
     // Restart the scheduler if the master has changed or a scheduler is not up.
@@ -209,6 +211,16 @@ public class MesosCloud extends Cloud {
       LOGGER.info("Mesos master has not changed, leaving the scheduler running");
     }
 
+  }
+
+  private String expandJenkinsUrlWithEnvVars() {
+    Jenkins instance = Jenkins.getInstance();
+    EnvVars envVars = instance.getGlobalNodeProperties().get(EnvironmentVariablesNodeProperty.class).getEnvVars();
+    if (envVars != null) {
+      return StringUtils.defaultIfBlank(envVars.expand(this.jenkinsURL),instance.getRootUrl());
+    } else {
+      return jenkinsURL;
+    }
   }
 
   private boolean isThereAStuckItemInQueue(Label label) {
