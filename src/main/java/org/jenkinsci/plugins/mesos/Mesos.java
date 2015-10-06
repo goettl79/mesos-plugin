@@ -17,10 +17,7 @@ package org.jenkinsci.plugins.mesos;
 import org.apache.mesos.Protos.ContainerInfo.DockerInfo;
 import org.apache.mesos.Scheduler;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.ArrayList;
+import java.util.*;
 
 public abstract class Mesos {
   private static Map<MesosCloud, Mesos> clouds = new HashMap<MesosCloud, Mesos>();
@@ -28,14 +25,14 @@ public abstract class Mesos {
   public static class JenkinsSlave {
     String name;
     String hostName;
-    Collection<DockerInfo.PortMapping> actualPortMappings;
+    private final List<DockerInfo.PortMapping> actualPortMappings;
 
-    public JenkinsSlave(String name, String hostName, Collection<DockerInfo.PortMapping> actualPortMappings) {
+    public JenkinsSlave(String name, String hostName, List<DockerInfo.PortMapping> actualPortMappings) {
       this.name = name;
       this.hostName = hostName;
 
       if (actualPortMappings == null) {
-          this.actualPortMappings = new ArrayList();
+          this.actualPortMappings = Collections.emptyList();
       } else {
           this.actualPortMappings = actualPortMappings;
       }
@@ -44,6 +41,18 @@ public abstract class Mesos {
     public JenkinsSlave(String name) {
         this(name, null, null);
       }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getHostName() {
+        return hostName;
+    }
+
+    public List<DockerInfo.PortMapping> getActualPortMappings() {
+        return Collections.unmodifiableList(actualPortMappings);
+    }
 
   }
 

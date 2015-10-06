@@ -1,0 +1,40 @@
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+    <h2>${%Additional Mesos Information}</h2>
+
+    <j:set var="containerInfo" value="${it.node.slaveInfo.containerInfo}"/>
+    <j:set var="slaveResult" value="${it.node.mesosInstance.scheduler.getResult(it.name)}"/>
+
+    <p>Running on Mesos node: ${slaveResult.slave.hostName}</p>
+    <p>Running image: ${containerInfo.dockerImage}</p>
+
+    <p>Port mappings:</p>
+    <j:choose>
+      <j:when test="${containerInfo.hasPortMappings()}">
+         <ul>
+           <j:forEach var="portMapping" items="${slaveResult.slave.actualPortMappings}">
+             <j:set var="definedMapping" value="${containerInfo.getPortMapping(portMapping.containerPort)}"/>
+             <j:set var="description" value="${definedMapping.description}"/>
+             <j:set var="hostname" value="${slaveResult.slave.hostName}"/>
+             <j:set var="hostPort" value="${portMapping.hostPort}"/>
+             <j:set var="containerPort" value="${portMapping.containerPort}"/>
+             <li>
+               <j:choose>
+                 <j:when test="${definedMapping.hasUrlFormat()}">
+                   ${description}: <a href="${definedMapping.getFormattedUrl(hostname, hostPort)}" target="_blank">${hostname}:${hostPort}</a> (Container Port: ${portMapping.containerPort})
+                 </j:when>
+                 <j:otherwise>
+                   ${description}: ${hostname}:${hostPort} (Container Port: ${portMapping.containerPort})
+                 </j:otherwise>
+               </j:choose>
+             </li>
+           </j:forEach>
+         </ul>
+      </j:when>
+      <j:otherwise>
+        <ul>
+          <li>${%No port mappings}</li>
+        </ul>
+      </j:otherwise>
+    </j:choose>
+
+</j:jelly>

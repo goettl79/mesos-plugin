@@ -471,12 +471,20 @@ public class JenkinsScheduler implements Scheduler {
     }
 
     List<TaskInfo> tasks = new ArrayList<TaskInfo>();
-    tasks.add(taskBuilder.build());
+    TaskInfo task = taskBuilder.build();
+    tasks.add(task);
+
     Filters filters = Filters.newBuilder().setRefuseSeconds(1).build();
     driver.launchTasks(offer.getId(), tasks, filters);
 
-    results.put(taskId, new Result(request.result, new Mesos.JenkinsSlave(offer.getSlaveId()
-        .getValue())));
+    List<DockerInfo.PortMapping> actualPortMappings = task.getContainer().getDocker().getPortMappingsList();
+
+    Mesos.JenkinsSlave jenkinsSlave = new Mesos.JenkinsSlave(
+            offer.getSlaveId().getValue(),
+            offer.getHostname(),
+            actualPortMappings);
+
+    results.put(taskId, new Result(request.result, jenkinsSlave));
     finishedTasks.add(taskId);
   }
 
@@ -820,7 +828,7 @@ public class JenkinsScheduler implements Scheduler {
     this.mesosCloud = mesosCloud;
   }
 
-  private class Result {
+  public class Result {
     private final Mesos.SlaveResult result;
     private final Mesos.JenkinsSlave slave;
 
@@ -828,10 +836,18 @@ public class JenkinsScheduler implements Scheduler {
       this.result = result;
       this.slave = slave;
     }
+
+    public Mesos.SlaveResult getResult() {
+        return result;
+    }
+
+    public Mesos.JenkinsSlave getSlave() {
+        return slave;
+    }
   }
 
   @VisibleForTesting
-  class Request {
+  public class Request {
     private final Mesos.SlaveRequest request;
     private final Mesos.SlaveResult result;
 
@@ -896,6 +912,13 @@ public class JenkinsScheduler implements Scheduler {
     } finally {
       SUPERVISOR_LOCK.unlock();
     }
+  }
+
+  public Result getResult(String slaveName) {
+    TaskID taskId = TaskID.newBuilder().setValue(slaveName).build();
+    Result result = results.get(taskId);
+
+    return result;
   }
 
   public String getJenkinsMaster() {
