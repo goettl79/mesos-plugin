@@ -20,10 +20,9 @@ import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.*;
 import hudson.model.Node.Mode;
-import hudson.slaves.Cloud;
-import hudson.slaves.CloudProvisioningListener;
-import hudson.slaves.EnvironmentVariablesNodeProperty;
+import hudson.slaves.*;
 import hudson.slaves.NodeProvisioner.PlannedNode;
+import hudson.util.DescribableList;
 import hudson.util.FormValidation;
 
 import java.io.IOException;
@@ -215,7 +214,11 @@ public class MesosCloud extends Cloud {
 
   private String expandJenkinsUrlWithEnvVars() {
     Jenkins instance = Jenkins.getInstance();
-    EnvVars envVars = instance.getGlobalNodeProperties().get(EnvironmentVariablesNodeProperty.class).getEnvVars();
+    DescribableList<NodeProperty<?>, NodePropertyDescriptor> globalNodeProperties = instance.getGlobalNodeProperties();
+    if (globalNodeProperties == null) {
+      return jenkinsURL;
+    }
+    EnvVars envVars = globalNodeProperties.get(EnvironmentVariablesNodeProperty.class).getEnvVars();
     if (envVars != null) {
       return StringUtils.defaultIfBlank(envVars.expand(this.jenkinsURL),instance.getRootUrl());
     } else {
