@@ -31,8 +31,8 @@ public class MesosRetentionStrategyTest {
 
   @Test
   public void should_check_if_is_terminable() {
-    assertThat(new MesosRetentionStrategy(0).isTerminable()).isFalse();
-    assertThat(new MesosRetentionStrategy(5).isTerminable()).isTrue();
+    assertThat(new MesosRetentionStrategy(0,0).isTerminable()).isFalse();
+    assertThat(new MesosRetentionStrategy(5,0).isTerminable()).isTrue();
   }
 
   @Test
@@ -40,7 +40,7 @@ public class MesosRetentionStrategyTest {
     // Given
     int idleTerminationMinutes = 0;
 
-    MesosRetentionStrategy mesosRetentionStrategy = new MesosRetentionStrategy(idleTerminationMinutes);
+    MesosRetentionStrategy mesosRetentionStrategy = new MesosRetentionStrategy(idleTerminationMinutes,0);
 
     MesosComputer mesosComputer = PowerMockito.mock(MesosComputer.class);
     MesosSlave mesosSlave = mock(MesosSlave.class);
@@ -60,7 +60,7 @@ public class MesosRetentionStrategyTest {
     // Given
     int idleTerminationMinutes = 0;
 
-    MesosRetentionStrategy mesosRetentionStrategy = new MesosRetentionStrategy(idleTerminationMinutes);
+    MesosRetentionStrategy mesosRetentionStrategy = new MesosRetentionStrategy(idleTerminationMinutes,0);
 
     MesosComputer mesosComputer = PowerMockito.mock(MesosComputer.class);
     MesosSlave mesosSlave = mock(MesosSlave.class);

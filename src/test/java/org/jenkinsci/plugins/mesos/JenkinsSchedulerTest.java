@@ -246,6 +246,7 @@ public class JenkinsSchedulerTest {
                 "512",              // executorMem,
                 "remoteFSRoot",     // remoteFSRoot,
                 "2",                // idleTerminationMinutes,
+                "2",                // maxTtl,
                 null,               // slaveAttributes,
                 null,               // jvmArgs,
                 null,               //jnlpArgs,
