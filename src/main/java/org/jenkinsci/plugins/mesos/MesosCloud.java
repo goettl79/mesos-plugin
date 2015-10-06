@@ -218,7 +218,11 @@ public class MesosCloud extends Cloud {
     if (globalNodeProperties == null) {
       return jenkinsURL;
     }
-    EnvVars envVars = globalNodeProperties.get(EnvironmentVariablesNodeProperty.class).getEnvVars();
+    EnvironmentVariablesNodeProperty environmentVariablesNodeProperty = globalNodeProperties.get(EnvironmentVariablesNodeProperty.class);
+    if (environmentVariablesNodeProperty == null) {
+      return jenkinsURL;
+    }
+    EnvVars envVars = environmentVariablesNodeProperty.getEnvVars();
     if (envVars != null) {
       return StringUtils.defaultIfBlank(envVars.expand(this.jenkinsURL),instance.getRootUrl());
     } else {
