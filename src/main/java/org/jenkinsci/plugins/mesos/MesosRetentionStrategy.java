@@ -109,7 +109,7 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
         LOGGER.info("Disconnecting computer greater maximum TTL " + c.getName());
 
         if (!c.isOffline()) {
-          c.setTemporarilyOffline(true, OfflineCause.create(Messages._DeletedCause()));
+          c.setAcceptingTasks(false);
         }
       }
     }
