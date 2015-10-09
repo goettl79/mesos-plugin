@@ -8,7 +8,7 @@
 
   <groupId>org.jenkins-ci.plugins</groupId>
   <artifactId>mesos</artifactId>
-  <version>0.9.21-INFONOVA-SNAPSHOT</version>
+  <version>0.9.22-INFONOVA-SNAPSHOT</version>
   <packaging>hpi</packaging>
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Mesos+Plugin</url>
 
@@ -139,6 +139,11 @@
           <groupId>com.google.guava</groupId>
           <artifactId>guava</artifactId>
           <version>${guava.version}</version>
+      </dependency>
+      <dependency>
+          <groupId>com.offbytwo.jenkins</groupId>
+          <artifactId>jenkins-client</artifactId>
+          <version>0.3.1</version>
       </dependency>
   </dependencies>
 
