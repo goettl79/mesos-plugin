@@ -78,20 +78,22 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
             if (mesosSlave != null && mesosSlave.isPendingDelete()) {
               final MesosComputer comp = (MesosComputer) c;
               logger.log(Level.INFO, "Marked " + comp.getName() + " for deletion");
-              ListenableFuture<?> f = executor.submit(new Runnable() {
-                public void run() {
-                  logger.log(Level.INFO, "Deleting pending node " + comp.getName());
-                  try {
-                    comp.deleteSlave();
-                  } catch (IOException e) {
-                    logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
-                  } catch (InterruptedException e) {
-                    logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
+              if(comp.isIdle()) { //only delete it if it is really idle
+                ListenableFuture<?> f = executor.submit(new Runnable() {
+                  public void run() {
+                    logger.log(Level.INFO, "Deleting pending node " + comp.getName());
+                    try {
+                      comp.deleteSlave();
+                    } catch (IOException e) {
+                      logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
+                    } catch (InterruptedException e) {
+                      logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
+                    }
                   }
-                }
-              });
-              deletedNodesBuilder.add(f);
-              deleteCount++;
+                });
+                deletedNodesBuilder.add(f);
+                deleteCount++;
+              }
             } else {
               logger.log(Level.FINE, c.getName() + " with slave " + mesosSlave +
                       " is not pending deletion or the slave is null");
