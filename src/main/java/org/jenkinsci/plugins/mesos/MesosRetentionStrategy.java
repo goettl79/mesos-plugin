@@ -127,10 +127,9 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
     Node node = executor.getOwner().getNode();
     if(node != null && node instanceof MesosSlave) {
       MesosSlave mesosSlave = (MesosSlave) executor.getOwner().getNode();
-      if (mesosSlave.getSlaveInfo().isUseSlaveOnce()) {
-        // Force Use Once Only on all executors
-        ((SlaveComputer) mesosSlave.getComputer()).setAcceptingTasks(false);
-      }
+
+      // Force Use Once Only on all executors
+      ((SlaveComputer) mesosSlave.getComputer()).setAcceptingTasks(false);
     }
   }
 
@@ -140,10 +139,10 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
     if (node != null && node instanceof MesosSlave) {
       try {
         MesosSlave mesosSlave = (MesosSlave) node;
-        if(mesosSlave.getSlaveInfo().isUseSlaveOnce()) {
-          // Force Use Once Only on all executors
-          mesosSlave.setPendingDelete(true);
-        }
+
+        // Force Use Once Only on all executors
+        mesosSlave.setPendingDelete(true);
+
       } catch (Exception e) {
         LOGGER.warning("Exception while trying to set Computer temporarily Offline: " + e);
         e.printStackTrace();

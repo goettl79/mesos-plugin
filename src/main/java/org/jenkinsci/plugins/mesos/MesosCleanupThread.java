@@ -103,17 +103,8 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
             logger.log(Level.FINER, c.getName() + " is not a mesos computer, it is a " + c.getClass().getName());
           }
         }
-
-
+      
         logger.log(Level.INFO, "Deleted Nodes: " + deleteCount);
         Futures.getUnchecked(Futures.successfulAsList(deletedNodesBuilder.build()));
-
-        for(Cloud c : Jenkins.getInstance().clouds) {
-          if(c instanceof MesosCloud) {
-            if (c != null) {
-              ((MesosCloud) c).resetProvisioningCount();
-            }
-          }
-        }
     }
 }

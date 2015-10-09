@@ -87,7 +87,7 @@ public class MesosSingleUseSlave extends BuildWrapper {
         @Override
         @SuppressWarnings("rawtypes")
         public boolean isApplicable(AbstractProject item) {
-            return true;
+            return false;
         }
 
     }

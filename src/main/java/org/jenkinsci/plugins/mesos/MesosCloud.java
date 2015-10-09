@@ -60,8 +60,6 @@ public class MesosCloud extends Cloud {
   private final boolean checkpoint; // Set true to enable checkpointing. False by default.
   private boolean onDemandRegistration; // If set true, this framework disconnects when there are no builds in the queue and re-registers when there are.
   private String jenkinsURL;
-  private int provisioningThreshold;
-  private int provisioningCount = 0;
   private List<PlannedNode> plannedNodeList;
 
   // Find the default values for these variables in
@@ -123,8 +121,7 @@ public class MesosCloud extends Cloud {
       List<MesosSlaveInfo> slaveInfos,
       boolean checkpoint,
       boolean onDemandRegistration,
-      String jenkinsURL,
-      int provisioningThreshold) throws NumberFormatException {
+      String jenkinsURL) throws NumberFormatException {
     super("MesosCloud");
 
     this.nativeLibraryPath = nativeLibraryPath;
@@ -138,7 +135,6 @@ public class MesosCloud extends Cloud {
     this.checkpoint = checkpoint;
     this.onDemandRegistration = onDemandRegistration;
     this.setJenkinsURL(jenkinsURL);
-    this.provisioningThreshold = provisioningThreshold;
     if(!onDemandRegistration) {
 	    JenkinsScheduler.SUPERVISOR_LOCK.lock();
 	    try {
@@ -244,47 +240,10 @@ public class MesosCloud extends Cloud {
     return false;
   }
 
-  public void resetProvisioningCount() {
-    provisioningCount = 0;
-  }
-
   @Override
   public Collection<PlannedNode> provision(Label label, int excessWorkload) {
-    final MesosSlaveInfo slaveInfo = getSlaveInfo(slaveInfos, label);
-    if (slaveInfo.isForceProvisioning()) {
-      if (isThereAStuckItemInQueue(label)) {
-        LOGGER.warning("There are Items waiting for more than 1 minute for a free slave executor for label " + label.getName());
-        LOGGER.info("Accepted Jenkins provisioning request for " + label.getName() + " Executors: " + excessWorkload);
-        //requestNodes(label, excessWorkload);
-      } else {
-        LOGGER.info("There are no stuck Items in the Queue, Jenkins provisioning request will be ignored");
-      }
-    } else {
-      requestNodes(label, excessWorkload);
-    }
+    //no need to provison Nodes from Jenkins due to forceProvisioning.
     return new ArrayList<PlannedNode>();
-  }
-
-  public int getAllIdleExecutorsCount() {
-    int count = 0;
-    Jenkins jenkins = Jenkins.getInstance();
-
-    for(Computer computer : jenkins.getComputers()) {
-      if(computer != null) {
-        if(computer instanceof MesosComputer) {
-          MesosSlave mesosSlave = ((MesosComputer) computer).getNode();
-          if(mesosSlave != null) {
-            if(this.equals(mesosSlave.getCloud())) {
-              if (computer.isOffline()) {
-                count++;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return count;
   }
 
 
@@ -293,7 +252,7 @@ public class MesosCloud extends Cloud {
     final MesosSlaveInfo slaveInfo = getSlaveInfo(slaveInfos, label);
 
     try {
-      while (excessWorkload > 0 && !Jenkins.getInstance().isQuietingDown() && (getAllIdleExecutorsCount()+list.size()) < provisioningThreshold && provisioningCount < provisioningThreshold)  {
+      while (excessWorkload > 0 && !Jenkins.getInstance().isQuietingDown())  {
         // Start the scheduler if it's not already running.
         if (onDemandRegistration) {
           JenkinsScheduler.SUPERVISOR_LOCK.lock();
@@ -308,14 +267,11 @@ public class MesosCloud extends Cloud {
         }
         final int numExecutors = Math.min(excessWorkload, slaveInfo.getMaxExecutors());
         excessWorkload -= numExecutors;
-        provisioningCount += numExecutors;
         LOGGER.info("Provisioning Jenkins Slave on Mesos with " + numExecutors +
                     " executors. Remaining excess workload: " + excessWorkload + " executors)");
 
 
         doSendSlaveRequest(numExecutors, slaveInfo);
-
-
       }
     } catch (Exception e) {
       LOGGER.log(Level.WARNING, "Failed to create instances on Mesos", e);
@@ -449,14 +405,6 @@ public class MesosCloud extends Cloud {
 
   public void setOnDemandRegistration(boolean onDemandRegistration) {
     this.onDemandRegistration = onDemandRegistration;
-  }
-
-  public void setProvisioningThreshold(int provisioningThreshold) {
-    this.provisioningThreshold = provisioningThreshold;
-  }
-
-  public int getProvisioningThreshold() {
-    return provisioningThreshold;
   }
 
   @Override
@@ -683,9 +631,7 @@ public class MesosCloud extends Cloud {
                 containerInfo,
                 additionalURIs,
                 runAsUserInfo,
-                additionalCommands,
-                object.getBoolean("forceProvisioning"),
-                object.getBoolean("useSlaveOnce"));
+                additionalCommands);
             slaveInfos.add(slaveInfo);
           }
         }
@@ -739,18 +685,15 @@ public class MesosCloud extends Cloud {
       }
     }
 
-    public FormValidation doCheckMaxExecutors(@QueryParameter("useSlaveOnce") final String strUseSlaveOnce,
-                                              @QueryParameter("maxExecutors") final String strMaxExecutors) {
-      boolean useSlaveOnce = false;
+    public FormValidation doCheckMaxExecutors(@QueryParameter("maxExecutors") final String strMaxExecutors) {
       int maxExecutors = 1;
       try {
-        useSlaveOnce = Boolean.parseBoolean(strUseSlaveOnce);
         maxExecutors = Integer.parseInt(strMaxExecutors);
       } catch (Exception e) {
         return FormValidation.ok();
       }
 
-      if(useSlaveOnce && maxExecutors > 1) return FormValidation.error("A UseSlaveOnce Slave can only have at least 1 executor.");
+      if(maxExecutors > 1) return FormValidation.error("A UseSlaveOnce Slave can have at least 1 executor.");
       return FormValidation.ok();
     }
 

@@ -254,9 +254,7 @@ public class JenkinsSchedulerTest {
                 containerInfo,      // containerInfo,
                 null,               //additionalURIs
                 null,                // runAsUserInfo 
-                null,            // additionalCommands
-                false,             //force provisioning
-                false             //UseSlaveOnce
+                null            // additionalCommands
         );
 
 

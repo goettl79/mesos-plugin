@@ -39,8 +39,6 @@ public class MesosSlaveInfo {
   private final Mode mode;
   private final RunAsUserInfo runAsUserInfo;
   private final List<Command> additionalCommands;
-  private boolean forceProvisioning;
-  private boolean useSlaveOnce;
 
   private String labelString = DEFAULT_LABEL_NAME;
 
@@ -66,9 +64,7 @@ public class MesosSlaveInfo {
       ContainerInfo containerInfo,
       List<URI> additionalURIs,
       RunAsUserInfo runAsUserInfo,
-      List<Command> additionalCommands,
-      boolean forceProvisioning,
-      boolean useSlaveOnce)
+      List<Command> additionalCommands)
       throws NumberFormatException {
     this.slaveCpus = Double.parseDouble(slaveCpus);
     this.slaveMem = Integer.parseInt(slaveMem);
@@ -102,8 +98,6 @@ public class MesosSlaveInfo {
     }
     this.slaveAttributes = jsonObject;
     this.runAsUserInfo = runAsUserInfo;
-    this.forceProvisioning = forceProvisioning;
-    this.useSlaveOnce = useSlaveOnce;
   }
 
   public String getLabelString() {
@@ -176,14 +170,6 @@ public class MesosSlaveInfo {
 
   public List<Command> getAdditionalCommands() {
     return additionalCommands;
-  }
-
-  public boolean isForceProvisioning() {
-      return forceProvisioning;
-  }
-
-  public boolean isUseSlaveOnce() {
-    return useSlaveOnce;
   }
 
   /**

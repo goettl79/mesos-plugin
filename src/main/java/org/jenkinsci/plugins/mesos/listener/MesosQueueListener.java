@@ -9,6 +9,7 @@ import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.mesos.MesosCloud;
 import org.jenkinsci.plugins.mesos.MesosSingleUseSlave;
 import org.jenkinsci.plugins.mesos.MesosSlaveInfo;
+
 import java.util.logging.Logger;
 
 @SuppressWarnings("rawtypes")
@@ -28,7 +29,7 @@ public class MesosQueueListener extends QueueListener {
   }
 
   public void forceProvisionInNewThreadIfPossible(final Label label) {
-    if(label != null) {
+    if (label != null) {
       Thread t = new Thread(new Runnable() {
         @Override
         public void run() {
@@ -40,7 +41,7 @@ public class MesosQueueListener extends QueueListener {
   }
 
   public void forceProvisionIfPossible(final Label label) {
-    if(label != null) {
+    if (label != null) {
       Node future = null;
       CLOUD:
       for (Cloud c : Jenkins.getInstance().clouds) {
@@ -49,15 +50,13 @@ public class MesosQueueListener extends QueueListener {
             MesosCloud mesosCloud = (MesosCloud) c;
             MesosSlaveInfo mesosSlaveInfo = mesosCloud.getSlaveInfo(mesosCloud.getSlaveInfos(), label);
 
-            if (mesosSlaveInfo.isForceProvisioning()) {
-              int numExecutors = 1;
-              for (CloudProvisioningListener cl : CloudProvisioningListener.all()) {
-                if (cl.canProvision(mesosCloud, label, numExecutors) != null) {
-                  break CLOUD;
-                }
+            int numExecutors = 1;
+            for (CloudProvisioningListener cl : CloudProvisioningListener.all()) {
+              if (cl.canProvision(mesosCloud, label, numExecutors) != null) {
+                break CLOUD;
               }
-              mesosCloud.forceNewMesosNodes(label, numExecutors);
             }
+            mesosCloud.forceNewMesosNodes(label, numExecutors);
           }
         }
       }
