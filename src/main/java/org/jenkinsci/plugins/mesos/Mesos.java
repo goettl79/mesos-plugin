@@ -25,9 +25,11 @@ public abstract class Mesos {
   public static class JenkinsSlave {
     String name;
     String hostName;
+    String label;
+    int numExecutors;
     private final List<DockerInfo.PortMapping> actualPortMappings;
 
-    public JenkinsSlave(String name, String hostName, List<DockerInfo.PortMapping> actualPortMappings) {
+    public JenkinsSlave(String name, String hostName, List<DockerInfo.PortMapping> actualPortMappings, String label, int numExecutors) {
       this.name = name;
       this.hostName = hostName;
 
@@ -36,11 +38,18 @@ public abstract class Mesos {
       } else {
           this.actualPortMappings = actualPortMappings;
       }
+
+      this.numExecutors = numExecutors;
+      this.label = label;
     }
 
     public JenkinsSlave(String name) {
-        this(name, null, null);
+        this(name, null, null, null, 1);
       }
+
+    public JenkinsSlave(String name, String label, int numExecutors) {
+      this(name, null, null, label, numExecutors);
+    }
 
     public String getName() {
         return name;
@@ -48,6 +57,14 @@ public abstract class Mesos {
 
     public String getHostName() {
         return hostName;
+    }
+
+    public String getLabel() {
+      return label;
+    }
+
+    public int getNumExecutors() {
+      return numExecutors;
     }
 
     public List<DockerInfo.PortMapping> getActualPortMappings() {

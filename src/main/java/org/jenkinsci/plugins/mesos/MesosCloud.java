@@ -30,11 +30,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -65,6 +62,7 @@ public class MesosCloud extends Cloud {
   private String jenkinsURL;
   private int provisioningThreshold;
   private int provisioningCount = 0;
+  private List<PlannedNode> plannedNodeList;
 
   // Find the default values for these variables in
   // src/main/resources/org/jenkinsci/plugins/mesos/MesosCloud/config.jelly.
@@ -172,6 +170,7 @@ public class MesosCloud extends Cloud {
   }
 
   public void restartMesos() {
+    plannedNodeList = new ArrayList<PlannedNode>();
 
     if(!nativeLibraryLoaded) {
       // First, we attempt to load the library from the given path.
@@ -255,13 +254,13 @@ public class MesosCloud extends Cloud {
     if (slaveInfo.isForceProvisioning()) {
       if (isThereAStuckItemInQueue(label)) {
         LOGGER.warning("There are Items waiting for more than 1 minute for a free slave executor for label " + label.getName());
-        LOGGER.info("Accepted Jenkins provisioning request for " + label.getName());
-        return provisionNodes(label, excessWorkload);
+        LOGGER.info("Accepted Jenkins provisioning request for " + label.getName() + " Executors: " + excessWorkload);
+        //requestNodes(label, excessWorkload);
       } else {
         LOGGER.info("There are no stuck Items in the Queue, Jenkins provisioning request will be ignored");
       }
     } else {
-      return provisionNodes(label, excessWorkload);
+      requestNodes(label, excessWorkload);
     }
     return new ArrayList<PlannedNode>();
   }
@@ -289,12 +288,11 @@ public class MesosCloud extends Cloud {
   }
 
 
-  public Collection<PlannedNode> provisionNodes(Label label, int excessWorkload) {
+  public void requestNodes(Label label, int excessWorkload) {
     List<PlannedNode> list = new ArrayList<PlannedNode>();
     final MesosSlaveInfo slaveInfo = getSlaveInfo(slaveInfos, label);
 
     try {
-
       while (excessWorkload > 0 && !Jenkins.getInstance().isQuietingDown() && (getAllIdleExecutorsCount()+list.size()) < provisioningThreshold && provisioningCount < provisioningThreshold)  {
         // Start the scheduler if it's not already running.
         if (onDemandRegistration) {
@@ -313,30 +311,55 @@ public class MesosCloud extends Cloud {
         provisioningCount += numExecutors;
         LOGGER.info("Provisioning Jenkins Slave on Mesos with " + numExecutors +
                     " executors. Remaining excess workload: " + excessWorkload + " executors)");
-        list.add(new PlannedNode(this.getDisplayName(), Computer.threadPoolForRemoting
-            .submit(new Callable<Node>() {
-              public Node call() throws Exception {
-                MesosSlave s = doProvision(numExecutors, slaveInfo);
-                // We do not need to explicitly add the Node here because that is handled by
-                // hudson.slaves.NodeProvisioner::update() that checks the result from the
-                // Future and adds the node. Though there is duplicate node addition check
-                // because of this early addition there is difference in job scheduling and
-                // best to avoid it.
-                return s;
-              }
-            }), numExecutors));
+
+
+        doSendSlaveRequest(numExecutors, slaveInfo);
+
+
       }
     } catch (Exception e) {
       LOGGER.log(Level.WARNING, "Failed to create instances on Mesos", e);
-      return Collections.emptyList();
     }
-
-    return list;
   }
 
-  private MesosSlave doProvision(int numExecutors, MesosSlaveInfo slaveInfo) throws Descriptor.FormException, IOException {
+  private void doSendSlaveRequest(int numExecutors, MesosSlaveInfo slaveInfo) throws Descriptor.FormException, IOException {
     String name = slaveInfo.getLabelString() + "-" + UUID.randomUUID().toString();
-    return new MesosSlave(this, name, numExecutors, slaveInfo);
+    MesosSlave mesosSlave = new MesosSlave(this, name, numExecutors, slaveInfo);
+    Mesos.SlaveRequest slaveRequest = new Mesos.SlaveRequest(new Mesos.JenkinsSlave(name, slaveInfo.getLabelString(), numExecutors), mesosSlave.getCpus(), mesosSlave.getMem(), slaveInfo);
+    Mesos mesos = Mesos.getInstance(this);
+
+    mesos.startJenkinsSlave(slaveRequest, new Mesos.SlaveResult() {
+      @Override
+      public void running(Mesos.JenkinsSlave slave) {
+
+      }
+
+      @Override
+      public void finished(Mesos.JenkinsSlave slave) {
+
+      }
+
+      @Override
+      public void failed(Mesos.JenkinsSlave slave) {
+
+      }
+    });
+  }
+
+  public void createNewSlave(Mesos.JenkinsSlave slave) {
+    try {
+      MesosSlave mesosSlave = new MesosSlave(this, slave.name, slave.getNumExecutors(), getSlaveInfo(slave.getLabel()));
+
+      Jenkins jenkins = Jenkins.getInstance();
+      jenkins.addNode(mesosSlave);
+
+    } catch (IOException e) {
+      LOGGER.fine("IOException while creating MesosSlave: " + e.getMessage());
+      e.printStackTrace();
+    } catch (Descriptor.FormException e) {
+      LOGGER.fine("Descriptor.FormException while creating MesosSlave: " + e.getMessage());
+      e.printStackTrace();
+    }
   }
 
   public List<MesosSlaveInfo> getSlaveInfos() {
@@ -452,6 +475,15 @@ public class MesosCloud extends Cloud {
     return checkpoint;
   }
 
+  public MesosSlaveInfo getSlaveInfo(String label) {
+    for (MesosSlaveInfo slaveInfo : slaveInfos) {
+      if (label.equals(slaveInfo.getLabelString())) {
+        return slaveInfo;
+      }
+    }
+    return null;
+  }
+
   public MesosSlaveInfo getSlaveInfo(List<MesosSlaveInfo> slaveInfos,
       Label label) {
     for (MesosSlaveInfo slaveInfo : slaveInfos) {
@@ -481,37 +513,15 @@ public class MesosCloud extends Cloud {
   }
 
   public String getJenkinsURL() {
-	return jenkinsURL;
-}
+	  return jenkinsURL;
+  }
 
-public void setJenkinsURL(String jenkinsURL) {
+  public void setJenkinsURL(String jenkinsURL) {
 	this.jenkinsURL = jenkinsURL;
 }
 
   public void forceNewMesosNodes(Label label, int numExecutors) {
-    Collection<PlannedNode> additionalCapacities = provisionNodes(label, numExecutors);
-    label.nodeProvisioner.getPendingLaunches().addAll(additionalCapacities);
-
-    Jenkins jenkins = Jenkins.getInstance();
-
-    //Add Nodes to Jenkins
-    for (PlannedNode ac : additionalCapacities) {
-      try {
-        Node future = future = ac.future.get();
-        jenkins.addNode(future);
-        LOGGER.info("Added node " + future.getNodeName() + " for quick access");
-
-        for (CloudProvisioningListener cl : CloudProvisioningListener.all())
-          cl.onStarted(this, label, additionalCapacities);
-
-      } catch (IOException e) {
-        LOGGER.log(Level.SEVERE, "IOException while adding node to Jenkins", e);
-      } catch (InterruptedException e) {
-        LOGGER.log(Level.SEVERE, "InterruptedException while adding node to Jenkins", e);
-      } catch (ExecutionException e) {
-        LOGGER.log(Level.SEVERE, "ExecutionException while adding node to Jenkins", e);
-      }
-    }
+    requestNodes(label, numExecutors);
   }
 
   @Extension

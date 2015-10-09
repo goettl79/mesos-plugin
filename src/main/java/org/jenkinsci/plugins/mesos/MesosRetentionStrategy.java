@@ -23,10 +23,8 @@ import hudson.model.*;
 import hudson.slaves.SlaveComputer;
 import org.joda.time.DateTimeUtils;
 import hudson.slaves.OfflineCause;
-import org.kohsuke.stapler.DataBoundConstructor;
 
 import hudson.slaves.RetentionStrategy;
-import hudson.util.TimeUnit2;
 
 /**
  * This is inspired by {@link hudson.slaves.CloudRetentionStrategy}.
@@ -144,8 +142,9 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
         MesosSlave mesosSlave = (MesosSlave) node;
         if(mesosSlave.getSlaveInfo().isUseSlaveOnce()) {
           // Force Use Once Only on all executors
-          // mesosSlave.getComputer().setTemporarilyOffline(true, OfflineCause.create(Messages._SingleUseCause()));
-          // mesosSlave.setPendingDelete(true);
+          mesosSlave.getComputer().setTemporarilyOffline(true, OfflineCause.create(Messages._SingleUseCause()));
+          mesosSlave.setPendingDelete(true);
+
         }
       } catch (Exception e) {
         LOGGER.warning("Exception while trying to set Computer temporarily Offline: " + e);

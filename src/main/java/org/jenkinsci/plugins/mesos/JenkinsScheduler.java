@@ -71,6 +71,7 @@ import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 
 import com.google.protobuf.ByteString;
+import org.jenkinsci.plugins.mesos.diagnostics.MesosTaskLaunchFailureHandler;
 
 public class JenkinsScheduler implements Scheduler {
   private static final String SLAVE_JAR_URI_SUFFIX = "jnlpJars/slave.jar";
@@ -480,9 +481,11 @@ public class JenkinsScheduler implements Scheduler {
     List<DockerInfo.PortMapping> actualPortMappings = task.getContainer().getDocker().getPortMappingsList();
 
     Mesos.JenkinsSlave jenkinsSlave = new Mesos.JenkinsSlave(
-            offer.getSlaveId().getValue(),
+            request.request.slave.getName(),
             offer.getHostname(),
-            actualPortMappings);
+            actualPortMappings,
+            request.request.slaveInfo.getLabelString(),
+            request.request.slave.getNumExecutors());
 
     results.put(taskId, new Result(request.result, jenkinsSlave));
     finishedTasks.add(taskId);
@@ -760,19 +763,23 @@ public class JenkinsScheduler implements Scheduler {
     Result result = results.get(taskId);
     boolean terminalState = false;
 
+
     switch (status.getState()) {
     case TASK_STAGING:
     case TASK_STARTING:
       break;
     case TASK_RUNNING:
+      mesosCloud.createNewSlave(result.slave);
       result.result.running(result.slave);
       break;
     case TASK_FINISHED:
       result.result.finished(result.slave);
       terminalState = true;
       break;
-    case TASK_ERROR:
+
     case TASK_FAILED:
+    case TASK_ERROR:
+      MesosTaskLaunchFailureHandler.addFailure(mesosCloud, result);
     case TASK_KILLED:
     case TASK_LOST:
       result.result.failed(result.slave);
@@ -920,6 +927,8 @@ public class JenkinsScheduler implements Scheduler {
 
     return result;
   }
+
+
 
   public String getJenkinsMaster() {
     return jenkinsMaster;

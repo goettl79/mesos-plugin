@@ -11,9 +11,7 @@ import hudson.model.listeners.RunListener;
 import java.io.IOException;
 import java.util.logging.Logger;
 
-import hudson.slaves.OfflineCause;
 import org.jenkinsci.plugins.mesos.MesosSlave;
-import org.jenkinsci.plugins.mesos.Messages;
 
 @SuppressWarnings("rawtypes")
 @Extension

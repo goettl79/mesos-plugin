@@ -45,6 +45,8 @@
         </j:if>
 
         <argument>-url</argument>
+        <argument>${it.node.mesosInstance.scheduler.getJenkinsMaster()}</argument>
+        <argument>-url</argument>
         <argument>${app.rootUrlFromRequest}</argument>
       </application-desc>
     </jnlp>

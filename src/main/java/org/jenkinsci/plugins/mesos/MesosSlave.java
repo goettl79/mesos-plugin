@@ -19,10 +19,11 @@ import hudson.FilePath;
 import hudson.model.Computer;
 import hudson.model.Descriptor.FormException;
 import hudson.model.Hudson;
+import hudson.model.Node;
 import hudson.model.Slave;
+import hudson.slaves.EphemeralNode;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.ComputerLauncher;
-import hudson.slaves.RetentionStrategy;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.IOException;
@@ -30,9 +31,7 @@ import java.util.Collections;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.apache.commons.lang.StringUtils;
-
-public class MesosSlave extends Slave {
+public class MesosSlave extends Slave implements EphemeralNode {
 
   private final MesosCloud cloud;
   private final MesosSlaveInfo slaveInfo;
@@ -108,11 +107,25 @@ public class MesosSlave extends Slave {
     return (DescriptorImpl) super.getDescriptor();
   }
 
+
+  @Override
+  public Node asNode() {
+    return this;
+  }
+
   @Extension
   public static class DescriptorImpl extends SlaveDescriptor {
     @Override
     public String getDisplayName() {
       return "Mesos Slave";
+    }
+
+    /**
+     * We only create this kind of nodes programatically.
+     */
+    @Override
+    public boolean isInstantiable() {
+      return false;
     }
   }
 
