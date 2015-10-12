@@ -18,6 +18,7 @@ package org.jenkinsci.plugins.mesos;
 
 import com.google.common.annotations.VisibleForTesting;
 import hudson.model.Computer;
+import hudson.model.Label;
 import hudson.model.Node;
 
 import java.util.ArrayList;
@@ -71,7 +72,6 @@ import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 
 import com.google.protobuf.ByteString;
-import org.jenkinsci.plugins.mesos.diagnostics.MesosTaskLaunchFailureHandler;
 
 public class JenkinsScheduler implements Scheduler {
   private static final String SLAVE_JAR_URI_SUFFIX = "jnlpJars/slave.jar";
@@ -269,9 +269,9 @@ public class JenkinsScheduler implements Scheduler {
           LOGGER.fine("Offer matched! Creating mesos task");
 
           try {
-              createMesosTask(offer, request);
+            createMesosTask(offer, request);
           } catch (Exception e) {
-              LOGGER.log(Level.SEVERE, e.getMessage(), e);
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
           }
           requests.remove(request);
           break;
@@ -769,7 +769,7 @@ public class JenkinsScheduler implements Scheduler {
     case TASK_STARTING:
       break;
     case TASK_RUNNING:
-      mesosCloud.createNewSlave(result.slave);
+      mesosCloud.addNewMesosSlaveToJenkins(result.slave);
       result.result.running(result.slave);
       break;
     case TASK_FINISHED:
@@ -779,7 +779,16 @@ public class JenkinsScheduler implements Scheduler {
 
     case TASK_FAILED:
     case TASK_ERROR:
-      MesosTaskLaunchFailureHandler.addFailure(mesosCloud, result);
+      try {
+        Jenkins jenkins = Jenkins.getInstance();
+        Label label = jenkins.getLabel(result.slave.getLabel());
+        if(label != null) {
+          mesosCloud.requestNodes(label, result.slave.getNumExecutors());
+        }
+      } catch (Exception e) {
+        LOGGER.fine("Error while rerequest a new slave " + e.getMessage());
+        e.printStackTrace();
+      }
     case TASK_KILLED:
     case TASK_LOST:
       result.result.failed(result.slave);
@@ -919,6 +928,22 @@ public class JenkinsScheduler implements Scheduler {
     } finally {
       SUPERVISOR_LOCK.unlock();
     }
+  }
+
+  public boolean removeRequestMatchingLabel(String labelString) {
+    try {
+      for (Request request : requests) {
+        if (request.request.slaveInfo.getLabelString().equals(labelString)) {
+          requests.remove(request);
+          LOGGER.info("Removed request for Label " + request.request.slaveInfo.getLabelString());
+          return true;
+        }
+      }
+    } catch (Exception e) {
+      LOGGER.info("Error while removing request: " + e.getMessage());
+      e.printStackTrace();
+    }
+    return false;
   }
 
   public Result getResult(String slaveName) {

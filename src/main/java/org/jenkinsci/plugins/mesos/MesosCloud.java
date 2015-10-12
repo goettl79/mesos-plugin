@@ -302,7 +302,7 @@ public class MesosCloud extends Cloud {
     });
   }
 
-  public void createNewSlave(Mesos.JenkinsSlave slave) {
+  public void addNewMesosSlaveToJenkins(Mesos.JenkinsSlave slave) {
     try {
       MesosSlave mesosSlave = new MesosSlave(this, slave.name, slave.getNumExecutors(), getSlaveInfo(slave.getLabel()));
 

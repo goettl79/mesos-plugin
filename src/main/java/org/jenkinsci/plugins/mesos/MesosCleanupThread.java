@@ -103,7 +103,7 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
             logger.log(Level.FINER, c.getName() + " is not a mesos computer, it is a " + c.getClass().getName());
           }
         }
-      
+
         logger.log(Level.INFO, "Deleted Nodes: " + deleteCount);
         Futures.getUnchecked(Futures.successfulAsList(deletedNodesBuilder.build()));
     }

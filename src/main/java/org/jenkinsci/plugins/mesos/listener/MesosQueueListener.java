@@ -6,9 +6,8 @@ import hudson.model.queue.QueueListener;
 import hudson.slaves.Cloud;
 import hudson.slaves.CloudProvisioningListener;
 import jenkins.model.Jenkins;
-import org.jenkinsci.plugins.mesos.MesosCloud;
-import org.jenkinsci.plugins.mesos.MesosSingleUseSlave;
-import org.jenkinsci.plugins.mesos.MesosSlaveInfo;
+import org.apache.mesos.Scheduler;
+import org.jenkinsci.plugins.mesos.*;
 
 import java.util.logging.Logger;
 
@@ -37,6 +36,41 @@ public class MesosQueueListener extends QueueListener {
         }
       }, "ForceNewMesosNode for " + label.getName());
       t.start();
+    }
+  }
+
+  /***
+   * Collect cancelled Items from queue
+   * due to the fact, that for every buildable item (Labeltype Mesos) was sent a mesos request, this request must be
+   * cancelled.
+   * @param li
+   */
+  @Override
+  public void onLeft(Queue.LeftItem li) {
+    try {
+      if (li.isCancelled() && li.getAssignedLabel() != null) {
+        Jenkins jenkins = Jenkins.getInstance();
+        for (Cloud cloud : jenkins.clouds) {
+          if (cloud instanceof MesosCloud) {
+            MesosCloud mesosCloud = (MesosCloud) cloud;
+            Mesos mesos = Mesos.getInstance(mesosCloud);
+            if (mesos != null) {
+              Scheduler scheduler = mesos.getScheduler();
+              if (scheduler != null) {
+                if (scheduler instanceof JenkinsScheduler) {
+                  JenkinsScheduler jenkinsScheduler = (JenkinsScheduler) scheduler;
+                  if (jenkinsScheduler.removeRequestMatchingLabel(li.getAssignedLabel().getDisplayName())) {
+                    return; //it should only remove one task
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOGGER.fine("Error while removing request from buildable Item " + e.getMessage());
+      e.printStackTrace();
     }
   }
 
