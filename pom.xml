@@ -8,7 +8,7 @@
 
   <groupId>org.jenkins-ci.plugins</groupId>
   <artifactId>mesos</artifactId>
-  <version>0.9.24-INFONOVA-SNAPSHOT</version>
+  <version>0.9.0-INFONOVA-1</version>
   <packaging>hpi</packaging>
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Mesos+Plugin</url>
 
@@ -20,10 +20,15 @@
   </scm>
 
     <distributionManagement>
+        <repository>
+            <id>nexus-infonova</id>
+            <name>Nexus at Infonova</name>
+            <url>dav:http://grzmvn01.infonova.at:8082/nexus/content/repositories/ise-releases/</url>
+        </repository>
         <snapshotRepository>
             <id>nexus-infonova</id>
             <name>Nexus at Infonova</name>
-            <url>dav:http://grzmvn01.infonova.at:8082/nexus/content/repositories/mdcc-snapshots</url>
+            <url>dav:http://grzmvn01.infonova.at:8082/nexus/content/repositories/ise-snapshots/</url>
         </snapshotRepository>
     </distributionManagement>
 
