@@ -75,12 +75,13 @@ import com.google.protobuf.ByteString;
 
 public class JenkinsScheduler implements Scheduler {
   private static final String SLAVE_JAR_URI_SUFFIX = "jnlpJars/slave.jar";
+  private static final String SLAVE_REQUEST_FORMAT="mesos/createSlave/%s";
 
   // We allocate 10% more memory to the Mesos task to account for the JVM overhead.
   private static final double JVM_MEM_OVERHEAD_FACTOR = 0.1;
 
   private static final String SLAVE_COMMAND_FORMAT =
-      "java -DHUDSON_HOME=jenkins -server -Xmx%dm %s -jar ${MESOS_SANDBOX-.}/slave.jar %s %s -jnlpUrl %s";
+      "java -DHUDSON_HOME=jenkins -server -Xmx%dm %s -jar ${MESOS_SANDBOX-.}/slave.jar -noReconnect %s %s -jnlpUrl %s";
   private static final String JNLP_SECRET_FORMAT = "-secret %s";
   public static final String PORT_RESOURCE_NAME = "ports";
 
@@ -704,6 +705,14 @@ public class JenkinsScheduler implements Scheduler {
         LOGGER.info("About to use default shell ....");
         commandBuilder.setValue(jenkinsCommand2Run);
     }
+    //make an "api call" to mesos so that Jenkins knows that he has to create a new slave on Jenkins instance.
+    commandBuilder.addUris(
+        CommandInfo.URI.newBuilder().setValue(
+            joinPaths(jenkinsMaster,
+                String.format(SLAVE_REQUEST_FORMAT,
+                    request.request.slave.getName(),
+                    request.request.slave.getLabel(),
+                    request.request.slave.getNumExecutors()))).setExecutable(false).setExtract(false));
 
     commandBuilder.addUris(
         CommandInfo.URI.newBuilder().setValue(
@@ -769,28 +778,16 @@ public class JenkinsScheduler implements Scheduler {
     case TASK_STARTING:
       break;
     case TASK_RUNNING:
-      mesosCloud.addNewMesosSlaveToJenkins(result.slave);
       result.result.running(result.slave);
       break;
     case TASK_FINISHED:
       result.result.finished(result.slave);
       terminalState = true;
       break;
-
     case TASK_FAILED:
     case TASK_ERROR:
-      try {
-        Jenkins jenkins = Jenkins.getInstance();
-        Label label = jenkins.getLabel(result.slave.getLabel());
-        if(label != null) {
-          mesosCloud.requestNodes(label, result.slave.getNumExecutors());
-        }
-      } catch (Exception e) {
-        LOGGER.fine("Error while rerequest a new slave " + e.getMessage());
-        e.printStackTrace();
-      }
-    case TASK_KILLED:
     case TASK_LOST:
+    case TASK_KILLED:
       result.result.failed(result.slave);
       terminalState = true;
       break;
@@ -842,6 +839,21 @@ public class JenkinsScheduler implements Scheduler {
   */
   protected void setMesosCloud(MesosCloud mesosCloud) {
     this.mesosCloud = mesosCloud;
+  }
+
+  public List<Request> getRequestsMatchingLabel(Label label) {
+    List<Request> foundRequests = new ArrayList<Request>();
+    try {
+      for (Request request : requests) {
+        if (request.request.slaveInfo.getLabelString().equals(label.getDisplayName())) {
+          foundRequests.add(request);
+        }
+      }
+    } catch (Exception e) {
+      //yes, we tried..
+    }
+
+    return foundRequests;
   }
 
   public class Result {

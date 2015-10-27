@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -45,6 +44,7 @@ import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.mesos.MesosNativeLibrary;
 import org.apache.mesos.Protos.ContainerInfo.DockerInfo.Network;
+import org.jenkinsci.plugins.mesos.monitoring.MesosTaskFailureMonitor;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -225,24 +225,40 @@ public class MesosCloud extends Cloud {
     }
   }
 
-  private boolean isThereAStuckItemInQueue(Label label) {
-    Jenkins jenkins = Jenkins.getInstance();
-    for (hudson.model.Queue.BuildableItem bi : jenkins.getQueue().getBuildableItems()) {
-      if (bi != null && bi.getAssignedLabel() != null) {
-        if (bi.getAssignedLabel().equals(label)) {
-          //if an item is longer than 1 Minute buildable in the queue, its count as stuck
-          if ((bi.buildableStartMilliseconds + TimeUnit.MINUTES.toMillis(1)) < System.currentTimeMillis()) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
+  private int getBuildsInQueueMatchinLabelCount(Label label) {
+    Queue queue = Queue.getInstance();
+    return queue.countBuildableItemsFor(label);
   }
 
   @Override
   public Collection<PlannedNode> provision(Label label, int excessWorkload) {
-    //no need to provison Nodes from Jenkins due to forceProvisioning.
+    try {
+      MesosSlaveInfo mesosSlaveInfo = getSlaveInfo(label);
+
+      if (mesosSlaveInfo != null) {
+        if (!mesosSlaveInfo.isUseSlaveOnce()) {
+          Queue queue = Queue.getInstance();
+          int buildablesInQueueCount = queue.countBuildableItemsFor(label);
+
+          //we need the scheduler to get known requests for the label.
+          JenkinsScheduler jenkinsScheduler = (JenkinsScheduler) Mesos.getInstance(this).getScheduler();
+          //our "softlimit" for provisioning slaves. Jenkins shouldn't provision more slaves than needet.
+          int requestsForLabelCount = jenkinsScheduler.getRequestsMatchingLabel(label).size();
+
+          int legalWorkload = Math.min(excessWorkload, (buildablesInQueueCount - requestsForLabelCount));
+
+          if (legalWorkload > 0) {
+            requestNodes(label, legalWorkload);
+          } else {
+            LOGGER.info("Ignore Jenkins provisioning request. There are enough requests to mesos (legalWorkLoad: " + legalWorkload+")");
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOGGER.fine("Error while jenkins tried to provision a Slave for "+label.getDisplayName());
+      e.printStackTrace();
+    }
+
     return new ArrayList<PlannedNode>();
   }
 
@@ -271,17 +287,19 @@ public class MesosCloud extends Cloud {
                     " executors. Remaining excess workload: " + excessWorkload + " executors)");
 
 
-        doSendSlaveRequest(numExecutors, slaveInfo);
+        sendSlaveRequest(numExecutors, slaveInfo);
       }
     } catch (Exception e) {
       LOGGER.log(Level.WARNING, "Failed to create instances on Mesos", e);
     }
   }
 
-  private void doSendSlaveRequest(int numExecutors, MesosSlaveInfo slaveInfo) throws Descriptor.FormException, IOException {
+  private void sendSlaveRequest(int numExecutors, MesosSlaveInfo slaveInfo) throws Descriptor.FormException, IOException {
     String name = slaveInfo.getLabelString() + "-" + UUID.randomUUID().toString();
-    MesosSlave mesosSlave = new MesosSlave(this, name, numExecutors, slaveInfo);
-    Mesos.SlaveRequest slaveRequest = new Mesos.SlaveRequest(new Mesos.JenkinsSlave(name, slaveInfo.getLabelString(), numExecutors), mesosSlave.getCpus(), mesosSlave.getMem(), slaveInfo);
+    double cpus = slaveInfo.getSlaveCpus() + (numExecutors * slaveInfo.getExecutorCpus());
+    int memory =  slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem());
+
+    Mesos.SlaveRequest slaveRequest = new Mesos.SlaveRequest(new Mesos.JenkinsSlave(name, slaveInfo.getLabelString(), numExecutors), cpus, memory, slaveInfo);
     Mesos mesos = Mesos.getInstance(this);
 
     mesos.startJenkinsSlave(slaveRequest, new Mesos.SlaveResult() {
@@ -292,28 +310,32 @@ public class MesosCloud extends Cloud {
 
       @Override
       public void finished(Mesos.JenkinsSlave slave) {
-
+        //yeah, the task finishe. so we can remove the slave from Jenkins instance
+        LOGGER.info(String.format("remove finished Node %s from Jenkins", slave.getName()));
+        removeSlaveFromJenkins(slave);
       }
 
       @Override
       public void failed(Mesos.JenkinsSlave slave) {
-
+        try {
+          MesosTaskFailureMonitor.getInstance().addFailedSlave(slave);
+        } catch (Exception e) {
+          LOGGER.fine("Error while getting MesosTaskFailureMonitor " + e.getMessage());
+          e.printStackTrace();
+        }
       }
     });
   }
 
-  public void addNewMesosSlaveToJenkins(Mesos.JenkinsSlave slave) {
+  private void removeSlaveFromJenkins(Mesos.JenkinsSlave slave) {
     try {
-      MesosSlave mesosSlave = new MesosSlave(this, slave.name, slave.getNumExecutors(), getSlaveInfo(slave.getLabel()));
-
       Jenkins jenkins = Jenkins.getInstance();
-      jenkins.addNode(mesosSlave);
-
+      Node n = jenkins.getNode(slave.getName());
+      if(n != null) {
+        jenkins.removeNode(n);
+      }
     } catch (IOException e) {
-      LOGGER.fine("IOException while creating MesosSlave: " + e.getMessage());
-      e.printStackTrace();
-    } catch (Descriptor.FormException e) {
-      LOGGER.fine("Descriptor.FormException while creating MesosSlave: " + e.getMessage());
+      LOGGER.fine("Error while removing Slave from Jenkins " + e.getMessage());
       e.printStackTrace();
     }
   }
@@ -432,6 +454,10 @@ public class MesosCloud extends Cloud {
     return null;
   }
 
+  public MesosSlaveInfo getSlaveInfo(Label label) {
+    return getSlaveInfo(getSlaveInfos(), label);
+  }
+
   public MesosSlaveInfo getSlaveInfo(List<MesosSlaveInfo> slaveInfos,
       Label label) {
     for (MesosSlaveInfo slaveInfo : slaveInfos) {
@@ -467,10 +493,6 @@ public class MesosCloud extends Cloud {
   public void setJenkinsURL(String jenkinsURL) {
 	this.jenkinsURL = jenkinsURL;
 }
-
-  public void forceNewMesosNodes(Label label, int numExecutors) {
-    requestNodes(label, numExecutors);
-  }
 
   @Extension
   public static class DescriptorImpl extends Descriptor<Cloud> {
@@ -624,6 +646,7 @@ public class MesosCloud extends Cloud {
                 object.getString("remoteFSRoot"),
                 object.getString("idleTerminationMinutes"),
                 object.getString("maximumTimeToLiveMinutes"),
+                object.getBoolean("useSlaveOnce"),
                 object.getString("slaveAttributes"),
                 object.getString("jvmArgs"),
                 object.getString("jnlpArgs"),
@@ -685,15 +708,18 @@ public class MesosCloud extends Cloud {
       }
     }
 
-    public FormValidation doCheckMaxExecutors(@QueryParameter("maxExecutors") final String strMaxExecutors) {
-      int maxExecutors = 1;
+    public FormValidation doCheckMaxExecutors(@QueryParameter("maxExecutors") final String strMaxExecutors,
+                                              @QueryParameter("useSlaveOnce") final String strUseSlaveOnce) {
+      int maxExecutors=1;
+      boolean useSlaveOnce;
       try {
         maxExecutors = Integer.parseInt(strMaxExecutors);
+        useSlaveOnce = Boolean.parseBoolean(strUseSlaveOnce);
       } catch (Exception e) {
         return FormValidation.ok();
       }
 
-      if(maxExecutors > 1) return FormValidation.error("A UseSlaveOnce Slave can have at least 1 executor.");
+      if(useSlaveOnce && (maxExecutors > 1)) return FormValidation.error("A UseSlaveOnce Slave can have at least 1 executor.");
       return FormValidation.ok();
     }
 

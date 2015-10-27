@@ -155,11 +155,11 @@ public class JenkinsSchedulerTest {
         assertTrue("Default shell config (true) should be configured when no container specified", commandInfo.getShell());
 
         String jenkinsCommand2Run = jenkinsScheduler.generateJenkinsCommand2Run(
-                TEST_JENKINS_SLAVE_MEM,
-                TEST_JENKINS_SLAVE_ARG,
-                TEST_JENKINS_JNLP_ARG,
-                TEST_JENKINS_SLAVE_NAME,
-                null, null);
+            TEST_JENKINS_SLAVE_MEM,
+            TEST_JENKINS_SLAVE_ARG,
+            TEST_JENKINS_JNLP_ARG,
+            TEST_JENKINS_SLAVE_NAME,
+            null , null);
         assertEquals("jenkins command to run should be specified as value", jenkinsCommand2Run, commandInfo.getValue());
         assertEquals("mesos command should have no args specified by default", 0, commandInfo.getArgumentsCount());
     }
@@ -173,11 +173,11 @@ public class JenkinsSchedulerTest {
 
         assertTrue("Default shell config (true) should be configured when no container specified", commandInfo.getShell());
         String jenkinsCommand2Run = jenkinsScheduler.generateJenkinsCommand2Run(
-                TEST_JENKINS_SLAVE_MEM,
-                TEST_JENKINS_SLAVE_ARG,
-                TEST_JENKINS_JNLP_ARG,
-                TEST_JENKINS_SLAVE_NAME,
-                null, null);
+            TEST_JENKINS_SLAVE_MEM,
+            TEST_JENKINS_SLAVE_ARG,
+            TEST_JENKINS_JNLP_ARG,
+            TEST_JENKINS_SLAVE_NAME,
+            null , null);
         assertEquals("jenkins command to run should be specified as value", jenkinsCommand2Run, commandInfo.getValue());
         assertEquals("mesos command should have no args specified by default", 0, commandInfo.getArgumentsCount());
     }
@@ -247,6 +247,7 @@ public class JenkinsSchedulerTest {
                 "remoteFSRoot",     // remoteFSRoot,
                 "2",                // idleTerminationMinutes,
                 "2",                // maxTtl,
+                false,
                 null,               // slaveAttributes,
                 null,               // jvmArgs,
                 null,               //jnlpArgs,

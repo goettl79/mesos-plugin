@@ -14,19 +14,22 @@
  */
 package org.jenkinsci.plugins.mesos;
 
-import hudson.model.TaskListener;
-import hudson.slaves.ComputerLauncher;
-import hudson.slaves.SlaveComputer;
+import hudson.slaves.JNLPLauncher;
+
 
 import java.util.logging.Logger;
 
-public class MesosComputerLauncher extends ComputerLauncher {
+public class MesosComputerLauncher extends JNLPLauncher {
 
   private final MesosCloud cloud;
 
   enum State { INIT, RUNNING, FAILURE }
 
   private static final Logger LOGGER = Logger.getLogger(MesosComputerLauncher.class.getName());
+
+
+  private volatile State state;
+  private final String name;
 
   public MesosComputerLauncher(MesosCloud cloud, String _name) {
     super();
@@ -37,28 +40,11 @@ public class MesosComputerLauncher extends ComputerLauncher {
   }
 
   /**
-   * Launches a mesos task that starts the jenkins slave.
-   *
-   * NOTE: This has to be a blocking call:
-   *
-   * @see hudson.slaves.ComputerLauncher#launch(hudson.slaves.SlaveComputer,
-   *      hudson.model.TaskListener)
-   */
-  @Override
-  public void launch(SlaveComputer _computer, TaskListener listener) throws InterruptedException {
-
-  }
-
-  /**
    * Kills the mesos task that corresponds to the Jenkins slave, asynchronously.
    */
   public void terminate() {
     // Get a handle to mesos.
     Mesos mesos = Mesos.getInstance(cloud);
-
     mesos.stopJenkinsSlave(name);
   }
-
-  private volatile State state;
-  private final String name;
 }

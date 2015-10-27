@@ -84,13 +84,15 @@ public class MesosQueueListener extends QueueListener {
             MesosCloud mesosCloud = (MesosCloud) c;
             MesosSlaveInfo mesosSlaveInfo = mesosCloud.getSlaveInfo(mesosCloud.getSlaveInfos(), label);
 
-            int numExecutors = 1;
-            for (CloudProvisioningListener cl : CloudProvisioningListener.all()) {
-              if (cl.canProvision(mesosCloud, label, numExecutors) != null) {
-                break CLOUD;
+            if(mesosSlaveInfo.isUseSlaveOnce()) {
+              int numExecutors = 1;
+              for (CloudProvisioningListener cl : CloudProvisioningListener.all()) {
+                if (cl.canProvision(mesosCloud, label, numExecutors) != null) {
+                  break CLOUD;
+                }
               }
+              mesosCloud.requestNodes(label, numExecutors);
             }
-            mesosCloud.forceNewMesosNodes(label, numExecutors);
           }
         }
       }

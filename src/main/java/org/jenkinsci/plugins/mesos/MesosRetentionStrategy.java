@@ -131,12 +131,18 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
 
   @Override
   public void taskAccepted(Executor executor, Queue.Task task) {
-    Node node = executor.getOwner().getNode();
-    if(node != null && node instanceof MesosSlave) {
-      MesosSlave mesosSlave = (MesosSlave) executor.getOwner().getNode();
-
-      // Force Use Once Only on all executors
-      ((SlaveComputer) mesosSlave.getComputer()).setAcceptingTasks(false);
+    try {
+      Node node = executor.getOwner().getNode();
+      if (node != null && node instanceof MesosSlave) {
+        MesosSlave mesosSlave = (MesosSlave) executor.getOwner().getNode();
+        if (mesosSlave.getSlaveInfo().isUseSlaveOnce()) {
+          // Force Use Once Only on all executors
+          ((SlaveComputer) mesosSlave.getComputer()).setAcceptingTasks(false);
+        }
+      }
+    } catch (Exception e) {
+      LOGGER.warning("Exception while trying to mark Computer as pending delete: " + e);
+      e.printStackTrace();
     }
   }
 
@@ -146,12 +152,12 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
     if (node != null && node instanceof MesosSlave) {
       try {
         MesosSlave mesosSlave = (MesosSlave) node;
-
-        // Force Use Once Only on all executors
-        mesosSlave.setPendingDelete(true);
-
+        if(mesosSlave.getSlaveInfo().isUseSlaveOnce()) {
+          // Force Use Once Only on all executors
+          mesosSlave.setPendingDelete(true);
+        }
       } catch (Exception e) {
-        LOGGER.warning("Exception while trying to set Computer temporarily Offline: " + e);
+        LOGGER.warning("Exception while trying to mark Computer as pendingDelete: " + e);
         e.printStackTrace();
       }
     }

@@ -35,8 +35,6 @@ public class MesosSlave extends Slave implements EphemeralNode {
 
   private final MesosCloud cloud;
   private final MesosSlaveInfo slaveInfo;
-  private final double cpus;
-  private final int mem;
   private boolean pendingDelete;
 
   private static final Logger LOGGER = Logger.getLogger(MesosSlave.class
@@ -54,8 +52,6 @@ public class MesosSlave extends Slave implements EphemeralNode {
           Collections.<NodeProperty<?>> emptyList());
     this.cloud = cloud;
     this.slaveInfo = slaveInfo;
-    this.cpus = slaveInfo.getSlaveCpus() + (numExecutors * slaveInfo.getExecutorCpus());
-    this.mem = slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem());
 
     LOGGER.info("Constructing Mesos slave " + name + " from cloud " + cloud.getDescription());
   }
@@ -64,20 +60,16 @@ public class MesosSlave extends Slave implements EphemeralNode {
     return this.cloud;
   }
 
-  public double getCpus() {
-    return cpus;
-  }
-
-  public int getMem() {
-    return mem;
-  }
-
   public MesosSlaveInfo getSlaveInfo() {
     return slaveInfo;
   }
  
   public int getIdleTerminationMinutes() {
     return slaveInfo.getIdleTerminationMinutes();
+  }
+
+  public int getMaximumTimeToLiveMinutes() {
+    return slaveInfo.getMaximumTimeToLiveMinutes();
   }
 
   public Mesos getMesosInstance() {

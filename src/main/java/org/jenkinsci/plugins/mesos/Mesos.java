@@ -71,6 +71,11 @@ public abstract class Mesos {
         return Collections.unmodifiableList(actualPortMappings);
     }
 
+    @Override
+    public String toString() {
+      return name;
+    }
+
   }
 
   public static class SlaveRequest {

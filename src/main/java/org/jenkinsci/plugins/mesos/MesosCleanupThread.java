@@ -13,6 +13,7 @@ import hudson.model.AsyncPeriodicWork;
 import hudson.model.Computer;
 import hudson.model.TaskListener;
 import hudson.slaves.Cloud;
+import hudson.slaves.OfflineCause;
 import jenkins.model.Jenkins;
 
 /**
@@ -83,7 +84,13 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
                   public void run() {
                     logger.log(Level.INFO, "Deleting pending node " + comp.getName());
                     try {
-                      comp.deleteSlave();
+                      if(comp.isOffline() && comp.getChannel() == null) {
+                        //maybe slave was never online.. delete it from Jenkins instance
+                        comp.deleteSlave();
+                      } else {
+                        //disconnect slave so the task at mesos can finish and dont get killed.
+                        comp.disconnect(OfflineCause.create(Messages._DeletedCause()));
+                      }
                     } catch (IOException e) {
                       logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
                     } catch (InterruptedException e) {
