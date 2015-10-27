@@ -73,43 +73,50 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
       return 1;
     }
 
-    // If we just launched this computer, check back after 1 min.
-    // NOTE: 'c.getConnectTime()' refers to when the Jenkins slave was launched.
-    if ((DateTimeUtils.currentTimeMillis() - c.getConnectTime()) <
-        MINUTES.toMillis(idleTerminationMinutes < 1 ? 1 : idleTerminationMinutes)) {
-      return 1;
-    }
+    //if an executor is "dead", determining the conntectionTime may cause an NullPointer Exception
+    try {
+      // If we just launched this computer, check back after 1 min.
+      // NOTE: 'c.getConnectTime()' refers to when the Jenkins slave was launched.
+      if ((DateTimeUtils.currentTimeMillis() - c.getConnectTime()) <
+          MINUTES.toMillis(idleTerminationMinutes < 1 ? 1 : idleTerminationMinutes)) {
+        return 1;
+      }
 
-    final long idleMilliseconds =
-            DateTimeUtils.currentTimeMillis() - c.getIdleStartMilliseconds();
-    // Terminate the computer if it is idle for longer than
-    // 'idleTerminationMinutes'.
-    if (isTerminable() && c.isIdle()) {
+      final long idleMilliseconds =
+          DateTimeUtils.currentTimeMillis() - c.getIdleStartMilliseconds();
+      // Terminate the computer if it is idle for longer than
+      // 'idleTerminationMinutes'.
+      if (isTerminable() && c.isIdle()) {
 
-      if (idleMilliseconds > MINUTES.toMillis(idleTerminationMinutes)) {
-        LOGGER.info("Disconnecting idle computer " + c.getName());
-        c.getNode().setPendingDelete(true);
+        if (idleMilliseconds > MINUTES.toMillis(idleTerminationMinutes)) {
+          LOGGER.info("Disconnecting idle computer " + c.getName());
+          c.getNode().setPendingDelete(true);
 
-        if (!c.isOffline()) {
-          c.setTemporarilyOffline(true, OfflineCause.create(Messages._DeletedCause()));
+          if (!c.isOffline()) {
+            c.setTemporarilyOffline(true, OfflineCause.create(Messages._DeletedCause()));
+          }
         }
       }
-    }
 
-    // Terminate the computer if it is exists for longer than
-    // 'maximumTimeToLive'.
-    final long timeLivedInMilliseconds =
-            DateTimeUtils.currentTimeMillis() - c.getConnectTime();
+      // Terminate the computer if it is exists for longer than
+      // 'maximumTimeToLive'.
+      final long timeLivedInMilliseconds =
+          DateTimeUtils.currentTimeMillis() - c.getConnectTime();
 
-    if (c.isOnline()) {
+      if (c.isOnline()) {
 
-      if (timeLivedInMilliseconds > MINUTES.toMillis(maximumTimeToLive)) {
-        LOGGER.info("Disconnecting computer greater maximum TTL " + c.getName());
+        if (timeLivedInMilliseconds > MINUTES.toMillis(maximumTimeToLive)) {
+          LOGGER.info("Disconnecting computer greater maximum TTL " + c.getName());
 
-        if (!c.isOffline()) {
-          c.setAcceptingTasks(false);
+          if (!c.isOffline()) {
+            //set accepting tasks to false, so Computer can reach it's idleTerminationTime
+            c.setAcceptingTasks(false);
+          }
         }
       }
+    } catch (Exception e) {
+      LOGGER.fine("Error while check IdleTerminationTime an TTL: "+e.getMessage());
+      e.printStackTrace();
     }
     return 1;
   }
