@@ -31,7 +31,7 @@
       <f:textbox field="jenkinsURL"/>
     </f:entry>
 
-    <f:entry title="${%Grafana Monitoring URL}" field="grafanaDashboardURL">
+    <f:entry title="${%Grafana Dashboard URL}" field="grafanaDashboardURL">
        <f:textbox field="grafanaDashboardURL"/>
     </f:entry>
 
@@ -93,7 +93,7 @@
                         <f:number field="maximumTimeToLiveMinutes" clazz="required number" default="10" value="${slaveInfo.maximumTimeToLiveMinutes}"/>
                     </f:entry>
 
-                    <f:entry title="${%Use Slave Once}" description="This will force the creation of a new slave immediately after a build is triggered. After the Slave was used once, it will be removed from Jenkins">
+                    <f:entry title="${%Use Slave Once}" field="useSlaveOnce">
                         <f:checkbox field="useSlaveOnce" value="${slaveInfo.useSlaveOnce}" checked="${slaveInfo.useSlaveOnce}" />
                     </f:entry>
 
