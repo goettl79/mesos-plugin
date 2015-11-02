@@ -39,7 +39,6 @@ public class MesosFailedTasksCleanup extends AsyncPeriodicWork {
   @Override
   protected void execute(TaskListener listener) {
     try {
-      logger.info("Call Monitor to fix it");
       MesosTaskFailureMonitor.getInstance().fix(listener);
     } catch (Exception e) {
       e.printStackTrace();

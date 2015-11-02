@@ -9,8 +9,11 @@ import hudson.model.Run;
 import hudson.model.listeners.RunListener;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.logging.Logger;
 
+import org.jenkinsci.plugins.mesos.JenkinsScheduler;
+import org.jenkinsci.plugins.mesos.Mesos;
 import org.jenkinsci.plugins.mesos.MesosSlave;
 
 @SuppressWarnings("rawtypes")
@@ -41,14 +44,43 @@ public class MesosRunListener extends RunListener<Run> {
       Node node = getCurrentNode();
       if (node instanceof MesosSlave) {
         try {
+          MesosSlave mesosSlave = (MesosSlave) node;
+          JenkinsScheduler jenkinsScheduler = (JenkinsScheduler) Mesos.getInstance(mesosSlave.getCloud()).getScheduler();
+
+          String mesosNodeHostname = jenkinsScheduler.getResult(mesosSlave.getDisplayName()).getSlave().getHostName();
           String hostname = node.toComputer().getHostName();
-          listener.getLogger().println("Mesos slave(hostname): " + hostname);
+
+          PrintStream logger = listener.getLogger();
+          logger.println();
+          logger.println(String.format("This build is running on %s in %s", mesosNodeHostname, mesosSlave.getDockerContainerID()));
+
+          if(hostname != null) {
+            logger.println("Jenkins Slave (hostname): " + hostname);
+          }
+          logger.println();
 
         } catch (IOException e) {
           LOGGER.warning("IOException while trying to get hostname: " + e);
           e.printStackTrace();
         } catch (InterruptedException e) {
           LOGGER.warning("InterruptedException while trying to get hostname: " + e);
+        }
+      }
+    }
+  }
+
+  @Override
+  public void onCompleted(Run run, TaskListener listener) {
+    if (run instanceof AbstractBuild) {
+      Node node = getCurrentNode();
+      if (node instanceof MesosSlave) {
+        MesosSlave mesosSlave = (MesosSlave) node;
+
+        if(mesosSlave.getMonitoringURL() != null) {
+          PrintStream logger = listener.getLogger();
+          logger.println();
+          logger.println("Slave resource usage: " + mesosSlave.getMonitoringURL());
+          logger.println();
         }
       }
     }

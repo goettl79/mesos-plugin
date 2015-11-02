@@ -24,7 +24,9 @@ import hudson.model.Slave;
 import hudson.slaves.EphemeralNode;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.ComputerLauncher;
+import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
+import org.apache.mesos.Protos;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -35,6 +37,7 @@ public class MesosSlave extends Slave implements EphemeralNode {
 
   private final MesosCloud cloud;
   private final MesosSlaveInfo slaveInfo;
+  private Protos.TaskStatus taskStatus;
   private boolean pendingDelete;
 
   private static final Logger LOGGER = Logger.getLogger(MesosSlave.class
@@ -137,6 +140,45 @@ public class MesosSlave extends Slave implements EphemeralNode {
     LOGGER.info("Mesos instance idle time expired: " + getInstanceId()
         + ", terminate now");
     terminate();
+  }
+
+  public Protos.TaskStatus getTaskStatus() {
+    return taskStatus;
+  }
+
+  public void setTaskStatus(Protos.TaskStatus taskStatus) {
+    this.taskStatus = taskStatus;
+  }
+
+  public String getDockerContainerID() {
+    try {
+      if (taskStatus != null) {
+        String tmp = taskStatus.getData().toStringUtf8();
+        String jsonStr = tmp.replaceFirst("\\[","").substring(0, (tmp.lastIndexOf(']') - 1)).trim();
+        JSONObject jsonObject = JSONObject.fromObject(jsonStr);
+        return jsonObject.getString("Name").replaceFirst("/", "").trim();
+      }
+    } catch (Exception e) {
+
+    }
+    return null;
+  }
+
+  public String getMonitoringURL() {
+
+    if(cloud.getGrafanaDashboardURL() == null || cloud.getGrafanaDashboardURL().isEmpty()) {
+      return  null;
+    }
+
+    String url = "";
+    String host = cloud.getGrafanaDashboardURL();
+
+    long from = this.getComputer().getConnectTime();
+    long to = System.currentTimeMillis();
+
+    url = String.format("%s?var-slave=%s&var-container=%s&from=%d&to=%d", host, this.getDisplayName(), this.getDockerContainerID(), from, to);
+
+    return url;
   }
 
   @Override

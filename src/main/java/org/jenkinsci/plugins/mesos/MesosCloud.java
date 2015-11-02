@@ -61,6 +61,7 @@ public class MesosCloud extends Cloud {
   private boolean onDemandRegistration; // If set true, this framework disconnects when there are no builds in the queue and re-registers when there are.
   private String jenkinsURL;
   private List<PlannedNode> plannedNodeList;
+  private String grafanaDashboardURL;
 
   // Find the default values for these variables in
   // src/main/resources/org/jenkinsci/plugins/mesos/MesosCloud/config.jelly.
@@ -121,7 +122,8 @@ public class MesosCloud extends Cloud {
       List<MesosSlaveInfo> slaveInfos,
       boolean checkpoint,
       boolean onDemandRegistration,
-      String jenkinsURL) throws NumberFormatException {
+      String jenkinsURL,
+      String grafanaDashboardURL) throws NumberFormatException {
     super("MesosCloud");
 
     this.nativeLibraryPath = nativeLibraryPath;
@@ -135,6 +137,7 @@ public class MesosCloud extends Cloud {
     this.checkpoint = checkpoint;
     this.onDemandRegistration = onDemandRegistration;
     this.setJenkinsURL(jenkinsURL);
+    this.grafanaDashboardURL = grafanaDashboardURL;
     if(!onDemandRegistration) {
 	    JenkinsScheduler.SUPERVISOR_LOCK.lock();
 	    try {
@@ -429,6 +432,10 @@ public class MesosCloud extends Cloud {
     this.onDemandRegistration = onDemandRegistration;
   }
 
+  public String getGrafanaDashboardURL() {
+    return grafanaDashboardURL;
+  }
+
   @Override
   public DescriptorImpl getDescriptor() {
     return (DescriptorImpl) super.getDescriptor();
@@ -508,6 +515,7 @@ public class MesosCloud extends Cloud {
     private String jenkinsURL;
     private int provisioningThreshold;
     private List<MesosSlaveInfo> slaveInfos;
+    private String grafanaDashboardURL;
 
     @Override
     public String getDisplayName() {
@@ -527,6 +535,7 @@ public class MesosCloud extends Cloud {
       slaveAttributes = object.getString("slaveAttributes");
       checkpoint = object.getBoolean("checkpoint");
       jenkinsURL = object.getString("jenkinsURL");
+      grafanaDashboardURL = object.getString("grafanaDashboardURL");
       provisioningThreshold = object.getInt("provisioningThreshold");
       slavesUser = object.getString("slavesUser");
       slaveInfos = new ArrayList<MesosSlaveInfo>();

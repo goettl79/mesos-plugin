@@ -1,0 +1,318 @@
+{
+  "id": null,
+  "title": "Jenkins Slave Resource Usage",
+  "originalTitle": "Jenkins Slave Resource Usage",
+  "tags": [],
+  "style": "light",
+  "timezone": "browser",
+  "editable": false,
+  "hideControls": true,
+  "sharedCrosshair": false,
+  "rows": [
+    {
+      "title": "usages",
+      "height": "250px",
+      "editable": false,
+      "collapse": false,
+      "collapsable": true,
+      "panels": [
+        {
+          "span": 6,
+          "editable": true,
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "scale": 1,
+          "y_formats": [
+            "ns",
+            "bytes"
+          ],
+          "grid": {
+            "max": null,
+            "min": null,
+            "leftMax": null,
+            "rightMax": null,
+            "leftMin": null,
+            "rightMin": null,
+            "threshold1": null,
+            "threshold2": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "resolution": 100,
+          "lines": true,
+          "fill": 1,
+          "linewidth": 2,
+          "points": false,
+          "pointradius": 5,
+          "bars": false,
+          "stack": true,
+          "spyable": true,
+          "options": false,
+          "legend": {
+            "show": true,
+            "values": true,
+            "min": false,
+            "max": true,
+            "current": false,
+            "total": false,
+            "avg": true
+          },
+          "interactive": true,
+          "legend_counts": true,
+          "timezone": "browser",
+          "percentage": false,
+          "zerofill": true,
+          "nullPointMode": "connected",
+          "steppedLine": false,
+          "tooltip": {
+            "value_type": "cumulative",
+            "query_as_alias": true,
+            "shared": false
+          },
+          "targets": [
+            {
+              "target": "randomWalk('random walk')",
+              "function": "derivative",
+              "column": "value",
+              "series": "cpu/usage_ns_cumulative",
+              "query": "select container_name, derivative(value) from \"cpu/usage_ns_cumulative\" where $timeFilter and container_name = '$container' group by time($interval), container_name order asc",
+              "condition_filter": false,
+              "condition_key": "",
+              "condition_op": "=",
+              "condition_value": "",
+              "interval": "5s",
+              "groupby_field_add": true,
+              "groupby_field": "container_name",
+              "alias": "",
+              "fill": "",
+              "rawQuery": false,
+              "hide": false,
+              "condition": "container_name = '$container'"
+            }
+          ],
+          "aliasColors": {},
+          "title": "'$slave' CPU usage",
+          "datasource": null,
+          "renderer": "png",
+          "annotate": {
+            "enable": false
+          },
+          "id": 1,
+          "seriesOverrides": [],
+          "links": []
+        },
+        {
+          "span": 6,
+          "editable": true,
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "scale": 1,
+          "y_formats": [
+            "bytes",
+            "bytes"
+          ],
+          "grid": {
+            "max": null,
+            "min": null,
+            "leftMax": null,
+            "rightMax": null,
+            "leftMin": null,
+            "rightMin": null,
+            "threshold1": null,
+            "threshold2": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "resolution": 100,
+          "lines": true,
+          "fill": 1,
+          "linewidth": 2,
+          "points": false,
+          "pointradius": 5,
+          "bars": false,
+          "stack": true,
+          "spyable": true,
+          "options": false,
+          "legend": {
+            "show": true,
+            "values": true,
+            "min": false,
+            "max": true,
+            "current": false,
+            "total": false,
+            "avg": true
+          },
+          "interactive": true,
+          "legend_counts": true,
+          "timezone": "browser",
+          "percentage": false,
+          "zerofill": true,
+          "nullPointMode": "connected",
+          "steppedLine": false,
+          "tooltip": {
+            "value_type": "cumulative",
+            "query_as_alias": true,
+            "shared": false
+          },
+          "targets": [
+            {
+              "target": "randomWalk('random walk')",
+              "function": "max",
+              "column": "value",
+              "series": "memory/usage_bytes_gauge",
+              "query": "select container_name, max(value) from \"memory/usage_bytes_gauge\" where $timeFilter and container_name = '$container' group by time($interval), container_name order asc",
+              "condition_filter": false,
+              "condition_key": "",
+              "condition_op": "=",
+              "condition_value": "",
+              "interval": "5s",
+              "groupby_field_add": true,
+              "groupby_field": "container_name",
+              "rawQuery": false,
+              "alias": "",
+              "condition": "container_name = '$container'"
+            }
+          ],
+          "aliasColors": {},
+          "title": "'$slave' Memory usage",
+          "datasource": null,
+          "renderer": "png",
+          "annotate": {
+            "enable": false
+          },
+          "id": 2,
+          "seriesOverrides": [],
+          "links": []
+        }
+      ],
+      "notice": false
+    }
+  ],
+  "nav": [
+    {
+      "type": "timepicker",
+      "collapse": false,
+      "notice": false,
+      "enable": true,
+      "status": "Stable",
+      "time_options": [
+        "5m",
+        "15m",
+        "1h",
+        "6h",
+        "12h",
+        "24h",
+        "2d",
+        "7d",
+        "30d"
+      ],
+      "refresh_intervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "now": false
+    }
+  ],
+  "time": {
+    "from": "2015-10-29T17:29:27.387Z",
+    "to": "2015-10-29T17:30:18.144Z"
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "custom",
+        "datasource": null,
+        "refresh_on_load": false,
+        "name": "container",
+        "options": [
+          {
+            "text": "mesos-20151013-084249-1213202698-5050-1-S1.2d8eda5a-9687-4612-ab0b-b7bec1605071",
+            "value": "mesos-20151013-084249-1213202698-5050-1-S1.2d8eda5a-9687-4612-ab0b-b7bec1605071"
+          }
+        ],
+        "includeAll": false,
+        "allFormat": "glob",
+        "query": "mesos-20151013-084249-1213202698-5050-1-S1.2d8eda5a-9687-4612-ab0b-b7bec1605071",
+        "current": {
+          "text": "mesos-20151013-084249-1213202698-5050-1-S2.0a14b879-d3a6-4cb4-ab91-649908f9b311",
+          "value": "mesos-20151013-084249-1213202698-5050-1-S2.0a14b879-d3a6-4cb4-ab91-649908f9b311"
+        }
+      },
+      {
+        "type": "custom",
+        "datasource": null,
+        "refresh_on_load": false,
+        "name": "slave",
+        "options": [
+          {
+            "text": "JenkinsSlave",
+            "value": "JenkinsSlave"
+          }
+        ],
+        "includeAll": false,
+        "allFormat": "glob",
+        "query": "JenkinsSlave",
+        "current": {
+          "text": "selenium-linux-mesos-28ffd350-f8ac-4394-839c-7023862a76aa",
+          "value": "selenium-linux-mesos-28ffd350-f8ac-4394-839c-7023862a76aa"
+        }
+      },
+      {
+        "type": "custom",
+        "datasource": null,
+        "refresh_on_load": false,
+        "name": "from",
+        "options": [
+          {
+            "text": "2015-10-29T10:00:00.187Z",
+            "value": "2015-10-29T10:00:00.187Z"
+          }
+        ],
+        "includeAll": false,
+        "allFormat": "glob",
+        "query": "2015-10-29T10:00:00.187Z",
+        "current": {
+          "text": "2015-10-29T10:00:00.187Z",
+          "value": "2015-10-29T10:00:00.187Z"
+        }
+      },
+      {
+        "type": "custom",
+        "datasource": null,
+        "refresh_on_load": false,
+        "name": "to",
+        "options": [
+          {
+            "text": "2015-10-29T13:00:00.187Z",
+            "value": "2015-10-29T13:00:00.187Z"
+          }
+        ],
+        "includeAll": false,
+        "allFormat": "glob",
+        "query": "2015-10-29T13:00:00.187Z",
+        "current": {
+          "text": "2015-10-29T13:00:00.187Z",
+          "value": "2015-10-29T13:00:00.187Z"
+        }
+      }
+    ],
+    "enable": false
+  },
+  "annotations": {
+    "enable": true,
+    "list": []
+  },
+  "refresh": false,
+  "version": 6,
+  "hideAllLegends": false
+}

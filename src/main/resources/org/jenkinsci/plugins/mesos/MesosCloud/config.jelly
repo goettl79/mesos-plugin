@@ -31,6 +31,10 @@
       <f:textbox field="jenkinsURL"/>
     </f:entry>
 
+    <f:entry title="${%Grafana Monitoring URL}" field="grafanaDashboardURL">
+       <f:textbox field="grafanaDashboardURL"/>
+    </f:entry>
+
     <f:advanced>
         <f:entry title="${%Checkpointing}" description="${%Enable Mesos framework checkpointing?}">
             <f:radio name="checkpoint" value="true" checked="${instance.checkpoint == true}" id="checkpoint.true"/>

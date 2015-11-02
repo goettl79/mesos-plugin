@@ -4,8 +4,9 @@
     <j:set var="containerInfo" value="${it.node.slaveInfo.containerInfo}"/>
     <j:set var="slaveResult" value="${it.node.mesosInstance.scheduler.getResult(it.name)}"/>
 
-    <p>Running on Mesos node: ${slaveResult.slave.hostName}</p>
-    <p>Running image: ${containerInfo.dockerImage}</p>
+    <p>Mesos node: ${slaveResult.slave.hostName}</p>
+    <p>Image: ${containerInfo.dockerImage}</p>
+    <p>Container: ${it.node.getDockerContainerID()}</p>
 
     <p>Port mappings:</p>
     <j:choose>
@@ -35,6 +36,14 @@
           <li>${%No port mappings}</li>
         </ul>
       </j:otherwise>
+    </j:choose>
+
+    <j:choose>
+      <j:when test="${it.node.getMonitoringURL() != null}">
+        <h2>${%Grafana:}</h2>
+        <iframe width="100%" height="380px" src="${it.node.getMonitoringURL()}"></iframe>
+        <p><a href="${it.node.getMonitoringURL()}" target="_blank">open graph in new tab</a></p>
+      </j:when>
     </j:choose>
 
 </j:jelly>

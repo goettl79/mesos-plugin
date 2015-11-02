@@ -769,6 +769,13 @@ public class JenkinsScheduler implements Scheduler {
       return;
     }
 
+    //setData
+    Node node = Jenkins.getInstance().getNode(taskId.getValue());
+    if(node != null) {
+      MesosSlave mesosSlave = (MesosSlave) node;
+      mesosSlave.setTaskStatus(status);
+    }
+
     Result result = results.get(taskId);
     boolean terminalState = false;
 
