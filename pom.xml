@@ -13,8 +13,8 @@
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Mesos+Plugin</url>
 
   <scm>
-    <connection>scm:git:ssh://github.com/jenkinsci/mesos-plugin.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/jenkinsci/mesos-plugin.git</developerConnection>
+    <connection>scm:git:https://github.com/goettl79/mesos-plugin.git</connection>
+    <developerConnection>scm:git:https://github.com/goettl79/mesos-plugin.git</developerConnection>
     <url>https://github.com/jenkinsci/mesos-plugin</url>
     <tag>HEAD</tag>
   </scm>
