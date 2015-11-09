@@ -71,6 +71,9 @@ public class MesosCloud extends Cloud {
 
   private static final Logger LOGGER = Logger.getLogger(MesosCloud.class.getName());
 
+  // We allocate 10% more memory to the Mesos task to account for the JVM overhead.
+  private static final double JVM_MEM_OVERHEAD_FACTOR = 0.1;
+
   private static volatile boolean nativeLibraryLoaded = false;
 
   /**
@@ -300,7 +303,7 @@ public class MesosCloud extends Cloud {
   private void sendSlaveRequest(int numExecutors, MesosSlaveInfo slaveInfo) throws Descriptor.FormException, IOException {
     String name = slaveInfo.getLabelString() + "-" + UUID.randomUUID().toString();
     double cpus = slaveInfo.getSlaveCpus() + (numExecutors * slaveInfo.getExecutorCpus());
-    int memory =  slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem());
+    int memory = (int)(slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem()) * (1 + JVM_MEM_OVERHEAD_FACTOR));
 
     Mesos.SlaveRequest slaveRequest = new Mesos.SlaveRequest(new Mesos.JenkinsSlave(name, slaveInfo.getLabelString(), numExecutors), cpus, memory, slaveInfo);
     Mesos mesos = Mesos.getInstance(this);

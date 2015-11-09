@@ -77,9 +77,6 @@ public class JenkinsScheduler implements Scheduler {
   private static final String SLAVE_JAR_URI_SUFFIX = "jnlpJars/slave.jar";
   private static final String SLAVE_REQUEST_FORMAT="mesos/createSlave/%s";
 
-  // We allocate 10% more memory to the Mesos task to account for the JVM overhead.
-  private static final double JVM_MEM_OVERHEAD_FACTOR = 0.1;
-
   private static final String SLAVE_COMMAND_FORMAT =
       "java -DHUDSON_HOME=jenkins -server -Xmx%dm %s -jar ${MESOS_SANDBOX-.}/slave.jar -noReconnect %s %s -jnlpUrl %s";
   private static final String JNLP_SECRET_FORMAT = "-secret %s";
@@ -331,7 +328,7 @@ public class JenkinsScheduler implements Scheduler {
 
     // Check for sufficient cpu and memory resources in the offer.
     double requestedCpus = request.request.cpus;
-    double requestedMem = (1 + JVM_MEM_OVERHEAD_FACTOR) * request.request.mem;
+    double requestedMem = request.request.mem;
     // Get matching slave attribute for this label.
     JSONObject slaveAttributes = getMesosCloud().getSlaveAttributeForLabel(request.request.slaveInfo.getLabelString());
 
@@ -541,7 +538,7 @@ public class JenkinsScheduler implements Scheduler {
                 .setScalar(
                     Value.Scalar
                         .newBuilder()
-                        .setValue((1 + JVM_MEM_OVERHEAD_FACTOR) * request.request.mem)
+                        .setValue(request.request.mem)
                         .build()).build())
         .setCommand(commandBuilder.build());
   }
@@ -677,7 +674,7 @@ public class JenkinsScheduler implements Scheduler {
 
         CommandInfo.Builder commandBuilder = CommandInfo.newBuilder();
         String jenkinsCommand2Run = generateJenkinsCommand2Run(
-            request.request.mem,
+            request.request.slaveInfo.getSlaveMem(),
             request.request.slaveInfo.getJvmArgs(),
             request.request.slaveInfo.getJnlpArgs(),
             request.request.slave.name,
