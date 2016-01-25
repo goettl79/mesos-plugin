@@ -103,7 +103,7 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
       final long timeLivedInMilliseconds =
           DateTimeUtils.currentTimeMillis() - c.getConnectTime();
 
-      if (c.isOnline()) {
+      if (c.isOnline() && c.isAcceptingTasks()) {
 
         if (timeLivedInMilliseconds > MINUTES.toMillis(maximumTimeToLive)) {
           LOGGER.info("Disconnecting computer greater maximum TTL " + c.getName());
