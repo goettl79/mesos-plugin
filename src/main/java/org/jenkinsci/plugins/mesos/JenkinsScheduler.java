@@ -829,6 +829,11 @@ public class JenkinsScheduler implements Scheduler {
   @Override
   public void error(SchedulerDriver driver, String message) {
     LOGGER.severe(message);
+    if (message.contains("Framework has been removed")) {
+      LOGGER.info("Framework was removed from MesosCloud, so we need to restart Mesos");
+      //force Mesos restart
+      mesosCloud.restartMesos(true);
+    }
   }
 
   /**

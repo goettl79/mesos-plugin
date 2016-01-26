@@ -172,6 +172,10 @@ public class MesosCloud extends Cloud {
   }
 
   public void restartMesos() {
+    restartMesos(false);
+  }
+
+  public void restartMesos(boolean forceRestart) {
     plannedNodeList = new ArrayList<PlannedNode>();
 
     if(!nativeLibraryLoaded) {
@@ -195,8 +199,8 @@ public class MesosCloud extends Cloud {
       jenkinsRootURL = expandJenkinsUrlWithEnvVars();
     }
 
-    // Restart the scheduler if the master has changed or a scheduler is not up.
-    if (!master.equals(staticMaster) || !Mesos.getInstance(this).isSchedulerRunning()) {
+    // Restart the scheduler if the master has changed or a scheduler is not up. or it is forced to be
+    if (!master.equals(staticMaster) || !Mesos.getInstance(this).isSchedulerRunning() || forceRestart) {
       if (!master.equals(staticMaster)) {
         LOGGER.info("Mesos master changed, restarting the scheduler");
         staticMaster = master;
@@ -206,11 +210,22 @@ public class MesosCloud extends Cloud {
 
       Mesos.getInstance(this).stopScheduler();
       Mesos.getInstance(this).startScheduler(jenkinsRootURL, this);
+      requestAMesosSlaveForEveryBuildableItemInQueue();
     } else {
       Mesos.getInstance(this).updateScheduler(jenkinsRootURL, this);
       LOGGER.info("Mesos master has not changed, leaving the scheduler running");
     }
 
+  }
+
+  public void requestAMesosSlaveForEveryBuildableItemInQueue() {
+    Jenkins jenkins = Jenkins.getInstance();
+    for(Queue.BuildableItem buildableItem : jenkins.getQueue().getBuildableItems()) {
+      Label label = buildableItem.getAssignedLabel();
+      if(this.canProvision(label)) {
+        this.requestNodes(label, 1);
+      }
+    }
   }
 
   private String expandJenkinsUrlWithEnvVars() {
