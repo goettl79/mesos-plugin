@@ -44,6 +44,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class JenkinsScheduler implements Scheduler {
+  private static final double DEFAULT_DECLINE_OFFER_DURATION = TimeUnit.MINUTES.toSeconds(10);
+  private static final double DEFAULT_FAILOVER_TIMEOUT = TimeUnit.DAYS.toSeconds(7);
+
   private static final String SLAVE_JAR_URI_SUFFIX = "jnlpJars/slave.jar";
   private static final String SLAVE_REQUEST_FORMAT="mesos/createSlave/%s";
 
@@ -55,7 +58,7 @@ public class JenkinsScheduler implements Scheduler {
   private Queue<Request> requests;
   private Map<TaskID, Result> results;
   private Set<TaskID> finishedTasks;
-  private volatile MesosSchedulerDriver driver;
+  private volatile SchedulerDriver driver;
   private String jenkinsMaster;
   private volatile MesosCloud mesosCloud;
   private volatile boolean running;
@@ -79,59 +82,74 @@ public class JenkinsScheduler implements Scheduler {
     // This is to ensure that isRunning() returns true even when the driver is not yet inside run().
     // This is important because MesosCloud.provision() starts a new framework whenever isRunning() is false.
     running = true;
+    String targetUser = mesosCloud.getSlavesUser();
+    String webUrl = Jenkins.getInstance().getRootUrl();
+    if (webUrl == null) webUrl = System.getenv("JENKINS_URL");
+    // Have Mesos fill in the current user.
+    FrameworkInfo framework = FrameworkInfo.newBuilder()
+      .setUser(targetUser == null ? "" : targetUser)
+      .setName(mesosCloud.getFrameworkName())
+      .setRole(mesosCloud.getRole())
+      .setPrincipal(mesosCloud.getPrincipal())
+      .setCheckpoint(mesosCloud.isCheckpoint())
+      .setWebuiUrl(webUrl != null ? webUrl :  "")
+      .setFailoverTimeout(DEFAULT_FAILOVER_TIMEOUT)
+      .build();
+
+    LOGGER.info("Initializing the Mesos driver with options"
+      + "\n" + "Framework Name: " + framework.getName()
+      + "\n" + "Principal: " + mesosCloud.getPrincipal()
+      + "\n" + "Checkpointing: " + framework.getCheckpoint()
+    );
+
+    if (StringUtils.isNotBlank(mesosCloud.getSecret())) {
+      Credential credential = Credential.newBuilder()
+        .setPrincipal(mesosCloud.getPrincipal())
+        .setSecretBytes(ByteString.copyFromUtf8(mesosCloud.getSecret()))
+        .build();
+
+
+      LOGGER.info("Authenticating with Mesos master with principal " + credential.getPrincipal());
+      driver = new MesosSchedulerDriver(JenkinsScheduler.this, framework, mesosCloud.getMaster(), credential);
+    } else {
+      driver = new MesosSchedulerDriver(JenkinsScheduler.this, framework, mesosCloud.getMaster());
+    }
     // Start the framework.
     new Thread(new Runnable() {
       @Override
       public void run() {
-        String targetUser = mesosCloud.getSlavesUser();
-        String webUrl = Jenkins.getInstance().getRootUrl();
-        if (webUrl == null) webUrl = System.getenv("JENKINS_URL");
-        // Have Mesos fill in the current user.
-        FrameworkInfo framework = FrameworkInfo.newBuilder()
-          .setUser(targetUser == null ? "" : targetUser)
-          .setName(mesosCloud.getFrameworkName())
-          .setRole(mesosCloud.getRole())
-          .setPrincipal(mesosCloud.getPrincipal())
-          .setCheckpoint(mesosCloud.isCheckpoint())
-          .setWebuiUrl(webUrl != null ? webUrl :  "")
-          .setFailoverTimeout(604800)
-          .build();
-
-        LOGGER.info("Initializing the Mesos driver with options"
-        + "\n" + "Framework Name: " + framework.getName()
-        + "\n" + "Principal: " + framework.getPrincipal()
-        + "\n" + "Checkpointing: " + framework.getCheckpoint()
-        );
-
-        if (StringUtils.isNotBlank(mesosCloud.getSecret())) {
-            Credential credential = Credential.newBuilder()
-              .setPrincipal(mesosCloud.getPrincipal())
-              .setSecretBytes(ByteString.copyFromUtf8(mesosCloud.getSecret()))
-              .build();
-
-            LOGGER.info("Authenticating with Mesos master with principal " + credential.getPrincipal());
-            driver = new MesosSchedulerDriver(JenkinsScheduler.this, framework, mesosCloud.getMaster(), credential);
-        } else {
-            driver = new MesosSchedulerDriver(JenkinsScheduler.this, framework, mesosCloud.getMaster());
+        try {
+          Status runStatus = driver.run();
+          if (runStatus != Status.DRIVER_STOPPED) {
+            LOGGER.severe("The Mesos driver was aborted! Status code: " + runStatus.getNumber());
+          } else {
+            LOGGER.info("The Mesos driver was stopped.");
+          }
+        } catch(RuntimeException e) {
+          LOGGER.log(Level.SEVERE, "Caught a RuntimeException", e);
+        } finally {
+          SUPERVISOR_LOCK.lock();
+          if (driver != null) {
+            driver.abort();
+          }
+          driver = null;
+          running = false;
+          SUPERVISOR_LOCK.unlock();
         }
-        Status runStatus = driver.run();
-        if (runStatus != Status.DRIVER_STOPPED) {
-          LOGGER.severe("The Mesos driver was aborted! Status code: " + runStatus.getNumber());
-        }
-
-        driver = null;
-        running = false;
       }
     }).start();
   }
 
   public synchronized void stop() {
+    SUPERVISOR_LOCK.lock();
     if (driver != null) {
+      LOGGER.finer("Stopping Mesos driver.");
       driver.stop();
     } else {
       LOGGER.warning("Unable to stop Mesos driver:  driver is null.");
     }
     running = false;
+    SUPERVISOR_LOCK.unlock();
   }
 
   public synchronized boolean isRunning() {
@@ -141,6 +159,11 @@ public class JenkinsScheduler implements Scheduler {
   public synchronized void requestJenkinsSlave(Mesos.SlaveRequest request, Mesos.SlaveResult result) {
     LOGGER.info("Enqueuing jenkins slave request");
     requests.add(new Request(request, result));
+    if (driver != null) {
+      // Ask mesos to send all offers, even the those we declined earlier.
+      // See comment in resourceOffers() for further details.
+      driver.reviveOffers();
+    }
   }
 
   /**
@@ -233,17 +256,27 @@ public class JenkinsScheduler implements Scheduler {
     LOGGER.fine("Received offers " + offers.size());
 
     for (Offer offer : offers) {
-      boolean matched = false;
+      if (requests.isEmpty()) {
+        // Decline offer for a longer period if no slave is waiting to get spawned.
+        // This prevents unnecessarily getting offers every few seconds and causing
+        // starvation when running a lot of frameworks.
+        double rejectOfferDuration = DEFAULT_DECLINE_OFFER_DURATION;
+        LOGGER.info("No slave in queue. Rejecting offers for '" + mesosCloud.getFrameworkName() + "' for " + rejectOfferDuration + " s");
+        Filters filters = Filters.newBuilder().setRefuseSeconds(rejectOfferDuration).build();
+        driver.declineOffer(offer.getId(), filters);
+        continue;
+      }
+
+      boolean taskCreated = false;
 
       if(isOfferAvailable(offer)) {
         for (Request request : requests) {
           if (matches(offer, request)) {
-            matched = true;
-
             LOGGER.fine("Offer matched! Creating mesos task");
 
             try {
               createMesosTask(offer, request);
+              taskCreated = true;
             } catch (Exception e) {
               LOGGER.log(Level.SEVERE, e.getMessage(), e);
             }
@@ -253,7 +286,7 @@ public class JenkinsScheduler implements Scheduler {
         }
       }
 
-      if (!matched) {
+      if (!taskCreated) {
         driver.declineOffer(offer.getId());
       }
     }
@@ -391,8 +424,13 @@ public class JenkinsScheduler implements Scheduler {
   }
 
   @VisibleForTesting
-  List<Integer> findPortsToUse(Offer offer, int maxCount) {
-      Set<Integer> portsToUse = new HashSet<Integer>();
+  void setDriver(SchedulerDriver driver) {
+    this.driver = driver;
+  }
+
+  @VisibleForTesting
+  SortedSet<Long> findPortsToUse(Offer offer, int maxCount) {
+      SortedSet<Long> portsToUse = new TreeSet<Long>();
       List<Value.Range> portRangesList = null;
 
       // Locate the port resource in the offer
@@ -412,20 +450,15 @@ public class JenkinsScheduler implements Scheduler {
        */
       // Check this port range for ports that we can use
       for (Value.Range currentPortRange : portRangesList) {
-          int candidatePort = (int) currentPortRange.getBegin();
-
-          // Check each port until we reach the end.
-          // If the port is already in the list of ports to use, ignore it and check the next one
-          while (candidatePort <= currentPortRange.getEnd() && portsToUse.size() < maxCount) {
-              if (!portsToUse.contains(candidatePort)) {
-                  portsToUse.add(candidatePort);
-              } else {
-                  candidatePort++;
-              }
-          }
+        // Check each port until we reach the end of the current range
+        long begin = currentPortRange.getBegin();
+        long end = currentPortRange.getEnd();
+        for (long candidatePort = begin; candidatePort <= end && portsToUse.size() < maxCount; candidatePort++) {
+            portsToUse.add(candidatePort);
+        }
       }
 
-      return new ArrayList(portsToUse);
+      return portsToUse;
   }
 
   private void createMesosTask(Offer offer, Request request) {
@@ -468,12 +501,15 @@ public class JenkinsScheduler implements Scheduler {
         getContainerInfoBuilder(offer, request, slaveName, taskBuilder);
     }
 
-    List<TaskInfo> tasks = new ArrayList<TaskInfo>();
+    List<TaskInfo> tasks = new LinkedList<TaskInfo>();
     TaskInfo task = taskBuilder.build();
     tasks.add(task);
 
+    List<OfferID> offerIDs = new LinkedList<OfferID>();
+    offerIDs.add(offer.getId());
+
     Filters filters = Filters.newBuilder().setRefuseSeconds(1).build();
-    driver.launchTasks(offer.getId(), tasks, filters);
+    driver.launchTasks(offerIDs, tasks, filters);
 
     List<DockerInfo.PortMapping> actualPortMappings = task.getContainer().getDocker().getPortMappingsList();
 
@@ -596,9 +632,8 @@ public class JenkinsScheduler implements Scheduler {
 
           if (request.request.slaveInfo.getContainerInfo().hasPortMappings()) {
               List<MesosSlaveInfo.PortMapping> portMappings = request.request.slaveInfo.getContainerInfo().getPortMappings();
-              int portToUseIndex = 0;
-              List<Integer> portsToUse = findPortsToUse(offer, portMappings.size());
-
+              Set<Long> portsToUse = findPortsToUse(offer, portMappings.size());
+              Iterator<Long> iterator = portsToUse.iterator();
               Value.Ranges.Builder portRangesBuilder = Value.Ranges.newBuilder();
 
               for (MesosSlaveInfo.PortMapping portMapping : portMappings) {
@@ -606,9 +641,9 @@ public class JenkinsScheduler implements Scheduler {
                           .setContainerPort(portMapping.getContainerPort()) //
                           .setProtocol(portMapping.getProtocol());
 
-                  int portToUse = portMapping.getHostPort() == null ? portsToUse.get(portToUseIndex++) : portMapping.getHostPort();
+                  Long portToUse = portMapping.getHostPort() == null ? iterator.next() : portMapping.getHostPort();
 
-                  portMappingBuilder.setHostPort(portToUse);
+                  portMappingBuilder.setHostPort(portToUse.intValue());
 
                   portRangesBuilder.addRange(
                     Value.Range

@@ -16,7 +16,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.Collections;
-import java.util.List;
+import java.util.SortedSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -58,10 +58,10 @@ public class JenkinsSchedulerTest {
     public void testFindPortsToUse() {
         Protos.Offer offer = createOfferWithVariableRanges(31000, 32000);
 
-        List<Integer> portsToUse = jenkinsScheduler.findPortsToUse(offer, 1);
+        SortedSet<Long> portsToUse = jenkinsScheduler.findPortsToUse(offer, 1);
 
         assertEquals(1, portsToUse.size());
-        assertEquals(Integer.valueOf(31000), portsToUse.get(0));
+        assertEquals(Long.valueOf(31000), portsToUse.first());
     }
 
     @Test
@@ -72,10 +72,10 @@ public class JenkinsSchedulerTest {
             public void run() {
                 Protos.Offer offer = createOfferWithVariableRanges(31000, 31000);
 
-                List<Integer> portsToUse = jenkinsScheduler.findPortsToUse(offer, 1);
+                SortedSet<Long> portsToUse = jenkinsScheduler.findPortsToUse(offer, 1);
 
                 assertEquals(1, portsToUse.size());
-                assertEquals(Integer.valueOf(31000), portsToUse.get(0));
+                assertEquals(Long.valueOf(31000), portsToUse.first());
             }
         });
 
@@ -126,11 +126,11 @@ public class JenkinsSchedulerTest {
         executorService.execute(new Runnable() {
             @Override
             public void run() {
-                List<Integer> portsToUse = jenkinsScheduler.findPortsToUse(protoOffer, 2);
+                SortedSet<Long> portsToUse = jenkinsScheduler.findPortsToUse(protoOffer, 2);
 
                 assertEquals(2, portsToUse.size());
-                assertEquals(Integer.valueOf(31000), portsToUse.get(0));
-                assertEquals(Integer.valueOf(31005), portsToUse.get(1));
+                assertEquals(Long.valueOf(31000), portsToUse.first());
+                assertEquals(Long.valueOf(31005), portsToUse.last());
             }
         });
 
