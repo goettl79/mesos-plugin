@@ -14,6 +14,11 @@
  */
 package org.jenkinsci.plugins.mesos;
 
+import hudson.Extension;
+import hudson.XmlFile;
+import hudson.model.Saveable;
+import hudson.model.listeners.SaveableListener;
+import jenkins.model.Jenkins;
 import org.apache.mesos.Protos.ContainerInfo.DockerInfo;
 import org.apache.mesos.Scheduler;
 
@@ -148,4 +153,25 @@ public abstract class Mesos {
     return clouds.values();
   }
 
+
+  /**
+   * When Jenkins configuration is saved, teardown any active scheduler whose cloud has been removed.
+   */
+  @Extension
+  public static class GarbageCollectorImpl extends SaveableListener {
+
+    @Override
+    public void onChange(Saveable o, XmlFile file) {
+      if (o instanceof Jenkins) {
+        Jenkins j = (Jenkins) o;
+        for (Iterator<Map.Entry<MesosCloud, Mesos>> it = clouds.entrySet().iterator(); it.hasNext();) {
+          Map.Entry<MesosCloud, Mesos> entry = it.next();
+          if (!j.clouds.contains(entry.getKey())) {
+            entry.getValue().stopScheduler();
+            it.remove();
+          }
+        }
+      }
+    }
+  }
 }
