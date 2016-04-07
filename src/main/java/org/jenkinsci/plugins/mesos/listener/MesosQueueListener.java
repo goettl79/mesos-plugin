@@ -8,6 +8,7 @@ import hudson.slaves.CloudProvisioningListener;
 import jenkins.model.Jenkins;
 import org.apache.mesos.Scheduler;
 import org.jenkinsci.plugins.mesos.*;
+import org.jenkinsci.plugins.mesos.acl.MesosFrameworkToItemMapper;
 
 import java.util.logging.Logger;
 
@@ -24,15 +25,15 @@ public class MesosQueueListener extends QueueListener {
 
   @Override
   public void onEnterBuildable(Queue.BuildableItem bi) {
-    forceProvisionInNewThreadIfPossible(bi.getAssignedLabel());
+    forceProvisionInNewThreadIfPossible(bi.getAssignedLabel(), bi);
   }
 
-  public void forceProvisionInNewThreadIfPossible(final Label label) {
+  public void forceProvisionInNewThreadIfPossible(final Label label, final Queue.BuildableItem bi) {
     if (label != null) {
       Thread t = new Thread(new Runnable() {
         @Override
         public void run() {
-          forceProvisionIfPossible(label);
+          forceProvisionIfPossible(label, bi);
         }
       }, "ForceNewMesosNode for " + label.getName());
       t.start();
@@ -74,7 +75,10 @@ public class MesosQueueListener extends QueueListener {
     }
   }
 
-  public void forceProvisionIfPossible(final Label label) {
+  public void forceProvisionIfPossible(final Label label, Queue.BuildableItem bi) {
+    // TODO: get this from actual configuration
+    MesosFrameworkToItemMapper mesosFrameworkToItemMapper = new MesosFrameworkToItemMapper();
+
     if (label != null) {
       Node future = null;
       CLOUD:
@@ -82,16 +86,20 @@ public class MesosQueueListener extends QueueListener {
         if (c.canProvision(label)) {
           if (c instanceof MesosCloud) {
             MesosCloud mesosCloud = (MesosCloud) c;
-            MesosSlaveInfo mesosSlaveInfo = mesosCloud.getSlaveInfo(mesosCloud.getSlaveInfos(), label);
 
-            if(mesosSlaveInfo.isUseSlaveOnce()) {
-              int numExecutors = 1;
-              for (CloudProvisioningListener cl : CloudProvisioningListener.all()) {
-                if (cl.canProvision(mesosCloud, label, numExecutors) != null) {
-                  break CLOUD;
+            String mappedFrameworkName = mesosFrameworkToItemMapper.findFrameworkName(bi.getDisplayName());
+            if (mappedFrameworkName.equals(mesosCloud.getFrameworkName())) {
+              MesosSlaveInfo mesosSlaveInfo = mesosCloud.getSlaveInfo(mesosCloud.getSlaveInfos(), label);
+
+              if(mesosSlaveInfo.isUseSlaveOnce()) {
+                int numExecutors = 1;
+                for (CloudProvisioningListener cl : CloudProvisioningListener.all()) {
+                  if (cl.canProvision(mesosCloud, label, numExecutors) != null) {
+                    break CLOUD;
+                  }
                 }
+                mesosCloud.requestNodes(label, numExecutors);
               }
-              mesosCloud.requestNodes(label, numExecutors);
             }
           }
         }
