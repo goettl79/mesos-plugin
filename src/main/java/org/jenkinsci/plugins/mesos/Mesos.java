@@ -18,6 +18,7 @@ import hudson.Extension;
 import hudson.XmlFile;
 import hudson.model.Saveable;
 import hudson.model.listeners.SaveableListener;
+import hudson.slaves.Cloud;
 import jenkins.model.Jenkins;
 import org.apache.mesos.Protos.ContainerInfo.DockerInfo;
 import org.apache.mesos.Scheduler;
@@ -153,6 +154,18 @@ public abstract class Mesos {
     return clouds.values();
   }
 
+  public static Collection<MesosCloud> getAllMesosClouds() {
+    List<MesosCloud> mesosClouds = new ArrayList<MesosCloud>();
+
+    Jenkins jenkins = Jenkins.getInstance();
+    for (Cloud cloud : jenkins.clouds) {
+      if (cloud instanceof MesosCloud) {
+        mesosClouds.add((MesosCloud)cloud);
+      }
+    }
+
+    return mesosClouds;
+  }
 
   /**
    * When Jenkins configuration is saved, teardown any active scheduler whose cloud has been removed.

@@ -1,0 +1,66 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form">
+  <l:layout title="${it.displayName}" norefresh="true" permission="${it.requiredPermission}">
+    <l:side-panel>
+      <l:tasks>
+        <l:task icon="images/24x24/up.png" href="${rootURL}/manage" title="${%Back to Manage Jenkins}"/>
+        <l:task icon="images/24x24/previous.png" href="${rootURL}/${it.CONFIG_URL_NAME}" title="${%Back to Configure Mesos Plugin}"/>
+      </l:tasks>
+    </l:side-panel>
+    <l:main-panel>
+      <h1>
+        <l:icon class="icon-setting icon-xlg"/>
+        <text>${%Configure Framework to Item mappings}</text>
+      </h1>
+
+      <div class="behavior-loading">${%LOADING}</div>
+
+      <f:form method="post" name="config" action="configureMappings">
+        <j:set var="instance" value="${it.mapper}"/>
+        <j:set var="descriptor" value="${it.mapper.descriptor}"/>
+
+        <f:entry title="${%Default Framework}" field="defaultFrameworkName">
+          <f:select clazz="setting-input select" value="${instance.defaultFrameworkName}"/>
+        </f:entry>
+
+        <f:entry title="${%ACL Entries}"
+                 description="${%ACL entries which map Jenkins items to a Mesos Framework}">
+
+          <f:repeatable items="${instance.ACLEntries}"
+                        name="aclEntries"
+                        var="aclEntry"
+                        header="ACL entry"
+                        add="${%Add ACL entry}"
+                        minimum="0">
+
+            <fieldset>
+              <table style="width: 100%">
+                <f:entry title="${%Item pattern}" field="itemPattern">
+                  <f:textbox clazz="required" value="${aclEntry.itemPattern}"/>
+                </f:entry>
+                <f:entry title="${%Framework name}" field="frameworkName">
+                    <f:select clazz="setting-input select" value="${aclEntry.frameworkName}"/>
+                </f:entry>
+
+                <f:entry>
+                  <div align="right" class="repeatable-delete show-if-only"
+                       style="margin-left: 1em;">
+                    <f:repeatableDeleteButton value="${%Remove ACL entry}"/>
+                  </div>
+                </f:entry>
+              </table>
+            </fieldset>
+          </f:repeatable>
+        </f:entry>
+
+        <f:bottomButtonBar style="bottom: 0px">
+          <f:submit value="${%Save}"/>
+          <f:apply/>
+        </f:bottomButtonBar>
+      </f:form>
+
+      <st:adjunct includes="lib.form.confirm"/>
+
+    </l:main-panel>
+  </l:layout>
+</j:jelly>

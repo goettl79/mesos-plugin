@@ -1,0 +1,25 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+  <l:layout title="${it.displayName}" norefresh="true" permission="${it.requiredPermission}">
+    <l:side-panel>
+      <l:tasks>
+        <l:task icon="images/24x24/up.png" href="${rootURL}/manage" title="${%Back to Manage Jenkins}"/>
+        <l:task icon="images/24x24/previous.png" href="${rootURL}/${it.CONFIG_URL_NAME}" title="${%Back to Configure Mesos Plugin}"/>
+      </l:tasks>
+    </l:side-panel>
+    <l:main-panel>
+      <h1>
+        <l:icon class="icon-network icon-xlg"/>
+        <text>${%Configure Slave definitions}</text>
+      </h1>
+
+      <div class="behavior-loading">${%LOADING}</div>
+
+      <div class="help" style="display: block; width:70%">
+        <div>
+          This section will contain configuration for the Slave definitions used by the Mesos Frameworks/Clouds.
+        </div>
+      </div>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>

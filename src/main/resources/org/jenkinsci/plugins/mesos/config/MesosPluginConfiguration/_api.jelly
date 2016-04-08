@@ -1,0 +1,7 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core">
+  <h2>Mesos Plugin Configuration API</h2>
+  <p>
+    This section will soon contain information on how to change settings for the Mesos plugin via the Jenkins Rest API.
+  </p>
+</j:jelly>

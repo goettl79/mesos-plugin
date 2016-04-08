@@ -1,0 +1,26 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+  <l:layout title="${it.displayName}" norefresh="true" permission="${it.requiredPermission}">
+    <l:side-panel>
+      <l:tasks>
+        <l:task icon="images/24x24/up.png" href="${rootURL}/manage" title="${%Back to Manage Jenkins}"/>
+        <l:task icon="images/24x24/setting.png" href="configureMappingsView" title="${%Configure Framework to Item mappings}"/>
+        <l:task icon="images/48x48/network.png" href="configureSlaveDefinitionsView" title="${%Configure Slave definitions}"/>
+      </l:tasks>
+    </l:side-panel>
+    <l:main-panel>
+      <h1>
+        <l:icon src="${resURL}${it.iconFileName}" class="icon-xlg"/>
+        <text>${it.displayName}</text>
+      </h1>
+
+      <div class="help" style="display: block; width:70%">
+        <div>
+          This plugin allows administrators to configure some aspects of the Mesos plugin.
+          <br /><br />
+          <b>Use the sidebar links to get started!</b>
+        </div>
+      </div>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>
