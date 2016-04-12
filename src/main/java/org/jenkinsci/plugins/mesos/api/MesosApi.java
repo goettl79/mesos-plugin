@@ -6,13 +6,16 @@ import hudson.model.Descriptor.FormException;
 import hudson.slaves.Cloud;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.mesos.*;
-import org.kohsuke.stapler.*;
+import org.jenkinsci.plugins.mesos.Messages;
+import org.jenkinsci.plugins.mesos.acl.ACLEntry;
+import org.jenkinsci.plugins.mesos.acl.MesosFrameworkToItemMapper;
+import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
-import javax.servlet.ServletOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Date;
-import java.util.Properties;
 import java.util.logging.Logger;
 
 import static javax.servlet.http.HttpServletResponse.SC_CONFLICT;
@@ -47,6 +50,7 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
    * Adds a new mesos slave.
    * taskID == SlaveName
    */
+  @SuppressWarnings("unused")
   public void doCreateSlave(StaplerRequest req, StaplerResponse rsp) throws IOException {
     try {
       String taskID = req.getRestOfPath().replaceFirst("/", "");
@@ -109,4 +113,97 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
       e.printStackTrace();
     }
   }
+
+
+  /**
+   * Adds an ACL entry with the specified item pattern and name of the framework to the Mesos Framework to Jenkins
+   * Item pattern ACL entries.
+   *
+   * @param itemPattern Pattern (regular expression) of the item to match
+   * @param frameworkName Name of the (already configured) framework where the item should provision a task
+   * @param rsp Response object which will contain the status code and message
+   * @return a message containing whether or not adding the ACL entry was successful
+   */
+  @RequirePOST
+  @SuppressWarnings("unused")
+  public synchronized String doAddACLEntry(
+      @QueryParameter(fixEmpty = true, required = true) String itemPattern,
+      @QueryParameter(fixEmpty = true, required = true) String frameworkName,
+      StaplerResponse rsp) {
+    Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+
+    final MesosFrameworkToItemMapper.DescriptorImpl descriptor =
+        (MesosFrameworkToItemMapper.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(MesosFrameworkToItemMapper.class);
+
+    try {
+      ACLEntry newACLEntry = descriptor.addACLEntry(itemPattern, frameworkName);
+
+      rsp.setStatus(StaplerResponse.SC_OK);
+      return Messages.MesosApi_SuccessfullyAddedACLEntry(newACLEntry.toString());
+    } catch (Failure e) {
+      rsp.setStatus(StaplerResponse.SC_BAD_REQUEST);
+      return e.getMessage();
+    }
+  }
+
+  /**
+   * Removes an ACL entry with an equal item pattern from the Mesos Framework to Jenkins Item pattern ACL entries.
+   *
+   * @param itemPattern The exact item pattern of the specific ACL entry to delete
+   * @param rsp Response object which will contain the status code and message
+   * @return a message containing whether or not the removal of the ACL entry was successful
+   */
+  @RequirePOST
+  @SuppressWarnings("unused")
+  public synchronized String doRemoveACLEntry(
+      @QueryParameter(fixEmpty = true, required = true) String itemPattern,
+      StaplerResponse rsp) {
+    Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+
+    final MesosFrameworkToItemMapper.DescriptorImpl descriptor =
+        (MesosFrameworkToItemMapper.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(MesosFrameworkToItemMapper.class);
+
+    try {
+      ACLEntry removedACLEntry = descriptor.removeACLEntry(itemPattern);
+
+      rsp.setStatus(StaplerResponse.SC_OK);
+      if (removedACLEntry != null) {
+        return Messages.MesosApi_SuccessfullyRemovedACLEntry(removedACLEntry.toString());
+      } else {
+        return Messages.MesosApi_NotRemovedACLEntry(itemPattern);
+      }
+    } catch (Failure e) {
+      rsp.setStatus(StaplerResponse.SC_BAD_REQUEST);
+      return e.getMessage();
+    }
+  }
+
+  /**
+   * Changes the default framework name to the new specified framework.
+   *
+   * @param frameworkName Name of the framework which should be used as new default framework name
+   * @param rsp Response object which will contain the status code and message
+   * @return a message containing whether or not changing the default framework name was successful
+   */
+  @RequirePOST
+  @SuppressWarnings("unused")
+  public synchronized String doChangeDefaultFrameworkName(
+      @QueryParameter(fixEmpty = true) String frameworkName,
+      StaplerResponse rsp) {
+    Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+
+    final MesosFrameworkToItemMapper.DescriptorImpl descriptor =
+        (MesosFrameworkToItemMapper.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(MesosFrameworkToItemMapper.class);
+
+    try {
+      String oldFrameworkName = descriptor.changeDefaultFrameworkName(frameworkName);
+
+      rsp.setStatus(StaplerResponse.SC_OK);
+      return Messages.MesosApi_SuccessfullyChangedDefaultFrameworkName(oldFrameworkName, frameworkName);
+    } catch (Failure e) {
+      rsp.setStatus(StaplerResponse.SC_BAD_REQUEST);
+      return e.getMessage();
+    }
+  }
+
 }

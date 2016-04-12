@@ -1,6 +1,9 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
   <l:layout title="${it.displayName}" norefresh="true" permission="${it.requiredPermission}">
+
+    <l:breadcrumb href="configureSlaveDefinitionsView" title="${%Configure Slave definitions}"/>
+
     <l:side-panel>
       <l:tasks>
         <l:task icon="images/24x24/up.png" href="${rootURL}/manage" title="${%Back to Manage Jenkins}"/>

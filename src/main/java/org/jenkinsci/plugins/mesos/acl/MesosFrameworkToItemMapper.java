@@ -75,16 +75,95 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
       return true;
     }
 
+    /**
+     * Adds and ACL entry with the specified item pattern and name of the framework to the configured ACL entries.
+     *
+     * @param itemPattern Item pattern which matches the names of the items to build
+     * @param frameworkName Name of the framework where the matching items should provision a Mesos Task
+     * @return the newly generated ACL entry if adding it to the ACL entries was successful
+     */
+    public ACLEntry addACLEntry(String itemPattern, String frameworkName) {
+      List<ACLEntry> futureACLEntries = new ArrayList<ACLEntry>();
+      futureACLEntries.addAll(this.aclEntries);
+
+      ACLEntry newACLEntry = new ACLEntry(itemPattern, frameworkName);
+      futureACLEntries.add(newACLEntry);
+
+      configure(futureACLEntries, this.defaultFrameworkName);
+
+      return newACLEntry;
+    }
+
+    /**
+     * Removes an ACL entry with equal item pattern from the configured ACL entries.
+     *
+     * @param itemPattern Item pattern which has to be equal to the pattern of the entry to delete
+     * @return the deleted ACL entry or <tt>null</tt> if no matching entry was found
+     */
+    public ACLEntry removeACLEntry(String itemPattern) {
+      ACLEntry removedACLEntry = null;
+      List<ACLEntry> futureACLEntries = new ArrayList<ACLEntry>(this.aclEntries.size());
+      futureACLEntries.addAll(this.aclEntries);
+
+      Iterator<ACLEntry> it = futureACLEntries.iterator();
+      while (it.hasNext() && removedACLEntry == null) {
+        ACLEntry aclEntry = it.next();
+        if (StringUtils.equals(aclEntry.getItemPattern(), itemPattern)) {
+          removedACLEntry = aclEntry;
+          it.remove();
+        }
+      }
+
+      if (removedACLEntry != null) {
+        configure(futureACLEntries, this.defaultFrameworkName);
+      }
+
+      return removedACLEntry;
+    }
+
+    /**
+     * Changes the default framework name to the specified framework name.
+     *
+     * @param frameworkName The new name of the default framework
+     * @return the name of the old default framework
+     */
+    public String changeDefaultFrameworkName(String frameworkName) {
+      String oldDefaultFrameworkName = this.defaultFrameworkName;
+
+      if (!StringUtils.equals(oldDefaultFrameworkName, frameworkName)) {
+        configure(this.aclEntries, frameworkName);
+      }
+
+      return oldDefaultFrameworkName;
+    }
+
     private List<ACLEntry> checkACLEntries(List<ACLEntry> aclEntries) {
       if (aclEntries == null) {
         throw new Failure(Messages.MesosFrameworkToItemMapper_SpecifyACLEntries());
       }
 
+
       for (ACLEntry aclEntry : aclEntries) {
+        checkForMultipleACLEntriesWithEqualItemPattern(aclEntry, aclEntries);
         checkACLEntry(aclEntry);
       }
 
       return aclEntries;
+    }
+
+    private ACLEntry checkForMultipleACLEntriesWithEqualItemPattern(ACLEntry aclEntry, List<ACLEntry> aclEntries) {
+      int count = 0;
+      for (ACLEntry aclEntryFromList : aclEntries) {
+        if (StringUtils.equals(aclEntryFromList.getItemPattern(), aclEntry.getItemPattern())) {
+          count++;
+        }
+      }
+
+      if (count > 1) {
+        throw new Failure(Messages.MesosFrameworkToItemMapper_MultipleACLEntriesWithEqualPattern(aclEntry.getItemPattern()));
+      }
+
+      return aclEntry;
     }
 
     private ACLEntry checkACLEntry(ACLEntry aclEntry) {
@@ -180,6 +259,7 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
     public String getDefaultFrameworkName() {
       return defaultFrameworkName;
     }
+
   }
 
   @Exported(inline = true, visibility = 1)

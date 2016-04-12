@@ -1,12 +1,16 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form">
   <l:layout title="${it.displayName}" norefresh="true" permission="${it.requiredPermission}">
+
+    <l:breadcrumb href="configureMappingsView" title="${%Configure Framework to Item mappings}"/>
+
     <l:side-panel>
       <l:tasks>
         <l:task icon="images/24x24/up.png" href="${rootURL}/manage" title="${%Back to Manage Jenkins}"/>
         <l:task icon="images/24x24/previous.png" href="${rootURL}/${it.CONFIG_URL_NAME}" title="${%Back to Configure Mesos Plugin}"/>
       </l:tasks>
     </l:side-panel>
+
     <l:main-panel>
       <h1>
         <l:icon class="icon-setting icon-xlg"/>
