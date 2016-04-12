@@ -24,6 +24,19 @@ import hudson.slaves.*;
 import hudson.slaves.NodeProvisioner.PlannedNode;
 import hudson.util.DescribableList;
 import hudson.util.FormValidation;
+import hudson.util.ListBoxModel;
+import jenkins.model.Jenkins;
+import net.sf.json.JSONObject;
+import org.apache.commons.lang.StringUtils;
+import org.apache.mesos.MesosNativeLibrary;
+import org.jenkinsci.plugins.mesos.config.acl.MesosFrameworkToItemMapper;
+import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveDefinitions;
+import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
+import org.jenkinsci.plugins.mesos.config.slavedefinitions.SlaveDefinitionsConfiguration;
+import org.jenkinsci.plugins.mesos.monitoring.MesosTaskFailureMonitor;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -34,20 +47,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import javax.servlet.ServletException;
-
-import jenkins.model.Jenkins;
-import net.sf.json.JSONArray;
-import net.sf.json.JSONObject;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.mesos.MesosNativeLibrary;
-import org.apache.mesos.Protos.ContainerInfo.DockerInfo.Network;
-import org.jenkinsci.plugins.mesos.monitoring.MesosTaskFailureMonitor;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.StaplerRequest;
 
 public class MesosCloud extends Cloud {
   private String nativeLibraryPath;
@@ -162,6 +161,7 @@ public class MesosCloud extends Cloud {
     MesosCloud that = (MesosCloud) o;
 
     if (master != null ? !master.equals(that.master) : that.master != null) return false;
+    if (frameworkName != null ? !frameworkName.equals(that.frameworkName) : that.frameworkName != null) return false;
 
     return true;
   }
@@ -222,8 +222,8 @@ public class MesosCloud extends Cloud {
     Jenkins jenkins = Jenkins.getInstance();
     for(Queue.BuildableItem buildableItem : jenkins.getQueue().getBuildableItems()) {
       Label label = buildableItem.getAssignedLabel();
-      if(this.canProvision(label)) {
-        this.requestNodes(label, 1);
+      if(canProvision(label) && this.isItemForMyFramework(buildableItem)) {
+        this.requestNodes(label, 1, getFullNameOfItem(buildableItem));
       }
     }
   }
@@ -269,7 +269,7 @@ public class MesosCloud extends Cloud {
           int legalWorkload = Math.min(excessWorkload, (buildablesInQueueCount - requestsForLabelCount));
 
           if (legalWorkload > 0) {
-            requestNodes(label, legalWorkload);
+            requestNodes(label, legalWorkload, null);
           } else {
             LOGGER.info("Ignore Jenkins provisioning request. There are enough requests to mesos (legalWorkLoad: " + legalWorkload+")");
           }
@@ -283,8 +283,7 @@ public class MesosCloud extends Cloud {
     return new ArrayList<PlannedNode>();
   }
 
-
-  public void requestNodes(Label label, int excessWorkload) {
+  public void requestNodes(Label label, int excessWorkload, String linkedItem) {
     List<PlannedNode> list = new ArrayList<PlannedNode>();
     final MesosSlaveInfo slaveInfo = getSlaveInfo(slaveInfos, label);
 
@@ -308,19 +307,21 @@ public class MesosCloud extends Cloud {
                     " executors. Remaining excess workload: " + excessWorkload + " executors)");
 
 
-        sendSlaveRequest(numExecutors, slaveInfo);
+        sendSlaveRequest(numExecutors, slaveInfo, linkedItem);
       }
     } catch (Exception e) {
       LOGGER.log(Level.WARNING, "Failed to create instances on Mesos", e);
     }
   }
 
-  private void sendSlaveRequest(int numExecutors, MesosSlaveInfo slaveInfo) throws Descriptor.FormException, IOException {
+  private void sendSlaveRequest(int numExecutors, MesosSlaveInfo slaveInfo, String linkedItem) throws Descriptor.FormException, IOException {
     String name = slaveInfo.getLabelString() + "-" + UUID.randomUUID().toString();
     double cpus = slaveInfo.getSlaveCpus() + (numExecutors * slaveInfo.getExecutorCpus());
     int memory = (int)((slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem())) * (1 + JVM_MEM_OVERHEAD_FACTOR));
 
-    Mesos.SlaveRequest slaveRequest = new Mesos.SlaveRequest(new Mesos.JenkinsSlave(name, slaveInfo.getLabelString(), numExecutors), cpus, memory, slaveInfo);
+
+    Mesos.JenkinsSlave jenkinsSlave = new Mesos.JenkinsSlave(name,slaveInfo.getLabelString(), numExecutors, linkedItem);
+    Mesos.SlaveRequest slaveRequest = new Mesos.SlaveRequest(jenkinsSlave, cpus, memory, slaveInfo);
     Mesos mesos = Mesos.getInstance(this);
 
     mesos.startJenkinsSlave(slaveRequest, new Mesos.SlaveResult() {
@@ -367,6 +368,29 @@ public class MesosCloud extends Cloud {
 
   public void setSlaveInfos(List<MesosSlaveInfo> slaveInfos) {
     this.slaveInfos = slaveInfos;
+  }
+
+  public boolean isItemForMyFramework(Queue.BuildableItem buildableItem) {
+    if (canProvision(buildableItem.getAssignedLabel())) {
+      return isItemForMyFramework(getFullNameOfItem(buildableItem));
+    }
+    return false;
+  }
+
+  public boolean isItemForMyFramework(String buildableItem) {
+      String foundFramework = "";
+      MesosFrameworkToItemMapper mesosFrameworkToItemMapper = new MesosFrameworkToItemMapper();
+      foundFramework = mesosFrameworkToItemMapper.findFrameworkName(buildableItem);
+      return this.frameworkName.equals(foundFramework);
+  }
+
+  public String getFullNameOfItem(Queue.BuildableItem buildableItem) {
+    if(buildableItem != null && buildableItem.task instanceof Project) {
+      Project project = (Project) buildableItem.task;
+      return project.getFullName();
+    }
+
+    return null;
   }
 
   @Override

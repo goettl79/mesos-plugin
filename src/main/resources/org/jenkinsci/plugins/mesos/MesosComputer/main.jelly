@@ -1,8 +1,16 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
-    <h2>${%Additional Mesos Information}</h2>
 
     <j:set var="containerInfo" value="${it.node.slaveInfo.containerInfo}"/>
     <j:set var="slaveResult" value="${it.node.mesosInstance.scheduler.getResult(it.name)}"/>
+
+    <j:choose>
+          <j:when test="${slaveResult.slave.linkedItem != null}">
+            <h2>${%This MesosSlave is linked with a Job!}</h2>
+            <p>Only "${slaveResult.slave.linkedItem}" can run on this slave.</p>
+          </j:when>
+    </j:choose>
+
+    <h2>${%Additional Mesos Information}</h2>
 
     <p>Mesos node: ${slaveResult.slave.hostName}</p>
     <p>Image: ${containerInfo.dockerImage}</p>

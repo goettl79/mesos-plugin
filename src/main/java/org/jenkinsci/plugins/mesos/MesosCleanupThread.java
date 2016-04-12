@@ -12,7 +12,6 @@ import hudson.Extension;
 import hudson.model.AsyncPeriodicWork;
 import hudson.model.Computer;
 import hudson.model.TaskListener;
-import hudson.slaves.Cloud;
 import hudson.slaves.OfflineCause;
 import jenkins.model.Jenkins;
 

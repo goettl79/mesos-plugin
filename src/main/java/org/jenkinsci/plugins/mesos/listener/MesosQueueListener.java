@@ -7,8 +7,11 @@ import hudson.slaves.Cloud;
 import hudson.slaves.CloudProvisioningListener;
 import jenkins.model.Jenkins;
 import org.apache.mesos.Scheduler;
+import org.jenkinsci.plugins.mesos.JenkinsScheduler;
+import org.jenkinsci.plugins.mesos.Mesos;
+import org.jenkinsci.plugins.mesos.MesosCloud;
+import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 import org.jenkinsci.plugins.mesos.*;
-import org.jenkinsci.plugins.mesos.acl.MesosFrameworkToItemMapper;
 
 import java.util.logging.Logger;
 
@@ -77,7 +80,6 @@ public class MesosQueueListener extends QueueListener {
 
   public void forceProvisionIfPossible(final Label label, Queue.BuildableItem bi) {
     // TODO: get this from actual configuration
-    MesosFrameworkToItemMapper mesosFrameworkToItemMapper = new MesosFrameworkToItemMapper();
 
     if (label != null) {
       Node future = null;
@@ -86,9 +88,7 @@ public class MesosQueueListener extends QueueListener {
         if (c.canProvision(label)) {
           if (c instanceof MesosCloud) {
             MesosCloud mesosCloud = (MesosCloud) c;
-
-            String mappedFrameworkName = mesosFrameworkToItemMapper.findFrameworkName(bi.getDisplayName());
-            if (mappedFrameworkName.equals(mesosCloud.getFrameworkName())) {
+            if (mesosCloud.isItemForMyFramework(bi)) {
               MesosSlaveInfo mesosSlaveInfo = mesosCloud.getSlaveInfo(mesosCloud.getSlaveInfos(), label);
 
               if(mesosSlaveInfo.isUseSlaveOnce()) {
@@ -98,7 +98,7 @@ public class MesosQueueListener extends QueueListener {
                     break CLOUD;
                   }
                 }
-                mesosCloud.requestNodes(label, numExecutors);
+                mesosCloud.requestNodes(label, numExecutors, mesosCloud.getFullNameOfItem(bi));
               }
             }
           }

@@ -16,14 +16,13 @@ package org.jenkinsci.plugins.mesos;
 
 import hudson.Extension;
 import hudson.FilePath;
-import hudson.model.Computer;
+import hudson.model.*;
 import hudson.model.Descriptor.FormException;
-import hudson.model.Hudson;
-import hudson.model.Node;
-import hudson.model.Slave;
+import hudson.slaves.ComputerLauncher;
+import hudson.model.queue.CauseOfBlockage;
 import hudson.slaves.EphemeralNode;
 import hudson.slaves.NodeProperty;
-import hudson.slaves.ComputerLauncher;
+import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.mesos.Protos;
@@ -39,11 +38,12 @@ public class MesosSlave extends Slave implements EphemeralNode {
   private final MesosSlaveInfo slaveInfo;
   private Protos.TaskStatus taskStatus;
   private boolean pendingDelete;
+  private String linkedItem;
 
   private static final Logger LOGGER = Logger.getLogger(MesosSlave.class
       .getName());
 
-  public MesosSlave(MesosCloud cloud, String name, int numExecutors, MesosSlaveInfo slaveInfo) throws IOException, FormException {
+  public MesosSlave(MesosCloud cloud, String name, int numExecutors, MesosSlaveInfo slaveInfo, String linkedItem) throws IOException, FormException {
     super(name,
           slaveInfo.getLabelString(), // node description.
           StringUtils.isBlank(slaveInfo.getRemoteFSRoot()) ? "jenkins" : slaveInfo.getRemoteFSRoot().trim(),   // remoteFS.
@@ -55,8 +55,9 @@ public class MesosSlave extends Slave implements EphemeralNode {
           Collections.<NodeProperty<?>> emptyList());
     this.cloud = cloud;
     this.slaveInfo = slaveInfo;
+    this.linkedItem = linkedItem;
 
-    LOGGER.info("Constructing Mesos slave " + name + " from cloud " + cloud.getDescription());
+    LOGGER.info("Constructing Mesos slave '" + name + "' for item '" + linkedItem + "' using cloud '" + cloud.getDescription() + "'");
   }
 
   public MesosCloud getCloud() {
@@ -83,7 +84,7 @@ public class MesosSlave extends Slave implements EphemeralNode {
     LOGGER.info("Terminating slave " + getNodeName());
     try {
       // Remove the node from hudson.
-      Hudson.getInstance().removeNode(this);
+      Jenkins.getInstance().removeNode(this);
 
       ComputerLauncher launcher = getLauncher();
 
@@ -124,6 +125,24 @@ public class MesosSlave extends Slave implements EphemeralNode {
     }
   }
 
+  @Override
+  public CauseOfBlockage canTake(Queue.BuildableItem item) {
+    CauseOfBlockage causeOfBlockage = super.canTake(item);
+
+    if(causeOfBlockage != null) {
+      return causeOfBlockage;
+    }
+
+    if(linkedItem != null) {
+        String fullItemName = cloud.getFullNameOfItem(item);
+        if (!linkedItem.equals(fullItemName)) {
+          return CauseOfBlockage.fromMessage(Messages._MesosSlave_IsReservedForAnOtherItem(fullItemName));
+        }
+    }
+
+    return null;
+  }
+
   private String getInstanceId() {
     return getNodeName();
   }
@@ -137,8 +156,7 @@ public class MesosSlave extends Slave implements EphemeralNode {
   }
 
   public void idleTimeout() {
-    LOGGER.info("Mesos instance idle time expired: " + getInstanceId()
-        + ", terminate now");
+    LOGGER.info("Mesos instance idle time expired: " + getInstanceId() + ", terminate now");
     terminate();
   }
 
@@ -170,15 +188,20 @@ public class MesosSlave extends Slave implements EphemeralNode {
       return  null;
     }
 
-    String url = "";
     String host = cloud.getGrafanaDashboardURL();
 
     long from = this.getComputer().getConnectTime();
     long to = System.currentTimeMillis();
 
-    url = String.format("%s?var-slave=%s&var-container=%s&from=%d&to=%d", host, this.getDisplayName(), this.getDockerContainerID(), from, to);
+    return String.format("%s?var-slave=%s&var-container=%s&from=%d&to=%d", host, this.getDisplayName(), this.getDockerContainerID(), from, to);
+  }
 
-    return url;
+  public String getLinkedItem() {
+    return linkedItem;
+  }
+
+  public void setLinkedItem(String linkedItem) {
+    this.linkedItem = linkedItem;
   }
 
   @Override

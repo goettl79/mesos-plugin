@@ -16,4 +16,8 @@
           <f:readOnlyTextbox field="maximumTimeToLiveMinutes" clazz="number"/>
         </f:entry>
 
+        <f:entry title="${%Linked Item}" field="linkedItem">
+          <f:readOnlyTextbox field="linkedItem"/>
+        </f:entry>
+
 </j:jelly>

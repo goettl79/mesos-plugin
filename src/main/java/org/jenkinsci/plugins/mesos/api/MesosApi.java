@@ -90,7 +90,7 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
             MesosSlaveInfo mesosSlaveInfo = mesosCloud.getSlaveInfo(mesosCloud.getSlaveInfos(), jenkins.getLabel(result.getSlave().getLabel()));
 
             LOGGER.info("add new Slave from WebRequest " + taskID);
-            MesosSlave slave = new MesosSlave(mesosCloud, taskID, executors, mesosSlaveInfo);
+            MesosSlave slave = new MesosSlave(mesosCloud, taskID, executors, mesosSlaveInfo, result.getSlave().getLinkedItem());
 
             jenkins.addNode(slave);
 

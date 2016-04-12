@@ -1,12 +1,10 @@
 package org.jenkinsci.plugins.mesos.monitoring;
 
 import hudson.Extension;
-import hudson.model.AsyncPeriodicWork;
 import hudson.model.Label;
 import hudson.model.Node;
 import hudson.model.TaskListener;
 import hudson.slaves.Cloud;
-import hudson.slaves.CloudProvisioningListener;
 import hudson.util.HttpResponses;
 import jenkins.management.AsynchronousAdministrativeMonitor;
 import jenkins.model.Jenkins;
@@ -25,7 +23,7 @@ import java.util.Set;
 @Extension
 public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
 
-  private final Set<Mesos.JenkinsSlave> failedSlaves = Collections.synchronizedSet(new LinkedHashSet<Mesos.JenkinsSlave>());
+  private Set<Mesos.JenkinsSlave> failedSlaves = Collections.synchronizedSet(new LinkedHashSet<Mesos.JenkinsSlave>());
 
   @Override
   public String getDisplayName() {
@@ -64,10 +62,12 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
           if (c.canProvision(label)) {
             if (c instanceof MesosCloud) {
               MesosCloud mesosCloud = (MesosCloud) c;
-              MesosSlaveInfo mesosSlaveInfo = mesosCloud.getSlaveInfo(mesosCloud.getSlaveInfos(), label);
+              if (mesosCloud.isItemForMyFramework(jenkinsSlave.getLinkedItem())) {
+                MesosSlaveInfo mesosSlaveInfo = mesosCloud.getSlaveInfo(mesosCloud.getSlaveInfos(), label);
 
-              logger.println("Request new task for " + label.getDisplayName());
-              mesosCloud.requestNodes(label, jenkinsSlave.getNumExecutors());
+                logger.println("Request new task for " + label.getDisplayName());
+                mesosCloud.requestNodes(label, jenkinsSlave.getNumExecutors(), jenkinsSlave.getLinkedItem());
+              }
             }
           }
         }
@@ -86,6 +86,7 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   @RequirePOST
   public HttpResponse doDismiss() {
     getLogFile().delete();
+    failedSlaves = Collections.synchronizedSet(new LinkedHashSet<Mesos.JenkinsSlave>());
     return HttpResponses.forwardToPreviousPage();
   }
 

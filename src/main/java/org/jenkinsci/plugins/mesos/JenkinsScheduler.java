@@ -483,7 +483,8 @@ public class JenkinsScheduler implements Scheduler {
             offer.getHostname(),
             actualPortMappings,
             request.request.slaveInfo.getLabelString(),
-            request.request.slave.getNumExecutors());
+            request.request.slave.getNumExecutors(),
+            request.request.slave.linkedItem);
 
     results.put(taskId, new Result(request.result, jenkinsSlave));
     finishedTasks.add(taskId);
