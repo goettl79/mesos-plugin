@@ -22,6 +22,7 @@ import hudson.slaves.Cloud;
 import jenkins.model.Jenkins;
 import org.apache.mesos.Protos.ContainerInfo.DockerInfo;
 import org.apache.mesos.Scheduler;
+import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 
 import java.util.*;
 

@@ -19,8 +19,10 @@ import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.*;
-import hudson.model.Node.Mode;
-import hudson.slaves.*;
+import hudson.slaves.Cloud;
+import hudson.slaves.EnvironmentVariablesNodeProperty;
+import hudson.slaves.NodeProperty;
+import hudson.slaves.NodePropertyDescriptor;
 import hudson.slaves.NodeProvisioner.PlannedNode;
 import hudson.util.DescribableList;
 import hudson.util.FormValidation;
@@ -38,6 +40,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
+import javax.servlet.ServletException;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -64,7 +67,7 @@ public class MesosCloud extends Cloud {
 
   // Find the default values for these variables in
   // src/main/resources/org/jenkinsci/plugins/mesos/MesosCloud/config.jelly.
-  private List<MesosSlaveInfo> slaveInfos;
+  private String slaveDefinitionsName;
 
   private static String staticMaster;
 
@@ -121,7 +124,7 @@ public class MesosCloud extends Cloud {
       String slavesUser,
       String principal,
       String secret,
-      List<MesosSlaveInfo> slaveInfos,
+      String slaveDefinitionsName,
       boolean checkpoint,
       boolean onDemandRegistration,
       String jenkinsURL,
@@ -135,7 +138,7 @@ public class MesosCloud extends Cloud {
     this.slavesUser = slavesUser;
     this.principal = principal;
     this.secret = secret;
-    this.slaveInfos = slaveInfos;
+    this.slaveDefinitionsName = slaveDefinitionsName;
     this.checkpoint = checkpoint;
     this.onDemandRegistration = onDemandRegistration;
     this.setJenkinsURL(jenkinsURL);
@@ -285,6 +288,7 @@ public class MesosCloud extends Cloud {
 
   public void requestNodes(Label label, int excessWorkload, String linkedItem) {
     List<PlannedNode> list = new ArrayList<PlannedNode>();
+    List<MesosSlaveInfo> slaveInfos = getSlaveInfos();
     final MesosSlaveInfo slaveInfo = getSlaveInfo(slaveInfos, label);
 
     try {
@@ -363,11 +367,7 @@ public class MesosCloud extends Cloud {
   }
 
   public List<MesosSlaveInfo> getSlaveInfos() {
-    return slaveInfos;
-  }
-
-  public void setSlaveInfos(List<MesosSlaveInfo> slaveInfos) {
-    this.slaveInfos = slaveInfos;
+    return SlaveDefinitionsConfiguration.getDescriptorImplStatic().getSlaveInfos(slaveDefinitionsName);
   }
 
   public boolean isItemForMyFramework(Queue.BuildableItem buildableItem) {
@@ -400,6 +400,8 @@ public class MesosCloud extends Cloud {
     // item in the list of configured Mesos labels.
     // TODO(vinod): The framework may not have the resources necessary
     // to start a task when it comes time to launch the slave.
+    List<MesosSlaveInfo> slaveInfos = getSlaveInfos();
+
     if (label != null && slaveInfos != null) {
       for (MesosSlaveInfo slaveInfo : slaveInfos) {
         if (label.matches(Label.parse(slaveInfo.getLabelString()))) {
@@ -478,6 +480,11 @@ public class MesosCloud extends Cloud {
     return grafanaDashboardURL;
   }
 
+  public String getSlaveDefinitionsName() {
+    return slaveDefinitionsName;
+  }
+
+
   @Override
   public DescriptorImpl getDescriptor() {
     return (DescriptorImpl) super.getDescriptor();
@@ -495,6 +502,8 @@ public class MesosCloud extends Cloud {
   }
 
   public MesosSlaveInfo getSlaveInfo(String label) {
+    List<MesosSlaveInfo> slaveInfos = getSlaveInfos();
+
     for (MesosSlaveInfo slaveInfo : slaveInfos) {
       if (label.equals(slaveInfo.getLabelString())) {
         return slaveInfo;
@@ -526,6 +535,8 @@ public class MesosCloud extends Cloud {
 
   public JSONObject getSlaveAttributeForLabel(String labelName) {
     if(labelName!=null) {
+      List<MesosSlaveInfo> slaveInfos = getSlaveInfos();
+
       for (MesosSlaveInfo slaveInfo : slaveInfos) {
         if (labelName.equals(slaveInfo.getLabelString())) {
           return slaveInfo.getSlaveAttributes();
@@ -556,7 +567,7 @@ public class MesosCloud extends Cloud {
     private boolean checkpoint;
     private String jenkinsURL;
     private int provisioningThreshold;
-    private List<MesosSlaveInfo> slaveInfos;
+    private String slaveDefinitionsName;
     private String grafanaDashboardURL;
 
     @Override
@@ -580,136 +591,8 @@ public class MesosCloud extends Cloud {
       grafanaDashboardURL = object.getString("grafanaDashboardURL");
       provisioningThreshold = object.getInt("provisioningThreshold");
       slavesUser = object.getString("slavesUser");
-      slaveInfos = new ArrayList<MesosSlaveInfo>();
-      JSONArray labels = object.getJSONArray("slaveInfos");
-      if (labels != null) {
-        for (int i = 0; i < labels.size(); i++) {
-          JSONObject label = labels.getJSONObject(i);
-          if (label != null) {
-            MesosSlaveInfo.ExternalContainerInfo externalContainerInfo = null;
-            if (label.has("externalContainerInfo")) {
-              JSONObject externalContainerInfoJson = label
-                  .getJSONObject("externalContainerInfo");
-              externalContainerInfo = new MesosSlaveInfo.ExternalContainerInfo(
-                  externalContainerInfoJson.getString("image"),
-                  externalContainerInfoJson.getString("options"));
-            }
+      slaveDefinitionsName = object.getString("slaveDefinitionsName");
 
-            MesosSlaveInfo.ContainerInfo containerInfo = null;
-            if (label.has("containerInfo")) {
-              JSONObject containerInfoJson = label
-                  .getJSONObject("containerInfo");
-              List<MesosSlaveInfo.Volume> volumes = new ArrayList<MesosSlaveInfo.Volume>();
-              if (containerInfoJson.has("volumes")) {
-                JSONArray volumesJson = containerInfoJson
-                    .getJSONArray("volumes");
-                for (Object obj : volumesJson) {
-                  JSONObject volumeJson = (JSONObject) obj;
-                  volumes
-                      .add(new MesosSlaveInfo.Volume(volumeJson
-                          .getString("containerPath"), volumeJson
-                          .getString("hostPath"), volumeJson
-                          .getBoolean("readOnly")));
-                }
-              }
-
-              List<MesosSlaveInfo.Parameter> parameters = new ArrayList<MesosSlaveInfo.Parameter>();
-
-              if (containerInfoJson.has("parameters")) {
-                JSONArray parametersJson = containerInfoJson.getJSONArray("parameters");
-                for (Object obj : parametersJson) {
-                  JSONObject parameterJson = (JSONObject) obj;
-                  parameters.add(new MesosSlaveInfo.Parameter(parameterJson.getString("key"), parameterJson.getString("value")));
-                }
-              }
-
-              List<MesosSlaveInfo.PortMapping> portMappings = new ArrayList<MesosSlaveInfo.PortMapping>();
-
-              final String networking = containerInfoJson.getString("networking");
-              if (Network.BRIDGE.equals(Network.valueOf(networking)) && containerInfoJson.has("portMappings")) {
-                JSONArray portMappingsJson = containerInfoJson
-                    .getJSONArray("portMappings");
-                for (Object obj : portMappingsJson) {
-                  JSONObject portMappingJson = (JSONObject) obj;
-                  portMappings.add(new MesosSlaveInfo.PortMapping(
-                          portMappingJson.getInt("containerPort"),
-                          portMappingJson.getInt("hostPort"),
-                          portMappingJson.getString("protocol"),
-                          portMappingJson.getString("description"),
-                          portMappingJson.getString("urlFormat")
-                  ));
-                }
-              }
-
-              containerInfo = new MesosSlaveInfo.ContainerInfo(
-                  containerInfoJson.getString("type"),
-                  containerInfoJson.getString("dockerImage"),
-                  containerInfoJson.getBoolean("dockerPrivilegedMode"),
-                  containerInfoJson.getBoolean("dockerForcePullImage"),
-                  containerInfoJson.getBoolean("useCustomDockerCommandShell"),
-                  containerInfoJson.getString ("customDockerCommandShell"),
-                  volumes,
-                  parameters,
-                  networking,
-                  portMappings);
-            }
-
-            MesosSlaveInfo.RunAsUserInfo runAsUserInfo = null;
-              if (label.has("runAsUserInfo")) {
-                JSONObject runAsUserInfoJson = label.getJSONObject("runAsUserInfo");
-                runAsUserInfo = new MesosSlaveInfo.RunAsUserInfo(
-                        runAsUserInfoJson.getString("username"),
-                        runAsUserInfoJson.getString("command")
-                        );
-            }
-
-            List<MesosSlaveInfo.URI> additionalURIs = new ArrayList<MesosSlaveInfo.URI>();
-            if (label.has("additionalURIs")) {
-              JSONArray additionalURIsJson = label.getJSONArray("additionalURIs");
-              for (Object obj : additionalURIsJson) {
-                JSONObject URIJson = (JSONObject) obj;
-                additionalURIs.add(new MesosSlaveInfo.URI(
-                    URIJson.getString("value"),
-                    URIJson.getBoolean("executable"),
-                    URIJson.getBoolean("extract")));
-              }
-            }
-
-
-            List<MesosSlaveInfo.Command> additionalCommands = new ArrayList<MesosSlaveInfo.Command>();
-            if (label.has("additionalCommands")) {
-              JSONArray additionalCommandsJson = label.getJSONArray("additionalCommands");
-              for (Object obj : additionalCommandsJson) {
-                JSONObject additionalCommandJson = (JSONObject) obj;
-                additionalCommands.add(new MesosSlaveInfo.Command(
-                        additionalCommandJson.getString("value")));
-              }
-            }
-
-            MesosSlaveInfo slaveInfo = new MesosSlaveInfo(
-                object.getString("labelString"),
-                (Mode) object.get("mode"),
-                object.getString("slaveCpus"),
-                object.getString("slaveMem"),
-                object.getString("maxExecutors"),
-                object.getString("executorCpus"),
-                object.getString("executorMem"),
-                object.getString("remoteFSRoot"),
-                object.getString("idleTerminationMinutes"),
-                object.getString("maximumTimeToLiveMinutes"),
-                object.getBoolean("useSlaveOnce"),
-                object.getString("slaveAttributes"),
-                object.getString("jvmArgs"),
-                object.getString("jnlpArgs"),
-                externalContainerInfo,
-                containerInfo,
-                additionalURIs,
-                runAsUserInfo,
-                additionalCommands);
-            slaveInfos.add(slaveInfo);
-          }
-        }
-      }
       save();
       return super.configure(request, object);
     }
@@ -805,5 +688,26 @@ public class MesosCloud extends Cloud {
 
       return StringUtils.isNotBlank(value) ? FormValidation.ok() : FormValidation.error(errorMessage);
     }
+
+    @SuppressWarnings("unused")
+    public ListBoxModel doFillSlaveDefinitionsNameItems() {
+      ListBoxModel slaveDefinitionsNamesItems = new ListBoxModel();
+
+      List<MesosSlaveDefinitions> slaveDefinitionsEntries =
+        SlaveDefinitionsConfiguration.getDescriptorImplStatic().getSlaveDefinitionsEntries();
+
+      for (MesosSlaveDefinitions slaveDefinitionsEntry : slaveDefinitionsEntries) {
+        String currentSlaveDefinitionsName = slaveDefinitionsEntry.getDefinitionsName();
+        boolean selected = StringUtils.equals(currentSlaveDefinitionsName, slaveDefinitionsName);
+        slaveDefinitionsNamesItems.add(new ListBoxModel.Option(
+            currentSlaveDefinitionsName,
+            currentSlaveDefinitionsName,
+            selected
+        ));
+      }
+
+      return slaveDefinitionsNamesItems;
+    }
+
   }
 }

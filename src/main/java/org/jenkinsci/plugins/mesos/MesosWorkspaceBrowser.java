@@ -2,9 +2,10 @@ package org.jenkinsci.plugins.mesos;
 
 import hudson.Extension;
 import hudson.FilePath;
-import hudson.model.WorkspaceBrowser;
 import hudson.model.AbstractProject;
 import hudson.model.Job;
+import hudson.model.WorkspaceBrowser;
+import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 
 import java.io.File;
 import java.util.List;

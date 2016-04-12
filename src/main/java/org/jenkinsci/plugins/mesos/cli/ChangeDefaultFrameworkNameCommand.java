@@ -5,8 +5,7 @@ import hudson.cli.CLICommand;
 import hudson.model.Failure;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.mesos.Messages;
-import org.jenkinsci.plugins.mesos.acl.ACLEntry;
-import org.jenkinsci.plugins.mesos.acl.MesosFrameworkToItemMapper;
+import org.jenkinsci.plugins.mesos.config.acl.MesosFrameworkToItemMapper;
 import org.kohsuke.args4j.Argument;
 
 @Extension

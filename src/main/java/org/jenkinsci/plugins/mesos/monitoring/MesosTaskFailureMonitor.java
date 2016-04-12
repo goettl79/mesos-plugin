@@ -10,7 +10,7 @@ import jenkins.management.AsynchronousAdministrativeMonitor;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.mesos.Mesos;
 import org.jenkinsci.plugins.mesos.MesosCloud;
-import org.jenkinsci.plugins.mesos.MesosSlaveInfo;
+import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 

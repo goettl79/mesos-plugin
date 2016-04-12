@@ -1,4 +1,4 @@
-package org.jenkinsci.plugins.mesos.acl;
+package org.jenkinsci.plugins.mesos.config.acl;
 
 import hudson.Extension;
 import hudson.model.Describable;

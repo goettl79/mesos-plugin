@@ -1,21 +1,21 @@
-package org.jenkinsci.plugins.mesos;
+package org.jenkinsci.plugins.mesos.config.slavedefinitions;
 
 import hudson.model.Descriptor.FormException;
+import hudson.model.Node.Mode;
+import net.sf.json.JSONException;
+import net.sf.json.JSONObject;
+import net.sf.json.JSONSerializer;
+import org.apache.commons.lang.StringUtils;
+import org.apache.mesos.Protos.ContainerInfo.DockerInfo.Network;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.export.Exported;
+import org.kohsuke.stapler.export.ExportedBean;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
-import hudson.model.Node.Mode;
-
-import net.sf.json.JSONException;
-import net.sf.json.JSONObject;
-import net.sf.json.JSONSerializer;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.mesos.Protos.ContainerInfo.DockerInfo.Network;
-import org.kohsuke.stapler.DataBoundConstructor;
-
+@ExportedBean
 public class MesosSlaveInfo {
   public static final int UNLIMITED_MAX_NODES = -1;
   private static final String DEFAULT_LABEL_NAME = "mesos";
@@ -103,6 +103,7 @@ public class MesosSlaveInfo {
     this.runAsUserInfo = runAsUserInfo;
   }
 
+  @Exported
   public String getLabelString() {
     return labelString;
   }

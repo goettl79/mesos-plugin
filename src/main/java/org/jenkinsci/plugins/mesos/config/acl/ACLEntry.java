@@ -1,4 +1,4 @@
-package org.jenkinsci.plugins.mesos.acl;
+package org.jenkinsci.plugins.mesos.config.acl;
 
 
 import org.apache.commons.lang.builder.EqualsBuilder;

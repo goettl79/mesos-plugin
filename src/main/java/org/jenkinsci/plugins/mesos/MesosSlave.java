@@ -18,7 +18,6 @@ import hudson.Extension;
 import hudson.FilePath;
 import hudson.model.*;
 import hudson.model.Descriptor.FormException;
-import hudson.slaves.ComputerLauncher;
 import hudson.model.queue.CauseOfBlockage;
 import hudson.slaves.EphemeralNode;
 import hudson.slaves.NodeProperty;
@@ -26,6 +25,7 @@ import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.mesos.Protos;
+import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 
 import java.io.IOException;
 import java.util.Collections;

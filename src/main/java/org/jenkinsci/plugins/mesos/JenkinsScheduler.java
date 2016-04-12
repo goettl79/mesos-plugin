@@ -17,6 +17,7 @@ package org.jenkinsci.plugins.mesos;
 
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.ByteString;
 import hudson.model.Computer;
 import hudson.model.Label;
 import hudson.model.Node;
@@ -40,38 +41,24 @@ import java.util.logging.Logger;
 
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.mesos.MesosSchedulerDriver;
-import org.apache.mesos.Protos.Attribute;
-import org.apache.mesos.Protos.CommandInfo;
-import org.apache.mesos.Protos.ContainerInfo;
+import org.apache.mesos.Protos.*;
 import org.apache.mesos.Protos.ContainerInfo.DockerInfo;
 import org.apache.mesos.Protos.ContainerInfo.DockerInfo.Network;
 import org.apache.mesos.Protos.ContainerInfo.DockerInfo.PortMapping;
-import org.apache.mesos.Protos.Credential;
-import org.apache.mesos.Protos.ExecutorID;
-import org.apache.mesos.Protos.Filters;
-import org.apache.mesos.Protos.FrameworkID;
-import org.apache.mesos.Protos.FrameworkInfo;
-import org.apache.mesos.Protos.MasterInfo;
-import org.apache.mesos.Protos.Offer;
-import org.apache.mesos.Protos.OfferID;
-import org.apache.mesos.Protos.Parameter;
-import org.apache.mesos.Protos.Resource;
-import org.apache.mesos.Protos.SlaveID;
-import org.apache.mesos.Protos.Status;
-import org.apache.mesos.Protos.TaskID;
-import org.apache.mesos.Protos.TaskInfo;
-import org.apache.mesos.Protos.TaskStatus;
-import org.apache.mesos.Protos.Value;
 import org.apache.mesos.Protos.Value.Range;
-import org.apache.mesos.Protos.Volume;
 import org.apache.mesos.Protos.Volume.Mode;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
+import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 
-import com.google.protobuf.ByteString;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class JenkinsScheduler implements Scheduler {
   private static final String SLAVE_JAR_URI_SUFFIX = "jnlpJars/slave.jar";

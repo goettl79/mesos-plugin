@@ -1,7 +1,9 @@
 package org.jenkinsci.plugins.mesos.listener;
 
 import hudson.Extension;
-import hudson.model.*;
+import hudson.model.Label;
+import hudson.model.Node;
+import hudson.model.Queue;
 import hudson.model.queue.QueueListener;
 import hudson.slaves.Cloud;
 import hudson.slaves.CloudProvisioningListener;
@@ -10,6 +12,7 @@ import org.apache.mesos.Scheduler;
 import org.jenkinsci.plugins.mesos.JenkinsScheduler;
 import org.jenkinsci.plugins.mesos.Mesos;
 import org.jenkinsci.plugins.mesos.MesosCloud;
+import org.jenkinsci.plugins.mesos.config.acl.MesosFrameworkToItemMapper;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 import org.jenkinsci.plugins.mesos.*;
 

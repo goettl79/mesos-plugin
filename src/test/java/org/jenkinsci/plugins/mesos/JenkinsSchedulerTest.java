@@ -4,6 +4,7 @@ import hudson.model.Descriptor;
 import hudson.model.Node;
 import jenkins.model.Jenkins;
 import org.apache.mesos.Protos;
+import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
