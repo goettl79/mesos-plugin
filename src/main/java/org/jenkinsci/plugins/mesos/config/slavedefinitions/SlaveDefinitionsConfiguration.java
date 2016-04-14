@@ -3,16 +3,22 @@ package org.jenkinsci.plugins.mesos.config.slavedefinitions;
 import hudson.Extension;
 import hudson.model.Describable;
 import hudson.model.Descriptor;
+import hudson.model.Failure;
+import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
+import org.jenkinsci.plugins.mesos.Messages;
+import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -49,6 +55,10 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
       return null;
     }
 
+    public boolean slaveDefinitionsEntryExists(String slaveDefinitionsName) {
+      return getSlaveInfos(slaveDefinitionsName) != null;
+    }
+
     @RequirePOST
     @Override
     public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
@@ -64,11 +74,142 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
     }
 
     public boolean configure(List<MesosSlaveDefinitions> slaveDefinitionsEntries) {
-      this.slaveDefinitionsEntries = slaveDefinitionsEntries;
+      this.slaveDefinitionsEntries = checkSlaveDefinitionsEntires(slaveDefinitionsEntries);
 
       save();
       return true;
     }
+
+
+    public synchronized MesosSlaveDefinitions addSlaveDefinitionsEntry(String definitionsName, InputStream xml) {
+      Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+
+      if (slaveDefinitionsEntryExists(definitionsName)) {
+        throw new Failure(Messages.SlaveDefinitionsConfiguration_DefinitionsNameAlreadyExists(definitionsName));
+      }
+
+      return addOrUpdateSlaveDefinitionsEntry(definitionsName, xml);
+    }
+
+    public synchronized MesosSlaveDefinitions updateSlaveDefinitionsEntry(String definitionsName, InputStream xml) {
+      Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+
+      if (!slaveDefinitionsEntryExists(definitionsName)) {
+        throw new Failure(Messages.SlaveDefinitionsConfiguration_DefinitionsDoesNotExist(definitionsName));
+      }
+
+      return addOrUpdateSlaveDefinitionsEntry(definitionsName, xml);
+    }
+
+    public synchronized MesosSlaveDefinitions removeSlaveDefinitionsEntry(String definitionsName) {
+      Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+
+      List<MesosSlaveDefinitions> futureSlaveDefinitionsEntries = new ArrayList<MesosSlaveDefinitions>(slaveDefinitionsEntries);
+
+      Iterator<MesosSlaveDefinitions> it = futureSlaveDefinitionsEntries.iterator();
+
+      MesosSlaveDefinitions removedDefinitionsEntry = null;
+      while (it.hasNext() && removedDefinitionsEntry == null) {
+        MesosSlaveDefinitions definitionsEntry = it.next();
+        if (StringUtils.equals(definitionsEntry.getDefinitionsName(), definitionsName)) {
+          removedDefinitionsEntry = definitionsEntry;
+          it.remove();
+        }
+      }
+
+      configure(futureSlaveDefinitionsEntries);
+
+      return removedDefinitionsEntry;
+    }
+
+    private MesosSlaveDefinitions addOrUpdateSlaveDefinitionsEntry(String definitionsName, InputStream xml) {
+      MesosSlaveDefinitions slaveDefinitionsEntryWithoutName = (MesosSlaveDefinitions) Jenkins.XSTREAM2.fromXML(xml);
+      MesosSlaveDefinitions newSlaveDefinitionsEntry = new MesosSlaveDefinitions(definitionsName, slaveDefinitionsEntryWithoutName);
+
+      List<MesosSlaveDefinitions> futureSlaveDefinitionsEntries = new ArrayList<MesosSlaveDefinitions>(slaveDefinitionsEntries);
+
+      MesosSlaveDefinitions result;
+
+      if (slaveDefinitionsEntryExists(newSlaveDefinitionsEntry.getDefinitionsName())) {
+        int i = futureSlaveDefinitionsEntries.indexOf(newSlaveDefinitionsEntry);
+        result = futureSlaveDefinitionsEntries.set(i, newSlaveDefinitionsEntry);
+      } else {
+        futureSlaveDefinitionsEntries.add(newSlaveDefinitionsEntry);
+        result = newSlaveDefinitionsEntry;
+      }
+
+      configure(futureSlaveDefinitionsEntries);
+
+      return result;
+    }
+
+
+    private List<MesosSlaveDefinitions> checkSlaveDefinitionsEntires(List<MesosSlaveDefinitions> slaveDefinitionsEntries) {
+      if (slaveDefinitionsEntries == null) {
+        throw new Failure(Messages.SlaveDefinitionsConfiguration_SpecifySlaveDefinitionsEntries());
+      }
+
+      for (MesosSlaveDefinitions defsEntry : slaveDefinitionsEntries) {
+        checkSlaveDefinitionsEntry(defsEntry);
+        checkForMultipleSlaveDefinitionsEntiresWithSameName(defsEntry, slaveDefinitionsEntries);
+      }
+
+      return slaveDefinitionsEntries;
+    }
+
+    private MesosSlaveDefinitions checkSlaveDefinitionsEntry(MesosSlaveDefinitions defsEntry) {
+      if (defsEntry == null) {
+        throw new Failure(Messages.SlaveDefinitionsConfiguration_SpecifySlaveDefinitionsEntry());
+      }
+
+      checkDefinitionsName(defsEntry.getDefinitionsName());
+      checkMesosSlaveInfos(defsEntry.getMesosSlaveInfos());
+
+      return defsEntry;
+    }
+
+    private List<MesosSlaveInfo> checkMesosSlaveInfos(List<MesosSlaveInfo> mesosSlaveInfos) {
+      if (mesosSlaveInfos == null) {
+        throw new Failure(Messages.SlaveDefinitionsConfiguration_SpecifyMesosSlaveInfos());
+      }
+
+      return mesosSlaveInfos;
+    }
+
+    private String checkDefinitionsName(String definitionsName) {
+      if (StringUtils.isBlank(definitionsName)) {
+        throw new Failure(Messages.SlaveDefinitionsConfiguration_InvalidDefinitionsName());
+      }
+
+      return definitionsName;
+    }
+
+    @SuppressWarnings("unused")
+    public FormValidation doCheckItemPattern(@QueryParameter String definitionsName) {
+      try {
+        checkDefinitionsName(definitionsName);
+        return FormValidation.ok();
+      } catch (Failure e) {
+        return FormValidation.error(e.getMessage());
+      }
+    }
+
+    private MesosSlaveDefinitions checkForMultipleSlaveDefinitionsEntiresWithSameName(MesosSlaveDefinitions defsEntry, List<MesosSlaveDefinitions> slaveDefinitionsEntries) {
+      int count = 0;
+      for (MesosSlaveDefinitions otherDefsEntry : slaveDefinitionsEntries) {
+        if (StringUtils.equals(defsEntry.getDefinitionsName(), otherDefsEntry.getDefinitionsName())) {
+          count++;
+        }
+      }
+
+      if (count > 1) {
+        throw new Failure(Messages.SlaveDefinitionsConfiguration_DefinitionsNameAlreadyExists(defsEntry.getDefinitionsName()));
+      }
+
+      return defsEntry;
+    }
+
+
   }
 
   @Exported(inline = true, visibility = 1)

@@ -5,11 +5,14 @@ import hudson.model.*;
 import hudson.model.Descriptor.FormException;
 import hudson.slaves.Cloud;
 import jenkins.model.Jenkins;
+import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.mesos.*;
 import org.jenkinsci.plugins.mesos.Messages;
 import org.jenkinsci.plugins.mesos.config.acl.ACLEntry;
 import org.jenkinsci.plugins.mesos.config.acl.MesosFrameworkToItemMapper;
+import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveDefinitions;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
+import org.jenkinsci.plugins.mesos.config.slavedefinitions.SlaveDefinitionsConfiguration;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
@@ -189,7 +192,7 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
   @RequirePOST
   @SuppressWarnings("unused")
   public synchronized String doChangeDefaultFrameworkName(
-      @QueryParameter(fixEmpty = true) String frameworkName,
+      @QueryParameter(fixEmpty = true, required = true) String frameworkName,
       StaplerResponse rsp) {
     Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
@@ -201,6 +204,122 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
 
       rsp.setStatus(StaplerResponse.SC_OK);
       return Messages.MesosApi_SuccessfullyChangedDefaultFrameworkName(oldFrameworkName, frameworkName);
+    } catch (Failure e) {
+      rsp.setStatus(StaplerResponse.SC_BAD_REQUEST);
+      return e.getMessage();
+    }
+  }
+
+  private boolean isXmlContentType(String requestContentType) {
+    if (StringUtils.isBlank(requestContentType)) {
+      throw new Failure(Messages.MesosApi_NoContentTypeHeader());
+    }
+
+    return requestContentType != null
+        && (requestContentType.startsWith("application/xml")
+        || requestContentType.startsWith("text/xml"));
+  }
+
+  private boolean isValidSlaveDefinitionsRequest(StaplerRequest req) {
+    return isXmlContentType(req.getContentType()) && req.getContentLength() > 0;
+  }
+
+  /**
+   * Adds an entry with Mesos Slave definitions/infos to the configuration.
+   *
+   * @param definitionsName The name of the definitions entry to add
+   * @param req Request object which contains the XML of the configuration
+   * @param rsp Response object which will contain the status code and message
+   * @return a message containing whether or not adding the specified definitions was successful
+   */
+  @RequirePOST
+  @SuppressWarnings("unused")
+  public synchronized String doAddSlaveDefinitionsEntry(
+      @QueryParameter(fixEmpty = true, required = true) String definitionsName,
+      StaplerRequest req,
+      StaplerResponse rsp) throws IOException {
+    Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+
+    final SlaveDefinitionsConfiguration.DescriptorImpl descriptor =
+        (SlaveDefinitionsConfiguration.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(SlaveDefinitionsConfiguration.class);
+
+    if (isValidSlaveDefinitionsRequest(req)) {
+      try {
+        MesosSlaveDefinitions slaveDefinitions = descriptor.addSlaveDefinitionsEntry(definitionsName, req.getInputStream());
+
+        rsp.setStatus(StaplerResponse.SC_OK);
+        return Messages.MesosApi_SuccessfullyAddedSlaveDefinitions(slaveDefinitions.toString());
+      } catch (Failure e) {
+        rsp.setStatus(StaplerResponse.SC_BAD_REQUEST);
+        return e.getMessage();
+      }
+    }
+
+    rsp.setStatus(StaplerResponse.SC_BAD_REQUEST);
+    return Messages.MesosApi_CreateSlaveDefinitionsEntryBadRequest();
+  }
+
+  /**
+   * Updates an existing entry with Mesos Slave definitions/infos of the configuration.
+   *
+   * @param definitionsName The name of the definitions entry to update
+   * @param req Request object which contains the XML of the configuration
+   * @param rsp Response object which will contain the status code and message
+   * @return a message containing whether or not adding the specified definitions was successful
+   */
+  @RequirePOST
+  @SuppressWarnings("unused")
+  public synchronized String doUpdateSlaveDefinitionsEntry(
+      @QueryParameter(fixEmpty = true, required = true) String definitionsName,
+      StaplerRequest req,
+      StaplerResponse rsp) throws IOException {
+    Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+
+    final SlaveDefinitionsConfiguration.DescriptorImpl descriptor =
+        (SlaveDefinitionsConfiguration.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(SlaveDefinitionsConfiguration.class);
+
+    if (isValidSlaveDefinitionsRequest(req)) {
+      try {
+        MesosSlaveDefinitions oldSlaveDefinitions = descriptor.updateSlaveDefinitionsEntry(definitionsName, req.getInputStream());
+
+        rsp.setStatus(StaplerResponse.SC_OK);
+        return Messages.MesosApi_SuccessfullyUpdatedSlaveDefinitions(oldSlaveDefinitions.toString());
+      } catch (Failure e) {
+        rsp.setStatus(StaplerResponse.SC_BAD_REQUEST);
+        return e.getMessage();
+      }
+    }
+
+    rsp.setStatus(StaplerResponse.SC_BAD_REQUEST);
+    return Messages.MesosApi_CreateSlaveDefinitionsEntryBadRequest();
+  }
+
+  /**
+   * Removes an entry with Mesos Slave definitions/infos from the configuration.
+   *
+   * @param definitionsName The name of the definitions entry to remove
+   * @param rsp Response object which will contain the status code and message
+   * @return a message containing whether or not removing the specified definitions entry was successful
+   */
+  @RequirePOST
+  @SuppressWarnings("unused")
+  public synchronized String doRemoveSlaveDefinitionsEntry(
+      @QueryParameter(fixEmpty = true, required = true) String definitionsName,
+      StaplerResponse rsp) {
+    Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+
+    final SlaveDefinitionsConfiguration.DescriptorImpl descriptor =
+        (SlaveDefinitionsConfiguration.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(SlaveDefinitionsConfiguration.class);
+
+    try {
+      MesosSlaveDefinitions removedSlaveDefinitions = descriptor.removeSlaveDefinitionsEntry(definitionsName);
+
+      rsp.setStatus(StaplerResponse.SC_OK);
+      if (removedSlaveDefinitions != null) {
+        return Messages.MesosApi_SuccessfullyRemovedSlaveDefinitionsEntry(removedSlaveDefinitions.toString());
+      } else {
+        return Messages.MesosApi_NotRemovedSlaveDefinitionsEntry(definitionsName);
+      }
     } catch (Failure e) {
       rsp.setStatus(StaplerResponse.SC_BAD_REQUEST);
       return e.getMessage();
