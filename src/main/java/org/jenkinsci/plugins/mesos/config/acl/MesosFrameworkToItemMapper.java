@@ -283,6 +283,10 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
    * @return the mapped Framework name or the default Framework name
    */
   public String findFrameworkName(String itemName) {
+    if (StringUtils.isBlank(itemName)) {
+      throw new IllegalArgumentException(Messages.MesosFrameworkToItemMapper_InvalidItemName(itemName));
+    }
+
     for (ACLEntry entry: getDescriptorImpl().getACLEntries()) {
       if (itemName.matches(entry.getItemPattern())) {
         return entry.getFrameworkName();

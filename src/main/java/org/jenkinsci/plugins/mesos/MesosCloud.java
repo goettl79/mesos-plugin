@@ -387,12 +387,11 @@ public class MesosCloud extends Cloud {
   }
 
   public String getFullNameOfItem(Queue.BuildableItem buildableItem) {
-    if(buildableItem != null && buildableItem.task instanceof Project) {
-      Project project = (Project) buildableItem.task;
-      return project.getFullName();
+    if(buildableItem == null || !(buildableItem.task instanceof Item)) {
+      throw new IllegalArgumentException(Messages.MesosCloud_InvalidItem(buildableItem));
     }
 
-    return null;
+    return ((Item) buildableItem.task).getFullName();
   }
 
   @Override
