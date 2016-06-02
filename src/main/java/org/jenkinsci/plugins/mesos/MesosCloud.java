@@ -70,8 +70,6 @@ public class MesosCloud extends Cloud {
   // src/main/resources/org/jenkinsci/plugins/mesos/MesosCloud/config.jelly.
   private String slaveDefinitionsName;
 
-  private static String staticMaster;
-
   private static final Logger LOGGER = Logger.getLogger(MesosCloud.class.getName());
 
   // We allocate 10% more memory to the Mesos task to account for the JVM overhead.
@@ -206,10 +204,9 @@ public class MesosCloud extends Cloud {
     }
 
     // Restart the scheduler if the master has changed or a scheduler is not up. or it is forced to be
-    if (!master.equals(staticMaster) || !Mesos.getInstance(this).isSchedulerRunning() || forceRestart) {
-      if (!master.equals(staticMaster)) {
-        LOGGER.info("Mesos master changed, restarting the scheduler");
-        staticMaster = master;
+    if (!Mesos.getInstance(this).isSchedulerRunning() || forceRestart) {
+      if (forceRestart) {
+        LOGGER.info("Force the scheduler to restart");
       } else {
         LOGGER.info("Scheduler was down, restarting the scheduler");
       }
