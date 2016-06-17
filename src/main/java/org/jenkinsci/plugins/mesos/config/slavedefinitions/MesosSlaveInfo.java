@@ -34,7 +34,6 @@ public class MesosSlaveInfo {
   private final String jnlpArgs;
   // Slave attributes JSON representation.
   private final JSONObject slaveAttributes;
-  private final ExternalContainerInfo externalContainerInfo;
   private final ContainerInfo containerInfo;
   private final List<URI> additionalURIs;
   private final Mode mode;
@@ -62,7 +61,6 @@ public class MesosSlaveInfo {
       String slaveAttributes,
       String jvmArgs,
       String jnlpArgs,
-      ExternalContainerInfo externalContainerInfo,
       ContainerInfo containerInfo,
       List<URI> additionalURIs,
       RunAsUserInfo runAsUserInfo,
@@ -84,7 +82,6 @@ public class MesosSlaveInfo {
     this.jvmArgs = StringUtils.isNotBlank(jvmArgs) ? cleanseJvmArgs(jvmArgs)
         : DEFAULT_JVM_ARGS;
     this.jnlpArgs = StringUtils.isNotBlank(jnlpArgs) ? jnlpArgs : "";
-    this.externalContainerInfo = externalContainerInfo;
     this.containerInfo = containerInfo;
     this.additionalURIs = additionalURIs;
     this.additionalCommands = additionalCommands;
@@ -160,10 +157,6 @@ public class MesosSlaveInfo {
     return jnlpArgs;
   }
 
-  public ExternalContainerInfo getExternalContainerInfo() {
-    return externalContainerInfo;
-  }
-
   public ContainerInfo getContainerInfo() {
     return containerInfo;
   }
@@ -193,25 +186,6 @@ public class MesosSlaveInfo {
    */
   private String cleanseJvmArgs(final String jvmArgs) {
     return jvmArgs.replaceAll(JVM_ARGS_PATTERN, "");
-  }
-
-  public static class ExternalContainerInfo {
-    private final String image;
-    private final String options;
-
-    @DataBoundConstructor
-    public ExternalContainerInfo(String image, String options) {
-      this.image = image;
-      this.options = options;
-    }
-
-    public String getOptions() {
-      return options;
-    }
-
-    public String getImage() {
-      return image;
-    }
   }
 
   public static class RunAsUserInfo {

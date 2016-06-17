@@ -107,13 +107,6 @@ public abstract class Mesos {
       this.slaveInfo = slaveInfo;
     }
 
-    public String[] getExternalContainerOptions() {
-      if (this.slaveInfo.getExternalContainerInfo().getOptions().trim().isEmpty()) {
-        return new String[0];
-      } else {
-        return this.slaveInfo.getExternalContainerInfo().getOptions().trim().split(",");
-      }
-    }
   }
 
 

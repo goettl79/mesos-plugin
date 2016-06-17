@@ -252,7 +252,6 @@ public class JenkinsSchedulerTest {
                 null,               // slaveAttributes,
                 null,               // jvmArgs,
                 null,               //jnlpArgs,
-                null,               // externalContainerInfo,
                 containerInfo,      // containerInfo,
                 null,               //additionalURIs
                 null,                // runAsUserInfo

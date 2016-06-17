@@ -21,26 +21,6 @@ import com.google.protobuf.ByteString;
 import hudson.model.Computer;
 import hudson.model.Label;
 import hudson.model.Node;
-
-import java.lang.Math;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
@@ -124,7 +104,7 @@ public class JenkinsScheduler implements Scheduler {
         if (StringUtils.isNotBlank(mesosCloud.getSecret())) {
             Credential credential = Credential.newBuilder()
               .setPrincipal(mesosCloud.getPrincipal())
-              .setSecret(ByteString.copyFromUtf8(mesosCloud.getSecret()))
+              .setSecretBytes(ByteString.copyFromUtf8(mesosCloud.getSecret()))
               .build();
 
             LOGGER.info("Authenticating with Mesos master with principal " + credential.getPrincipal());
@@ -498,23 +478,6 @@ public class JenkinsScheduler implements Scheduler {
     }
   }
 
-  private void detectAndAddExternalContainerInfo(Request request, CommandInfo.Builder commandBuilder) {
-    MesosSlaveInfo.ExternalContainerInfo externalContainerInfo = request.request.slaveInfo.getExternalContainerInfo();
-    if (externalContainerInfo != null) {
-      LOGGER.info("Launching in External Container Mode:" + externalContainerInfo.getImage());
-      CommandInfo.ContainerInfo.Builder containerInfo = CommandInfo.ContainerInfo.newBuilder();
-      containerInfo.setImage(externalContainerInfo.getImage());
-
-      // add container option to builder
-      String[] containerOptions = request.request.getExternalContainerOptions();
-      for (int i = 0; i < containerOptions.length; i++) {
-        LOGGER.info("with option: " + containerOptions[i]);
-        containerInfo.addOptions(containerOptions[i]);
-      }
-      commandBuilder.setContainer(containerInfo.build());
-    }
-  }
-
   private TaskInfo.Builder getTaskInfoBuilder(Offer offer, Request request, TaskID taskId, CommandInfo.Builder commandBuilder) {
     TaskInfo.Builder builder = TaskInfo.newBuilder()
         .setName("task " + taskId.getValue())
@@ -653,7 +616,6 @@ public class JenkinsScheduler implements Scheduler {
   CommandInfo.Builder getCommandInfoBuilder(Request request) {
         CommandInfo.Builder commandBuilder = getBaseCommandBuilder(request);
         detectAndAddAdditionalURIs(request, commandBuilder);
-        detectAndAddExternalContainerInfo(request, commandBuilder);
         return commandBuilder;
   }
 
