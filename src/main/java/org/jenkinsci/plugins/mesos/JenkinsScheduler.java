@@ -37,6 +37,7 @@ import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
@@ -229,20 +230,25 @@ public class JenkinsScheduler implements Scheduler {
   @Override
   public synchronized void resourceOffers(SchedulerDriver driver, List<Offer> offers) {
     LOGGER.fine("Received offers " + offers.size());
+
     for (Offer offer : offers) {
       boolean matched = false;
-      for (Request request : requests) {
-        if (matches(offer, request)) {
-          matched = true;
-          LOGGER.fine("Offer matched! Creating mesos task");
 
-          try {
-            createMesosTask(offer, request);
-          } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, e.getMessage(), e);
+      if(isOfferAvailable(offer)) {
+        for (Request request : requests) {
+          if (matches(offer, request)) {
+            matched = true;
+
+            LOGGER.fine("Offer matched! Creating mesos task");
+
+            try {
+              createMesosTask(offer, request);
+            } catch (Exception e) {
+              LOGGER.log(Level.SEVERE, e.getMessage(), e);
+            }
+            requests.remove(request);
+            break;
           }
-          requests.remove(request);
-          break;
         }
       }
 
@@ -250,6 +256,21 @@ public class JenkinsScheduler implements Scheduler {
         driver.declineOffer(offer.getId());
       }
     }
+  }
+
+  private boolean isOfferAvailable(Offer offer) {
+    if(offer.hasUnavailability()) {
+      Unavailability unavailability = offer.getUnavailability();
+
+      Date startTime = new Date(TimeUnit.NANOSECONDS.toMillis(unavailability.getStart().getNanoseconds()));
+      long duration = unavailability.getDuration().getNanoseconds();
+      Date endTime = new Date(startTime.getTime() + TimeUnit.NANOSECONDS.toMillis(duration));
+      Date currentTime = new Date();
+
+      return !(startTime.before(currentTime) && endTime.after(currentTime));
+    }
+
+    return true;
   }
 
   private boolean matches(Offer offer, Request request) {
