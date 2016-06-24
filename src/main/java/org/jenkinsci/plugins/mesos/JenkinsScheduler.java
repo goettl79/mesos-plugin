@@ -25,7 +25,6 @@ import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.mesos.MesosSchedulerDriver;
-import org.apache.mesos.Protos;
 import org.apache.mesos.Protos.*;
 import org.apache.mesos.Protos.ContainerInfo.DockerInfo;
 import org.apache.mesos.Protos.ContainerInfo.DockerInfo.Network;
@@ -263,11 +262,12 @@ public class JenkinsScheduler implements Scheduler {
     if(offer.hasUnavailability()) {
       Unavailability unavailability = offer.getUnavailability();
 
-      Date startdate = new Date(TimeUnit.NANOSECONDS.toMillis(unavailability.getStart().getNanoseconds()));
-      Date enddate = new Date(startdate.getTime() + TimeUnit.NANOSECONDS.toMillis(unavailability.getDuration().getNanoseconds()));
-      Date sysdate = new Date();
+      Date startTime = new Date(TimeUnit.NANOSECONDS.toMillis(unavailability.getStart().getNanoseconds()));
+      long duration = unavailability.getDuration().getNanoseconds();
+      Date endTime = new Date(startTime.getTime() + TimeUnit.NANOSECONDS.toMillis(duration));
+      Date currentTime = new Date();
 
-      return !(startdate.before(sysdate) && enddate.after(sysdate));
+      return !(startTime.before(currentTime) && endTime.after(currentTime));
     }
 
     return true;
