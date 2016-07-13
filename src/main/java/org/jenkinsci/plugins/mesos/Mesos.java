@@ -24,7 +24,13 @@ import org.apache.mesos.Protos.ContainerInfo.DockerInfo;
 import org.apache.mesos.Scheduler;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 public abstract class Mesos {
   private static Map<MesosCloud, Mesos> clouds = new HashMap<MesosCloud, Mesos>();
@@ -76,6 +82,7 @@ public abstract class Mesos {
       return numExecutors;
     }
 
+    @SuppressWarnings("unused")
     public List<DockerInfo.PortMapping> getActualPortMappings() {
         return Collections.unmodifiableList(actualPortMappings);
     }
@@ -163,11 +170,11 @@ public abstract class Mesos {
     Jenkins jenkins = Jenkins.getInstance();
     for (Cloud cloud : jenkins.clouds) {
       if (cloud instanceof MesosCloud) {
-        mesosClouds.add((MesosCloud)cloud);
+        mesosClouds.add((MesosCloud) cloud);
       }
     }
 
-    return mesosClouds;
+    return Collections.unmodifiableCollection(mesosClouds);
   }
 
   /**

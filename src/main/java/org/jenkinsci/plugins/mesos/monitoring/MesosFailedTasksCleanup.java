@@ -5,8 +5,13 @@ import hudson.model.AsyncPeriodicWork;
 import hudson.model.TaskListener;
 import jenkins.model.Jenkins;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 @Extension
 public class MesosFailedTasksCleanup extends AsyncPeriodicWork {
+
+  private static final Logger LOGGER = Logger.getLogger(MesosFailedTasksCleanup.class.getName());
 
   public MesosFailedTasksCleanup() {
     super("Failed Mesos Tasks Handler");
@@ -30,7 +35,7 @@ public class MesosFailedTasksCleanup extends AsyncPeriodicWork {
     try {
       MesosTaskFailureMonitor.getInstance().fix(listener);
     } catch (Exception e) {
-      e.printStackTrace();
+      LOGGER.log(Level.SEVERE, e.getMessage(), e);
     }
   }
 }

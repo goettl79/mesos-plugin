@@ -4,24 +4,25 @@ import hudson.Extension;
 import hudson.model.Label;
 import hudson.model.Node;
 import hudson.model.TaskListener;
-import hudson.slaves.Cloud;
 import hudson.util.HttpResponses;
 import jenkins.management.AsynchronousAdministrativeMonitor;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.mesos.Mesos;
 import org.jenkinsci.plugins.mesos.MesosCloud;
-import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Extension
 public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
+
+
 
   private Set<Mesos.JenkinsSlave> failedSlaves = Collections.synchronizedSet(new LinkedHashSet<Mesos.JenkinsSlave>());
 
@@ -39,42 +40,56 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
     return !failedSlaves.isEmpty() || getLogFile().exists();
   }
 
+
+
   @Override
   public void fix(TaskListener taskListener) throws Exception {
     PrintStream logger = taskListener.getLogger();
-    Jenkins jenkins = Jenkins.getInstance();
     Set<Mesos.JenkinsSlave> failedSlaves = getFailedSlaves();
-    for (Mesos.JenkinsSlave jenkinsSlave : failedSlaves) {
-      Node node = Jenkins.getInstance().getNode(jenkinsSlave.getName());
-      if (node != null) {
-        try {
-          jenkins.removeNode(node);
-          logger.println("Removed node '" + jenkinsSlave + "' from Jenkins");
-        } catch (IOException e) {
-          logger.println("Could not remove '" + jenkinsSlave + "' because: " + e.getMessage());
-        }
-      }
-
-      Label label = jenkins.getLabel(jenkinsSlave.getLabel());
-      if (label != null) {
-        //rerequest new Task
-        for (Cloud c : Jenkins.getInstance().clouds) {
-          if (c.canProvision(label)) {
-            if (c instanceof MesosCloud) {
-              MesosCloud mesosCloud = (MesosCloud) c;
-              if (mesosCloud.isItemForMyFramework(jenkinsSlave.getLinkedItem())) {
-                MesosSlaveInfo mesosSlaveInfo = mesosCloud.getSlaveInfo(mesosCloud.getSlaveInfos(), label);
-
-                logger.println("Request new task for " + label.getDisplayName());
-                mesosCloud.requestNodes(label, jenkinsSlave.getNumExecutors(), jenkinsSlave.getLinkedItem());
-              }
-            }
-          }
-        }
-      }
+    for (Mesos.JenkinsSlave failedSlave : failedSlaves) {
+      removeExistingNode(failedSlave, logger);
+      requestNewNode(failedSlave, logger);
     }
 
     this.failedSlaves.removeAll(failedSlaves);
+  }
+
+  private void requestNewNode(Mesos.JenkinsSlave failedSlave, PrintStream logger) {
+    Jenkins jenkins = Jenkins.getInstance();
+
+    try {
+      Label label = jenkins.getLabel(failedSlave.getLabel());
+      if (label != null) {
+        //rerequest new Task
+        Collection<MesosCloud> mesosClouds = Mesos.getAllMesosClouds();
+        for (MesosCloud mesosCloud : mesosClouds) {
+          if (mesosCloud.canProvision(label)) {
+              if (mesosCloud.isItemForMyFramework(failedSlave.getLinkedItem())) {
+                logger.println("Request new task for " + label.getDisplayName());
+                mesosCloud.requestNodes(label, failedSlave.getNumExecutors(), failedSlave.getLinkedItem());
+              }
+            }
+        }
+      }
+    } catch (Exception e) {
+      logger.println("Could not request node for '" + failedSlave
+          + "' (label: '" + failedSlave.getLabel() + "', linkedItem: '" + failedSlave.getLinkedItem() + "'), because:");
+      e.printStackTrace(logger);
+    }
+  }
+
+  private void removeExistingNode(Mesos.JenkinsSlave failedSlave, PrintStream logger) {
+    Jenkins jenkins = Jenkins.getInstance();
+    Node node = jenkins.getNode(failedSlave.getName());
+    if (node != null) {
+      try {
+        jenkins.removeNode(node);
+        logger.println("Removed node '" + failedSlave + "' from Jenkins");
+      } catch (IOException e) {
+        logger.println("Could not remove '" + failedSlave + "' because:");
+        e.printStackTrace(logger);
+      }
+    }
   }
 
   @RequirePOST

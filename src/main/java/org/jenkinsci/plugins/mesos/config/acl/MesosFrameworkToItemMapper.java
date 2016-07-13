@@ -18,7 +18,11 @@ import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -260,6 +264,28 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
       return defaultFrameworkName;
     }
 
+
+    /**
+     * Returns the Mesos Framework name which is mapped to the specified item with an {@link ACLEntry}.<br />
+     * In case the item is not mapped or not matched against the patterns of the entries, it returns the default Framework
+     * to use for the item.
+     *
+     * @param itemName Specifies the name of the item
+     * @return the mapped Framework name or the default Framework name
+     */
+    public String findFrameworkName(String itemName) {
+      if (StringUtils.isBlank(itemName)) {
+        throw new IllegalArgumentException(Messages.MesosFrameworkToItemMapper_InvalidItemName(itemName));
+      }
+
+      for (ACLEntry entry: aclEntries) {
+        if (itemName.matches(entry.getItemPattern())) {
+          return entry.getFrameworkName();
+        }
+      }
+
+      return getDefaultFrameworkName();
+    }
   }
 
   @Exported(inline = true, visibility = 1)
@@ -274,26 +300,8 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
     return getDescriptorImpl().getDefaultFrameworkName();
   }
 
-  /**
-   * Returns the Mesos Framework name which is mapped to the specified item with an {@link ACLEntry}.<br />
-   * In case the item is not mapped or not matched against the patterns of the entries, it returns the default Framework
-   * to use for the item.
-   *
-   * @param itemName Specifies the name of the item
-   * @return the mapped Framework name or the default Framework name
-   */
   public String findFrameworkName(String itemName) {
-    if (StringUtils.isBlank(itemName)) {
-      throw new IllegalArgumentException(Messages.MesosFrameworkToItemMapper_InvalidItemName(itemName));
-    }
-
-    for (ACLEntry entry: getDescriptorImpl().getACLEntries()) {
-      if (itemName.matches(entry.getItemPattern())) {
-        return entry.getFrameworkName();
-      }
-    }
-
-    return getDefaultFrameworkName();
+    return getDescriptorImpl().findFrameworkName(itemName);
   }
 
   @Override

@@ -18,7 +18,11 @@ import hudson.EnvVars;
 import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
-import hudson.model.*;
+import hudson.model.Descriptor;
+import hudson.model.Item;
+import hudson.model.Label;
+import hudson.model.Node;
+import hudson.model.Queue;
 import hudson.slaves.Cloud;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 import hudson.slaves.NodeProperty;
@@ -63,7 +67,6 @@ public class MesosCloud extends Cloud {
   private final boolean checkpoint; // Set true to enable checkpointing. False by default.
   private boolean onDemandRegistration; // If set true, this framework disconnects when there are no builds in the queue and re-registers when there are.
   private String jenkinsURL;
-  private List<PlannedNode> plannedNodeList;
   private String grafanaDashboardURL;
 
   // Find the default values for these variables in
@@ -180,7 +183,6 @@ public class MesosCloud extends Cloud {
   }
 
   public void restartMesos(boolean forceRestart) {
-    plannedNodeList = new ArrayList<PlannedNode>();
 
     if(!nativeLibraryLoaded) {
       // First, we attempt to load the library from the given path.
@@ -249,11 +251,6 @@ public class MesosCloud extends Cloud {
     }
   }
 
-  private int getBuildsInQueueMatchinLabelCount(Label label) {
-    Queue queue = Queue.getInstance();
-    return queue.countBuildableItemsFor(label);
-  }
-
   @Override
   public Collection<PlannedNode> provision(Label label, int excessWorkload) {
     try {
@@ -287,7 +284,6 @@ public class MesosCloud extends Cloud {
   }
 
   public void requestNodes(Label label, int excessWorkload, String linkedItem) {
-    List<PlannedNode> list = new ArrayList<PlannedNode>();
     List<MesosSlaveInfo> slaveInfos = getSlaveInfos();
     final MesosSlaveInfo slaveInfo = getSlaveInfo(slaveInfos, label);
 
@@ -371,16 +367,15 @@ public class MesosCloud extends Cloud {
   }
 
   public boolean isItemForMyFramework(Queue.BuildableItem buildableItem) {
-    if (canProvision(buildableItem.getAssignedLabel())) {
-      return isItemForMyFramework(getFullNameOfItem(buildableItem));
-    }
-    return false;
+    return canProvision(buildableItem.getAssignedLabel()) && isItemForMyFramework(getFullNameOfItem(buildableItem));
   }
 
   public boolean isItemForMyFramework(String buildableItem) {
-      MesosFrameworkToItemMapper mesosFrameworkToItemMapper = new MesosFrameworkToItemMapper();
-      String foundFramework = mesosFrameworkToItemMapper.findFrameworkName(buildableItem);
-      return StringUtils.equals(frameworkName, foundFramework);
+      //MesosFrameworkToItemMapper mesosFrameworkToItemMapper = new MesosFrameworkToItemMapper();
+    MesosFrameworkToItemMapper.DescriptorImpl descriptor =
+        (MesosFrameworkToItemMapper.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(MesosFrameworkToItemMapper.class);
+    String foundFramework = descriptor.findFrameworkName(buildableItem);
+    return StringUtils.equals(frameworkName, foundFramework);
   }
 
   public String getFullNameOfItem(Queue.BuildableItem buildableItem) {
@@ -497,7 +492,7 @@ public class MesosCloud extends Cloud {
   }
 
   public static MesosCloud get() {
-    return Hudson.getInstance().clouds.get(MesosCloud.class);
+    return Jenkins.getInstance().clouds.get(MesosCloud.class);
   }
 
   /**
@@ -608,6 +603,7 @@ public class MesosCloud extends Cloud {
     /**
      * Test connection from configuration page.
      */
+    @SuppressWarnings("unused")
     public FormValidation doTestConnection(
         @QueryParameter("master") String master,
         @QueryParameter("nativeLibraryPath") String nativeLibraryPath)
@@ -650,9 +646,10 @@ public class MesosCloud extends Cloud {
       }
     }
 
+    @SuppressWarnings("unused")
     public FormValidation doCheckMaxExecutors(@QueryParameter("maxExecutors") final String strMaxExecutors,
                                               @QueryParameter("useSlaveOnce") final String strUseSlaveOnce) {
-      int maxExecutors=1;
+      int maxExecutors;
       boolean useSlaveOnce;
       try {
         maxExecutors = Integer.parseInt(strMaxExecutors);
@@ -665,10 +662,12 @@ public class MesosCloud extends Cloud {
       return FormValidation.ok();
     }
 
+    @SuppressWarnings("unused")
     public FormValidation doCheckSlaveCpus(@QueryParameter String value) {
       return doCheckCpus(value);
     }
 
+    @SuppressWarnings("unused")
     public FormValidation doCheckExecutorCpus(@QueryParameter String value) {
       return doCheckCpus(value);
     }
@@ -691,6 +690,7 @@ public class MesosCloud extends Cloud {
       return valid ? FormValidation.ok() : FormValidation.error(errorMessage);
     }
 
+    @SuppressWarnings("unused")
     public FormValidation doCheckRemoteFSRoot(@QueryParameter String value) {
       String errorMessage = "Invalid Remote FS Root - should be non-empty. It will be defaulted to \"jenkins\".";
 
