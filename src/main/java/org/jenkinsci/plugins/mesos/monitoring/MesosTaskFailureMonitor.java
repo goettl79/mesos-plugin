@@ -22,8 +22,6 @@ import java.util.Set;
 @Extension
 public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
 
-
-
   private Set<Mesos.JenkinsSlave> failedSlaves = Collections.synchronizedSet(new LinkedHashSet<Mesos.JenkinsSlave>());
 
   @Override
@@ -39,8 +37,6 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   public boolean isActivated() {
     return !failedSlaves.isEmpty() || getLogFile().exists();
   }
-
-
 
   @Override
   public void fix(TaskListener taskListener) throws Exception {
