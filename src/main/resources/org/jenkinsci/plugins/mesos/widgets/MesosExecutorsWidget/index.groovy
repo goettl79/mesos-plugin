@@ -1,7 +1,5 @@
 package org.jenkinsci.plugins.mesos.widgets.MesosExecutorsWidget
 
-def t = namespace(lib.JenkinsTagLib.class)
+def m = namespace(lib.MesosTagLib.class)
 
-t.executors(computers:view.computers, it:view)
-
-t.executors(computers:view.computers, it:view)
+m.executors(computers:view.computers, it:view)

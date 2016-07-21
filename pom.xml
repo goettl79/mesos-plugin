@@ -7,7 +7,7 @@
   </parent>
 
   <artifactId>mesos</artifactId>
-  <version>0.9.0-INFONOVA-10-SNAPSHOT</version>
+  <version>0.9.0-INFONOVA-10-MULTIEXECVIEW-SNAPSHOT</version>
   <packaging>hpi</packaging>
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Mesos+Plugin</url>
 
@@ -169,6 +169,17 @@
                           <overWriteReleases>false</overWriteReleases>
                           <overWriteSnapshots>true</overWriteSnapshots>
                       </configuration>
+                  </execution>
+              </executions>
+          </plugin>
+          <plugin>
+              <groupId>org.jenkins-ci.tools</groupId>
+              <artifactId>maven-hpi-plugin</artifactId>
+              <executions>
+                  <execution>
+                      <goals>
+                          <goal>generate-taglib-interface</goal>
+                      </goals>
                   </execution>
               </executions>
           </plugin>
