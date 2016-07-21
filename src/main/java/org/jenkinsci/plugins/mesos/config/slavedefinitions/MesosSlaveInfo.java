@@ -17,7 +17,7 @@ import java.util.logging.Logger;
 
 @ExportedBean
 public class MesosSlaveInfo {
-  public static final int UNLIMITED_MAX_NODES = -1;
+
   private static final String DEFAULT_LABEL_NAME = "mesos";
   private static final String DEFAULT_JVM_ARGS = "-Xms16m -XX:+UseConcMarkSweepGC -Djava.net.preferIPv4Stack=true";
   private static final String JVM_ARGS_PATTERN = "-Xmx.+ ";
@@ -157,6 +157,7 @@ public class MesosSlaveInfo {
     return jnlpArgs;
   }
 
+  @Exported(inline = true, visibility = 1)
   public ContainerInfo getContainerInfo() {
     return containerInfo;
   }
@@ -210,6 +211,7 @@ public class MesosSlaveInfo {
       }
   }
 
+  @ExportedBean
   public static class ContainerInfo {
     private final String type;
     private final String dockerImage;
@@ -260,6 +262,7 @@ public class MesosSlaveInfo {
       return type;
     }
 
+    @Exported
     public String getDockerImage() {
       return dockerImage;
     }
@@ -304,6 +307,7 @@ public class MesosSlaveInfo {
 
     public String getCustomDockerCommandShell() {  return customDockerCommandShell; }
 
+    @SuppressWarnings("unused")
     public PortMapping getPortMapping(int containerPort) {
       for (PortMapping portMapping : portMappings) {
           if (portMapping.getContainerPort() == containerPort) {
@@ -337,8 +341,8 @@ public class MesosSlaveInfo {
 
   public static class PortMapping {
 
-    private final Integer containerPort; // TODO validate 1 to 65535
-    private final Integer hostPort;      // TODO validate 1 to 65535
+    private final Integer containerPort;
+    private final Integer hostPort;
     private final String protocol;
     private final String description;
     private final String urlFormat;
@@ -368,14 +372,17 @@ public class MesosSlaveInfo {
         return description;
     }
 
+    @SuppressWarnings("unused")
     public String getUrlFormat() {
         return urlFormat;
     }
 
+    @SuppressWarnings("unused")
     public boolean hasUrlFormat() {
         return urlFormat != null;
     }
 
+    @SuppressWarnings("unused")
     public String getFormattedUrl(String hostname, Integer hostPort) {
         String[] searchList = {"{hostname}", "{hostPort}"};
         String[] replaceList = {hostname, String.valueOf(hostPort)};
