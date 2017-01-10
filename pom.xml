@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>1.609.3</version><!-- the minimum Jenkins core compatible version to run plugin on -->
+    <version>1.609</version><!-- the minimum Jenkins core compatible version to run plugin on -->
   </parent>
 
   <artifactId>mesos</artifactId>
