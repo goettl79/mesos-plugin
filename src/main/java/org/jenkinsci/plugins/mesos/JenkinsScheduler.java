@@ -759,7 +759,13 @@ public class JenkinsScheduler implements Scheduler {
     TaskStatus[] t = { taskStatus };
     driver.reconcileTasks(Arrays.asList(t));
   }
-  
+
+  public void reconcileAllTasks() {
+    for(TaskID task : results.keySet()) {
+      reconcileTask(task.getValue());
+    }
+  }
+
   @Override
   public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
     TaskID taskId = status.getTaskId();
