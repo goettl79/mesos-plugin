@@ -753,6 +753,13 @@ public class JenkinsScheduler implements Scheduler {
     LOGGER.info("Rescinded offer " + offerId);
   }
 
+  public void reconcileTask(String taskID) {
+    TaskID id = TaskID.newBuilder().setValue(taskID).build();
+    TaskStatus taskStatus = TaskStatus.newBuilder().setTaskId(id).setState(TaskState.TASK_LOST).build();
+    TaskStatus[] t = { taskStatus };
+    driver.reconcileTasks(Arrays.asList(t));
+  }
+  
   @Override
   public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
     TaskID taskId = status.getTaskId();
