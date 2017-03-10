@@ -16,8 +16,11 @@ package org.jenkinsci.plugins.mesos;
 
 import hudson.Extension;
 import hudson.FilePath;
-import hudson.model.*;
+import hudson.model.Computer;
 import hudson.model.Descriptor.FormException;
+import hudson.model.Node;
+import hudson.model.Queue;
+import hudson.model.Slave;
 import hudson.model.queue.CauseOfBlockage;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.EphemeralNode;
@@ -84,15 +87,18 @@ public class MesosSlave extends Slave implements EphemeralNode {
   public void terminate() {
     LOGGER.info("Terminating slave " + getNodeName());
     try {
-      // Remove the node from hudson.
+      ComputerLauncher launcher = getLauncher();
+      // If this is a mesos computer launcher, terminate the launcher.
+
+      if (this.getChannel() != null) {
+        if (launcher instanceof MesosComputerLauncher) {
+          ((MesosComputerLauncher) launcher).terminate();
+        }
+        this.getChannel().close();
+      }
+
       Jenkins.getInstance().removeNode(this);
 
-      ComputerLauncher launcher = getLauncher();
-
-      // If this is a mesos computer launcher, terminate the launcher.
-      if (launcher instanceof MesosComputerLauncher) {
-        ((MesosComputerLauncher) launcher).terminate();
-      }
     } catch (IOException e) {
       LOGGER.log(Level.WARNING, "Failed to terminate Mesos instance: "
           + getInstanceId(), e);

@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 
 import hudson.model.*;
 import hudson.slaves.SlaveComputer;
+import org.apache.mesos.Protos;
 import org.joda.time.DateTimeUtils;
 import hudson.slaves.OfflineCause;
 
@@ -75,6 +76,14 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
 
     //if an executor is "dead", determining the conntectionTime may cause an NullPointer Exception
     try {
+      Protos.TaskStatus taskStatus = c.getNode().getTaskStatus();
+      if(taskStatus != null) {
+        //if task is staging, check again in a minute
+        if(Protos.TaskState.TASK_STAGING.equals(taskStatus.getState())) {
+          return 1;
+        }
+      }
+
       // If we just launched this computer, check back after 1 min.
       // NOTE: 'c.getConnectTime()' refers to when the Jenkins slave was launched.
       if ((DateTimeUtils.currentTimeMillis() - c.getConnectTime()) <

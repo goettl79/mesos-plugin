@@ -1,8 +1,5 @@
 package org.jenkinsci.plugins.mesos;
 
-import java.io.IOException;
-import java.util.logging.Level;
-
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -14,6 +11,8 @@ import hudson.model.Computer;
 import hudson.model.TaskListener;
 import hudson.slaves.OfflineCause;
 import jenkins.model.Jenkins;
+
+import java.util.logging.Level;
 
 /**
  This file is part of the JCloud Jenkins Plugin. (https://github.com/jenkinsci/jclouds-plugin)
@@ -82,18 +81,12 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
                 ListenableFuture<?> f = executor.submit(new Runnable() {
                   public void run() {
                     logger.log(Level.INFO, "Deleting pending node " + comp.getName());
-                    try {
-                      if(comp.isOffline() && comp.getChannel() == null) {
-                        //maybe slave was never online.. delete it from Jenkins instance
-                        comp.deleteSlave();
-                      } else {
-                        //disconnect slave so the task at mesos can finish and dont get killed.
-                        comp.disconnect(OfflineCause.create(Messages._DeletedCause()));
-                      }
-                    } catch (IOException e) {
-                      logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
-                    } catch (InterruptedException e) {
-                      logger.log(Level.WARNING, "Failed to disconnect and delete " + c.getName() + ": " + e.getMessage());
+                    if(comp.isOffline() && comp.getChannel() == null) {
+                      //maybe slave was never online.. delete it from Jenkins instance
+                      comp.deleteSlave();
+                    } else {
+                      //disconnect slave so the task at mesos can finish and dont get killed.
+                      comp.disconnect(OfflineCause.create(Messages._DeletedCause()));
                     }
                   }
                 });

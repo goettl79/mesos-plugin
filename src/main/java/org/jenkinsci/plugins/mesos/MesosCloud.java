@@ -18,11 +18,7 @@ import hudson.EnvVars;
 import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
-import hudson.model.Descriptor;
-import hudson.model.Item;
-import hudson.model.Label;
-import hudson.model.Node;
-import hudson.model.Queue;
+import hudson.model.*;
 import hudson.slaves.Cloud;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 import hudson.slaves.NodeProperty;
@@ -350,15 +346,14 @@ public class MesosCloud extends Cloud {
   }
 
   private void removeSlaveFromJenkins(Mesos.JenkinsSlave slave) {
-    try {
-      Jenkins jenkins = Jenkins.getInstance();
-      Node n = jenkins.getNode(slave.getName());
-      if(n != null) {
-        jenkins.removeNode(n);
+    Jenkins jenkins = Jenkins.getInstance();
+    Node n = jenkins.getNode(slave.getName());
+    if(n != null) {
+      Computer computer = n.toComputer();
+      if(computer instanceof MesosComputer) {
+        MesosComputer mesosComputer = (MesosComputer) computer;
+        mesosComputer.deleteSlave();
       }
-    } catch (IOException e) {
-      LOGGER.fine("Error while removing Slave from Jenkins " + e.getMessage());
-      e.printStackTrace();
     }
   }
 

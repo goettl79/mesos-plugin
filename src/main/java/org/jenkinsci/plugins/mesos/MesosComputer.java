@@ -14,22 +14,15 @@
  */
 package org.jenkinsci.plugins.mesos;
 
-import hudson.model.Hudson;
 import hudson.model.Slave;
+import hudson.slaves.OfflineCause;
 import hudson.slaves.SlaveComputer;
-
-import java.io.IOException;
-import java.util.logging.Logger;
+import jenkins.slaves.EncryptedSlaveAgentJnlpFile;
+import org.kohsuke.stapler.*;
 
 import javax.servlet.ServletException;
-
-import jenkins.slaves.EncryptedSlaveAgentJnlpFile;
-
-import org.kohsuke.stapler.HttpRedirect;
-import org.kohsuke.stapler.HttpResponse;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
-import org.kohsuke.stapler.WebMethod;
+import java.io.IOException;
+import java.util.logging.Logger;
 
 public class MesosComputer extends SlaveComputer {
   private static final Logger LOGGER = Logger.getLogger(MesosComputer.class.getName());
@@ -43,11 +36,16 @@ public class MesosComputer extends SlaveComputer {
     return (MesosSlave) super.getNode();
   }
 
+
   @Override
   public HttpResponse doDoDelete() throws IOException {
     checkPermission(DELETE);
-    if (getNode() != null)
-      getNode().terminate();
+
+    if(getChannel() != null) {
+      disconnect(OfflineCause.create(Messages._DeletedCause()));
+    } else {
+      deleteSlave();
+    }
     return new HttpRedirect("..");
   }
 
@@ -62,17 +60,11 @@ public class MesosComputer extends SlaveComputer {
    *
    * @throws InterruptedException
    */
-  public void deleteSlave() throws IOException, InterruptedException {
-      LOGGER.info("Terminating " + getName() + " slave");
-      MesosSlave slave = getNode();
-
-      // Slave already deleted
-      if (slave == null) return;
-
-      if (slave.getChannel() != null) {
-          slave.getChannel().close();
-      }
-      slave.terminate();
-      Hudson.getInstance().removeNode(slave);
+  public void deleteSlave() {
+    LOGGER.info("Terminating " + getName() + " slave");
+    MesosSlave slave = getNode();
+    // Slave already deleted
+    if (slave == null) return;
+    slave.terminate();
   }
 }

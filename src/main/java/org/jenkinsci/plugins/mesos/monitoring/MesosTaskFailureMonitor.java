@@ -9,10 +9,11 @@ import jenkins.management.AsynchronousAdministrativeMonitor;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.mesos.Mesos;
 import org.jenkinsci.plugins.mesos.MesosCloud;
+import org.jenkinsci.plugins.mesos.MesosComputer;
+import org.jenkinsci.plugins.mesos.MesosSlave;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Collection;
 import java.util.Collections;
@@ -78,13 +79,12 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
     Jenkins jenkins = Jenkins.getInstance();
     Node node = jenkins.getNode(failedSlave.getName());
     if (node != null) {
-      try {
-        jenkins.removeNode(node);
-        logger.println("Removed node '" + failedSlave + "' from Jenkins");
-      } catch (IOException e) {
-        logger.println("Could not remove '" + failedSlave + "' because:");
-        e.printStackTrace(logger);
+      if(node instanceof MesosSlave) {
+        MesosSlave mesosSlave = (MesosSlave) node;
+        MesosComputer mesosComputer = (MesosComputer) mesosSlave.toComputer();
+        mesosComputer.deleteSlave();
       }
+      logger.println("Removed node '" + failedSlave + "' from Jenkins");
     }
   }
 

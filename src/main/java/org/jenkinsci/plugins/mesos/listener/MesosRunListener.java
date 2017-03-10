@@ -1,20 +1,15 @@
 package org.jenkinsci.plugins.mesos.listener;
 
 import hudson.Extension;
-import hudson.model.AbstractBuild;
-import hudson.model.Executor;
-import hudson.model.Node;
-import hudson.model.TaskListener;
-import hudson.model.Run;
+import hudson.model.*;
 import hudson.model.listeners.RunListener;
+import org.jenkinsci.plugins.mesos.JenkinsScheduler;
+import org.jenkinsci.plugins.mesos.Mesos;
+import org.jenkinsci.plugins.mesos.MesosSlave;
 
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.logging.Logger;
-
-import org.jenkinsci.plugins.mesos.JenkinsScheduler;
-import org.jenkinsci.plugins.mesos.Mesos;
-import org.jenkinsci.plugins.mesos.MesosSlave;
 
 @SuppressWarnings("rawtypes")
 @Extension

@@ -12,7 +12,8 @@
 
     <h2>${%Additional Mesos Information}</h2>
 
-    <p>Mesos node: ${slaveResult.slave.hostName}</p>
+    <p>Mesos Agent: ${slaveResult.slave.hostName}</p>
+    <p>Task Status: ${it.node.taskStatus.getState()}</p>
     <p>Image: ${containerInfo.dockerImage}</p>
     <p>Container: ${it.node.getDockerContainerID()}</p>
 
