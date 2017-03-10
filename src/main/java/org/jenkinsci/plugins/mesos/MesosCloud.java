@@ -19,6 +19,7 @@ import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.*;
+import hudson.model.queue.SubTask;
 import hudson.slaves.Cloud;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 import hudson.slaves.NodeProperty;
@@ -374,11 +375,18 @@ public class MesosCloud extends Cloud {
   }
 
   public String getFullNameOfItem(Queue.BuildableItem buildableItem) {
-    if(buildableItem == null || !(buildableItem.task instanceof Item)) {
-      throw new IllegalArgumentException(Messages.MesosCloud_InvalidItem(buildableItem));
+
+    if (buildableItem != null) {
+      Queue.Task task = buildableItem.task;
+
+      if (task instanceof Item) {
+        return ((Item) task).getFullName();
+      } else if (task instanceof SubTask) {
+        return ((Item) task.getOwnerTask()).getFullName();
+      }
     }
 
-    return ((Item) buildableItem.task).getFullName();
+    throw new IllegalArgumentException(Messages.MesosCloud_InvalidItem(buildableItem));
   }
 
   @Override
