@@ -567,11 +567,31 @@ public class JenkinsScheduler implements Scheduler {
           }
 
           String networking = request.request.slaveInfo.getContainerInfo().getNetworking();
-          dockerInfoBuilder.setNetwork(Network.valueOf(networking));
+          Network dockerNetwork = Network.valueOf(networking);
+
+          dockerInfoBuilder.setNetwork(dockerNetwork);
 
           //  https://github.com/jenkinsci/mesos-plugin/issues/109
-          if (dockerInfoBuilder.getNetwork() != Network.HOST) {
-              containerInfoBuilder.setHostname(slaveName);
+          if (!Network.HOST.equals(dockerNetwork)) {
+            containerInfoBuilder.setHostname(slaveName);
+          }
+
+          if (Network.USER.equals(dockerNetwork)) {
+            /*
+             * create network name out of principal and framework name to be relatively secure
+             * because, the password of the principal should only be known to the admins who configure the network
+             * thus, other containers of other frameworks cannot use this network in theory
+             *
+             * TODO: let choose between auto-generated and configured
+             */
+            final String networkName = String.format("%s-%s", //
+                    mesosCloud.getPrincipal(), //
+                    StringUtils.replace(mesosCloud.getFrameworkName(), " ", "-"));
+
+            LOGGER.log(Level.FINER, "Setting the USER network name to '" + networkName + "'");
+
+            NetworkInfo.Builder networkInfoBuilder = NetworkInfo.newBuilder().setName(networkName);
+            containerInfoBuilder.addNetworkInfos(networkInfoBuilder);
           }
 
           if (request.request.slaveInfo.getContainerInfo().hasPortMappings()) {
@@ -670,52 +690,67 @@ public class JenkinsScheduler implements Scheduler {
     return slaveCmd;
   }
 
-  private CommandInfo.Builder getBaseCommandBuilder(Request request) {
+    private CommandInfo.Builder getBaseCommandBuilder(Request request) {
 
         CommandInfo.Builder commandBuilder = CommandInfo.newBuilder();
-        String jenkinsCommand2Run = generateJenkinsCommand2Run(
-            request.request.slaveInfo.getSlaveMem(),
-            request.request.slaveInfo.getJvmArgs(),
-            request.request.slaveInfo.getJnlpArgs(),
-            request.request.slave.name,
-            request.request.slaveInfo.getRunAsUserInfo(),
-            request.request.slaveInfo.getAdditionalCommands());
+
+        String command = StringUtils.EMPTY;
+
+        // make an "api call" to mesos so that Jenkins knows that he has to create a new slave on Jenkins instance.
+        // user network (in our case) means an isolated network, so the fetcher will not be able to access jenkins
+        String slaveRequestUri = joinPaths(jenkinsMaster, String.format(SLAVE_REQUEST_FORMAT, request.request.slave.getName()));
+
+        String slaveJarUri = joinPaths(jenkinsMaster, SLAVE_JAR_URI_SUFFIX);
+
+        Network slaveNetwork = Network.NONE;
+        if (request.request.slaveInfo.getContainerInfo() != null) {
+            slaveNetwork = Network.valueOf(request.request.slaveInfo.getContainerInfo().getNetworking());
+        }
+
+        if (Network.USER.equals(slaveNetwork)) {
+            String requestSlaveCommand = "curl -o ${MESOS_SANDBOX}/" + request.request.slave.getName() + " " + slaveRequestUri;
+            String downloadSlaveJarCommand = "curl -o ${MESOS_SANDBOX}/slave.jar " + slaveJarUri;
+
+            command = requestSlaveCommand + " && " + downloadSlaveJarCommand + " && ";
+        } else {
+            commandBuilder.addUris(
+                    CommandInfo.URI.newBuilder().setValue(slaveRequestUri).setExecutable(false).setExtract(false));
+            commandBuilder.addUris(
+                    CommandInfo.URI.newBuilder().setValue(slaveJarUri).setExecutable(false).setExtract(false));
+        }
+
+        command += generateJenkinsCommand2Run(
+                request.request.slaveInfo.getSlaveMem(),
+                request.request.slaveInfo.getJvmArgs(),
+                request.request.slaveInfo.getJnlpArgs(),
+                request.request.slave.name,
+                request.request.slaveInfo.getRunAsUserInfo(),
+                request.request.slaveInfo.getAdditionalCommands());
 
         if (request.request.slaveInfo.getContainerInfo() != null &&
-            request.request.slaveInfo.getContainerInfo().getUseCustomDockerCommandShell()) {
+                request.request.slaveInfo.getContainerInfo().getUseCustomDockerCommandShell()) {
             // Ref http://mesos.apache.org/documentation/latest/upgrades
             // regarding setting the shell value, and the impact on the command to be
             // launched
             String customShell = request.request.slaveInfo.getContainerInfo().getCustomDockerCommandShell();
-            if (StringUtils.stripToNull(customShell)==null) {
-                throw new IllegalArgumentException("Invalid custom shell argument supplied  ");
+            if (StringUtils.stripToNull(customShell) == null) {
+                throw new IllegalArgumentException("Invalid custom shell argument supplied");
             }
 
-            LOGGER.info( String.format( "About to use custom shell: %s " , customShell));
+            LOGGER.info(String.format("About to use custom shell: %s ", customShell));
             commandBuilder.setShell(false);
             commandBuilder.setValue(customShell);
             List args = new ArrayList();
-            args.add(jenkinsCommand2Run);
-            commandBuilder.addAllArguments( args );
+            args.add(command);
+            commandBuilder.addAllArguments(args);
 
-    } else {
-        LOGGER.info("About to use default shell ....");
-        commandBuilder.setValue(jenkinsCommand2Run);
+        } else {
+            LOGGER.info("About to use default shell ....");
+            commandBuilder.setValue(command);
+        }
+
+        return commandBuilder;
     }
-    //make an "api call" to mesos so that Jenkins knows that he has to create a new slave on Jenkins instance.
-    commandBuilder.addUris(
-        CommandInfo.URI.newBuilder().setValue(
-            joinPaths(jenkinsMaster,
-                String.format(SLAVE_REQUEST_FORMAT,
-                    request.request.slave.getName(),
-                    request.request.slave.getLabel(),
-                    request.request.slave.getNumExecutors()))).setExecutable(false).setExtract(false));
-
-    commandBuilder.addUris(
-        CommandInfo.URI.newBuilder().setValue(
-            joinPaths(jenkinsMaster, SLAVE_JAR_URI_SUFFIX)).setExecutable(false).setExtract(false));
-    return commandBuilder;
-  }
 
   /**
    * Checks if the given taskId already exists or just finished running. If it has, then refuse the offer.
