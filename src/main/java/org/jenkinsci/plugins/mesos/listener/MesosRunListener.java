@@ -10,12 +10,14 @@ import org.jenkinsci.plugins.mesos.MesosSlave;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 @SuppressWarnings("rawtypes")
 @Extension
 public class MesosRunListener extends RunListener<Run> {
 
   private static final Logger LOGGER = Logger.getLogger(MesosRunListener.class.getName());
+  private static final String EXCLUDED_CLASSES_FROM_LOG_OUTPUT_REGEX = "hudson\\.maven\\.MavenBuild";
 
   public MesosRunListener() {
 
@@ -35,7 +37,7 @@ public class MesosRunListener extends RunListener<Run> {
    */
   @Override
   public void onStarted(Run r, TaskListener listener) {
-    if (r instanceof AbstractBuild) {
+    if (!skipLogfileOutputForRun(r)) {
       Node node = getCurrentNode();
       if (node instanceof MesosSlave) {
         try {
@@ -45,11 +47,18 @@ public class MesosRunListener extends RunListener<Run> {
           String mesosNodeHostname = jenkinsScheduler.getResult(mesosSlave.getDisplayName()).getSlave().getHostName();
           String hostname = node.toComputer().getHostName();
 
+          String msg = String.format("This build is running on %s", mesosNodeHostname);
+          String containerID = mesosSlave.getDockerContainerID();
+
+          if (containerID != null) {
+            msg += String.format(" in %s", containerID);
+          }
+
           PrintStream logger = listener.getLogger();
           logger.println();
-          logger.println(String.format("This build is running on %s in %s", mesosNodeHostname, mesosSlave.getDockerContainerID()));
+          logger.println(msg);
 
-          if(hostname != null) {
+          if (hostname != null) {
             logger.println("Jenkins Slave (hostname): " + hostname);
           }
           logger.println();
@@ -66,19 +75,26 @@ public class MesosRunListener extends RunListener<Run> {
 
   @Override
   public void onCompleted(Run run, TaskListener listener) {
-    if (run instanceof AbstractBuild) {
+    if (!skipLogfileOutputForRun(run)) {
       Node node = getCurrentNode();
       if (node instanceof MesosSlave) {
         MesosSlave mesosSlave = (MesosSlave) node;
+        String monitoringUrl = mesosSlave.getMonitoringURL();
+        PrintStream logger = listener.getLogger();
 
-        if(mesosSlave.getMonitoringURL() != null) {
-          PrintStream logger = listener.getLogger();
-          logger.println();
-          logger.println("Slave resource usage: " + mesosSlave.getMonitoringURL());
-          logger.println();
+        logger.println();
+        if(monitoringUrl != null) {
+          logger.println("Slave resource usage: " + monitoringUrl);
+        } else {
+          logger.println("Slave resource usage is not available for this build.");
         }
+        logger.println();
       }
     }
+  }
+
+  private boolean skipLogfileOutputForRun(Run r) {
+    return r == null || Pattern.matches(EXCLUDED_CLASSES_FROM_LOG_OUTPUT_REGEX,r.getClass().getName());
   }
 
   /**

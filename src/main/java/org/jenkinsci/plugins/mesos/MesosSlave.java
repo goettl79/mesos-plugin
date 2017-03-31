@@ -184,14 +184,14 @@ public class MesosSlave extends Slave implements EphemeralNode {
         return jsonObject.getString("Name").replaceFirst("/", "").trim();
       }
     } catch (Exception e) {
-
+      LOGGER.warning("Failed to get DockerContainerID from TaskStatus: " + e.getMessage());
     }
     return null;
   }
 
   public String getMonitoringURL() {
-
-    if(cloud.getGrafanaDashboardURL() == null || cloud.getGrafanaDashboardURL().isEmpty()) {
+    String containerId = getDockerContainerID();
+    if(cloud.getGrafanaDashboardURL() == null || cloud.getGrafanaDashboardURL().isEmpty() || containerId == null) {
       return  null;
     }
 
@@ -200,7 +200,7 @@ public class MesosSlave extends Slave implements EphemeralNode {
     long from = this.getComputer().getConnectTime();
     long to = System.currentTimeMillis();
 
-    return String.format("%s?var-slave=%s&var-container=%s&from=%d&to=%d", host, this.getDisplayName(), this.getDockerContainerID(), from, to);
+    return String.format("%s?var-slave=%s&var-container=%s&from=%d&to=%d", host, this.getDisplayName(), containerId, from, to);
   }
 
   public String getLinkedItem() {
