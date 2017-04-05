@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>1.609</version><!-- the minimum Jenkins core compatible version to run plugin on -->
+    <version>1.609</version>
   </parent>
 
   <artifactId>mesos</artifactId>
@@ -12,9 +12,9 @@
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Mesos+Plugin</url>
 
   <scm>
-    <connection>scm:git:https://github.com/goettl79/mesos-plugin.git</connection>
-    <developerConnection>scm:git:https://github.com/goettl79/mesos-plugin.git</developerConnection>
-    <url>https://github.com/jenkinsci/mesos-plugin</url>
+    <connection>scm:git:https://github.com/infonova/mesos-plugin.git</connection>
+    <developerConnection>scm:git:https://github.com/infonova/mesos-plugin.git</developerConnection>
+    <url>https://github.com/infonova/mesos-plugin</url>
     <tag>HEAD</tag>
   </scm>
 
@@ -190,7 +190,7 @@
           <extension>
               <groupId>org.apache.maven.wagon</groupId>
               <artifactId>wagon-webdav-jackrabbit</artifactId>
-              <version>1.0</version>
+              <version>2.10</version>
           </extension>
       </extensions>
   </build>
