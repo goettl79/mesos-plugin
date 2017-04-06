@@ -15,7 +15,7 @@
     <connection>scm:git:https://github.com/infonova/mesos-plugin.git</connection>
     <developerConnection>scm:git:https://github.com/infonova/mesos-plugin.git</developerConnection>
     <url>https://github.com/infonova/mesos-plugin</url>
-    <tag>HEAD</tag>
+    <tag>libmesos-1.1.1</tag>
   </scm>
 
     <distributionManagement>
