@@ -137,7 +137,7 @@ public class JenkinsScheduler implements Scheduler {
           SUPERVISOR_LOCK.unlock();
         }
       }
-    }).start();
+    }, "Framework " + mesosCloud.getFrameworkName() + " thread").start();
   }
 
   public synchronized void stop() {
