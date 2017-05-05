@@ -156,14 +156,48 @@ public class JenkinsScheduler implements Scheduler {
     return running;
   }
 
-  public synchronized void requestJenkinsSlave(Mesos.SlaveRequest request, Mesos.SlaveResult result) {
+  public synchronized void requestJenkinsSlave(Mesos.SlaveRequest slaveRequest, Mesos.SlaveResult slaveResult) {
     LOGGER.info("Enqueuing jenkins slave request");
-    requests.add(new Request(request, result));
+
+    Request request = new Request(slaveRequest, slaveResult);
+    if(isResourceLimitReached(request)) {
+      LOGGER.info("Maximum number of CPUs or Mem is reached, set request "+ slaveRequest.slave.name +" as failed " +
+              "for a later retry." );
+      slaveResult.failed(slaveRequest.slave, Mesos.SlaveResult.FAILED_CAUSE.RESOURCE_LIMIT_REACHED);
+      return;
+    }
+
+    requests.add(request);
+
     if (driver != null) {
       // Ask mesos to send all offers, even the those we declined earlier.
       // See comment in resourceOffers() for further details.
       driver.reviveOffers();
     }
+  }
+
+  private boolean isCpuLimitActivated() {
+    // TODO: do activate with boolean value, not with certain value
+    return mesosCloud.getMaxCpus() > 0.01;
+  }
+
+  private boolean isCpuLimitReached(Request request) {
+    double futureUsedCpus = getUsedCpus() + request.request.cpus;
+    return isCpuLimitActivated() && mesosCloud.getMaxCpus() < futureUsedCpus;
+  }
+
+  private boolean isMemoryLimitActivated() {
+    // TODO: do activate with boolean value, not with certain value
+    return mesosCloud.getMaxMem() > 0;
+  }
+
+  private boolean isMemoryLimitReached(Request request) {
+    int futureUsedMemory = getUsedMem() + request.request.mem;
+    return isMemoryLimitActivated() && mesosCloud.getMaxMem() < futureUsedMemory;
+  }
+
+  private boolean isResourceLimitReached(Request request) {
+    return isCpuLimitReached(request) || isMemoryLimitReached(request);
   }
 
   /**
@@ -219,7 +253,7 @@ public class JenkinsScheduler implements Scheduler {
              requests.remove(request);
              // Also signal the Thread of the MesosComputerLauncher.launch() to exit from latch.await()
              // Otherwise the Thread will stay in WAIT forever -> Leak!
-             request.result.failed(request.request.slave);
+             request.result.failed(request.request.slave, Mesos.SlaveResult.FAILED_CAUSE.SLAVE_NEVER_SCHEDULED);
              return;
            }
         }
@@ -519,7 +553,9 @@ public class JenkinsScheduler implements Scheduler {
             actualPortMappings,
             request.request.slaveInfo.getLabelString(),
             request.request.slave.getNumExecutors(),
-            request.request.slave.linkedItem);
+            request.request.slave.linkedItem,
+            request.request.cpus,
+            request.request.mem);
 
     results.put(taskId, new Result(request.result, jenkinsSlave));
     finishedTasks.add(taskId);
@@ -873,9 +909,15 @@ public class JenkinsScheduler implements Scheduler {
       terminalState = true;
       break;
     case TASK_FAILED:
+      result.result.failed(result.slave, Mesos.SlaveResult.FAILED_CAUSE.MESOS_CLOUD_REPORTED_TASK_FAILED);
+      terminalState = true;
+      break;
     case TASK_ERROR:
+      result.result.failed(result.slave, Mesos.SlaveResult.FAILED_CAUSE.MESOS_CLOUD_REPORTED_TASK_ERROR);
+      terminalState = true;
+      break;
     case TASK_LOST:
-      result.result.failed(result.slave);
+      result.result.failed(result.slave, Mesos.SlaveResult.FAILED_CAUSE.MESOS_CLOUD_REPORTED_TASK_LOST);
       terminalState = true;
       break;
     default:
@@ -942,7 +984,7 @@ public class JenkinsScheduler implements Scheduler {
         }
       }
     } catch (Exception e) {
-      //yes, we tried..
+      LOGGER.log(Level.WARNING, "Error while trying to find a request matching with label '" + label + "'", e);
     }
 
     return foundRequests;
@@ -977,7 +1019,7 @@ public class JenkinsScheduler implements Scheduler {
     }
   }
 
-  public int getNumberofPendingTasks() {
+  public int getNumberOfPendingTasks() {
     return requests.size();
   }
 
@@ -1001,7 +1043,7 @@ public class JenkinsScheduler implements Scheduler {
         try {
           JenkinsScheduler scheduler = (JenkinsScheduler) cloud.getScheduler();
           if (scheduler != null) {
-            boolean pendingTasks = (scheduler.getNumberofPendingTasks() > 0);
+            boolean pendingTasks = (scheduler.getNumberOfPendingTasks() > 0);
             boolean activeSlaves = false;
             boolean activeTasks = (scheduler.getNumberOfActiveTasks() > 0);
             List<Node> slaveNodes = Jenkins.getInstance().getNodes();
@@ -1063,7 +1105,29 @@ public class JenkinsScheduler implements Scheduler {
     return result;
   }
 
+  public double getUsedCpus() {
+    double cpus = 0.0;
+    for(Request request: requests) {
+      cpus += request.request.cpus;
+    }
 
+    for(Result result: results.values()) {
+      cpus += result.getSlave().getCpus();
+    }
+    return cpus;
+  }
+
+  public int getUsedMem() {
+    int mem = 0;
+    for(Request request:requests) {
+      mem += request.request.mem;
+    }
+
+    for(Result result: results.values()) {
+      mem += result.getSlave().getMem();
+    }
+    return mem;
+  }
 
   public String getJenkinsMaster() {
     return jenkinsMaster;
