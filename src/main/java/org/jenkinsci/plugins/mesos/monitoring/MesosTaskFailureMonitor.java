@@ -12,19 +12,17 @@ import org.jenkinsci.plugins.mesos.MesosCloud;
 import org.jenkinsci.plugins.mesos.MesosComputer;
 import org.jenkinsci.plugins.mesos.MesosSlave;
 import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import java.io.PrintStream;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
 
 @Extension
 public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
 
-  private Set<Mesos.JenkinsSlave> failedSlaves = Collections.synchronizedSet(new LinkedHashSet<Mesos.JenkinsSlave>());
-
+  private volatile Map<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE> failedSlaves =
+          new HashMap<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE>();
   @Override
   public String getDisplayName() {
     return "Mesos Task Failure Monitor";
@@ -42,13 +40,14 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   @Override
   public void fix(TaskListener taskListener) throws Exception {
     PrintStream logger = taskListener.getLogger();
-    Set<Mesos.JenkinsSlave> failedSlaves = getFailedSlaves();
-    for (Mesos.JenkinsSlave failedSlave : failedSlaves) {
+
+    Map<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE> map = new HashMap<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE>(failedSlaves);
+
+    for (Mesos.JenkinsSlave failedSlave : map.keySet()) {
+      this.failedSlaves.remove(failedSlave);
       removeExistingNode(failedSlave, logger);
       requestNewNode(failedSlave, logger);
     }
-
-    this.failedSlaves.removeAll(failedSlaves);
   }
 
   private void requestNewNode(Mesos.JenkinsSlave failedSlave, PrintStream logger) {
@@ -89,23 +88,30 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   }
 
   @RequirePOST
-  public HttpResponse doFix() {
+  public HttpResponse doFix(StaplerRequest req) {
+    if(req.hasParameter("fix")) {
+      fixTasks();
+    } else if(req.hasParameter("dismiss")) {
+      ignoreTasks();
+    }
+
+    return HttpResponses.forwardToPreviousPage();
+  }
+
+  public void fixTasks() {
     start(false);
-    return HttpResponses.forwardToPreviousPage();
   }
 
-  @RequirePOST
-  public HttpResponse doDismiss() {
+  public void ignoreTasks() {
     getLogFile().delete();
-    failedSlaves = Collections.synchronizedSet(new LinkedHashSet<Mesos.JenkinsSlave>());
-    return HttpResponses.forwardToPreviousPage();
+    failedSlaves = new HashMap<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE>();
   }
 
-  public boolean addFailedSlave(Mesos.JenkinsSlave slave) {
-    return failedSlaves.add(slave);
+  public void addFailedSlave(Mesos.JenkinsSlave slave, Mesos.SlaveResult.FAILED_CAUSE cause) {
+    failedSlaves.put(slave, cause);
   }
 
-  public Set<Mesos.JenkinsSlave> getFailedSlaves() {
-    return Collections.unmodifiableSet(failedSlaves);
+  public Map<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE> getFailedSlaves() {
+    return failedSlaves;
   }
 }
