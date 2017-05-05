@@ -1,12 +1,16 @@
 package org.jenkinsci.plugins.mesos.listener;
 
 import hudson.Extension;
-import hudson.model.*;
+import hudson.model.Executor;
+import hudson.model.Node;
+import hudson.model.Run;
+import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import org.jenkinsci.plugins.mesos.JenkinsScheduler;
 import org.jenkinsci.plugins.mesos.Mesos;
 import org.jenkinsci.plugins.mesos.MesosSlave;
 
+import javax.annotation.CheckForNull;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.logging.Logger;
@@ -36,9 +40,9 @@ public class MesosRunListener extends RunListener<Run> {
    * This would help us debug/take action if build fails in that slave.
    */
   @Override
-  public void onStarted(Run r, TaskListener listener) {
-    if (!skipLogfileOutputForRun(r)) {
-      Node node = getCurrentNode();
+  public void onStarted(Run run, TaskListener listener) {
+    if (!skipLogfileOutputForRun(run)) {
+      Node node = getCurrentNode(run);
       if (node instanceof MesosSlave) {
         try {
           MesosSlave mesosSlave = (MesosSlave) node;
@@ -76,7 +80,7 @@ public class MesosRunListener extends RunListener<Run> {
   @Override
   public void onCompleted(Run run, TaskListener listener) {
     if (!skipLogfileOutputForRun(run)) {
-      Node node = getCurrentNode();
+      Node node = getCurrentNode(run);
       if (node instanceof MesosSlave) {
         MesosSlave mesosSlave = (MesosSlave) node;
         String monitoringUrl = mesosSlave.getMonitoringURL();
@@ -100,8 +104,14 @@ public class MesosRunListener extends RunListener<Run> {
   /**
    * Returns the current {@link Node} on which we are building.
    */
-  private final Node getCurrentNode() {
-    return Executor.currentExecutor().getOwner().getNode();
+  @CheckForNull
+  private final Node getCurrentNode(Run run) {
+    Executor executor =  run.getExecutor();
+    if (executor == null) {
+      return null;
+    }
+
+    return executor.getOwner().getNode();
   }
 
 }
