@@ -19,14 +19,6 @@
         <f:textbox field="role" default="*" clazz="required"/>
     </f:entry>
 
-    <f:entry title="${%Maximal Cpus allocation}" field="maxCpus">
-        <f:textbox field="maxCpus" default="-1" clazz="required"/>
-    </f:entry>
-
-    <f:entry title="${%Maximal Memory allocation}" field="maxMem">
-        <f:textbox field="maxMem" default="-1" clazz="required"/>
-    </f:entry>
-
     <f:entry title="${%Slave username}">
         <f:textbox field="slavesUser" default=""/>
     </f:entry>

@@ -7,8 +7,9 @@ if (my.isFixingActive()) {
         raw _("inProgress",my.url)
     }
 } else if (my.logFile.exists()) {
-    div(class:"info") {
+    form(method:"POST",action:"${my.url}/dismiss",name:"dismissFailedTasks") {
         raw _("completed",my.url)
+        f.submit(name:"dismiss",value:_("Dismiss this message"))
     }
 }
 
@@ -20,14 +21,13 @@ if (!my.failedSlaves.isEmpty()) {
         ul {
             my.failedSlaves.each { failedSlave ->
                 li {
-                    a(href:rootURL + '/computer/' + failedSlave.key, "${failedSlave.key} (${failedSlave.value})")
+                    a(href:rootURL + '/computer/' + failedSlave, failedSlave)
                 }
             }
         }
 
         div(align:"right") {
-            f.submit(name:"fix",value:_("Retry failed tasks"))
-            f.submit(name:"dismiss",value:_("Ignore failed tasks (no reprovisioning)"))
+            f.submit(name:"fix",value:_("retry failed tasks"))
         }
     }
 }
