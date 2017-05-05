@@ -66,7 +66,7 @@ public class MesosQueueListener extends QueueListener {
               if (scheduler != null) {
                 if (scheduler instanceof JenkinsScheduler) {
                   JenkinsScheduler jenkinsScheduler = (JenkinsScheduler) scheduler;
-                  if (jenkinsScheduler.removeRequestForLinkedItem(mesosCloud.getFullNameOfTask(li.task))) {
+                  if (jenkinsScheduler.removeRequestMatchingLabel(li.getAssignedLabel().getDisplayName())) {
                     return; //it should only remove one task
                   }
                 }
