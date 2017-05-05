@@ -12,10 +12,9 @@ import org.apache.mesos.Scheduler;
 import org.jenkinsci.plugins.mesos.JenkinsScheduler;
 import org.jenkinsci.plugins.mesos.Mesos;
 import org.jenkinsci.plugins.mesos.MesosCloud;
-import org.jenkinsci.plugins.mesos.config.acl.MesosFrameworkToItemMapper;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
-import org.jenkinsci.plugins.mesos.*;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @SuppressWarnings("rawtypes")
@@ -66,7 +65,7 @@ public class MesosQueueListener extends QueueListener {
               if (scheduler != null) {
                 if (scheduler instanceof JenkinsScheduler) {
                   JenkinsScheduler jenkinsScheduler = (JenkinsScheduler) scheduler;
-                  if (jenkinsScheduler.removeRequestMatchingLabel(li.getAssignedLabel().getDisplayName())) {
+                  if (jenkinsScheduler.removeRequestForLinkedItem(mesosCloud.getFullNameOfTask(li.task))) {
                     return; //it should only remove one task
                   }
                 }
@@ -76,8 +75,7 @@ public class MesosQueueListener extends QueueListener {
         }
       }
     } catch (Exception e) {
-      LOGGER.fine("Error while removing request from buildable Item " + e.getMessage());
-      e.printStackTrace();
+      LOGGER.log(Level.WARNING, "Error while removing request from buildable Item", e);
     }
   }
 

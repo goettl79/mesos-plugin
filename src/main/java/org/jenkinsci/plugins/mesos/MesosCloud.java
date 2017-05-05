@@ -19,7 +19,6 @@ import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.*;
-import hudson.model.queue.SubTask;
 import hudson.slaves.Cloud;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 import hudson.slaves.NodeProperty;
@@ -41,6 +40,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
+import javax.annotation.Nonnull;
 import javax.servlet.ServletException;
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -273,8 +273,7 @@ public class MesosCloud extends Cloud {
         }
       }
     } catch (Exception e) {
-      LOGGER.fine("Error while jenkins tried to provision a Slave for "+label.getDisplayName());
-      e.printStackTrace();
+      LOGGER.log(Level.WARNING, "Error while jenkins tried to provision a Slave for " + label.getDisplayName(), e);
     }
 
     return new ArrayList<PlannedNode>();
@@ -375,18 +374,22 @@ public class MesosCloud extends Cloud {
   }
 
   public String getFullNameOfItem(Queue.BuildableItem buildableItem) {
-
     if (buildableItem != null) {
       Queue.Task task = buildableItem.task;
-
-      if (task instanceof Item) {
-        return ((Item) task).getFullName();
-      } else if (task instanceof SubTask) {
-        return ((Item) task.getOwnerTask()).getFullName();
-      }
+      String taskName = getFullNameOfTask(task);
+      return taskName;
     }
 
     throw new IllegalArgumentException(Messages.MesosCloud_InvalidItem(buildableItem));
+  }
+
+  @Nonnull
+  public String getFullNameOfTask(@Nonnull Queue.Task task) {
+    if (task instanceof Item) {
+      return ((Item) task).getFullName();
+    }
+
+    return getFullNameOfTask(task.getOwnerTask());
   }
 
   @Override

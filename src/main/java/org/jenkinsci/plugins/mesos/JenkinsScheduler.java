@@ -1034,18 +1034,24 @@ public class JenkinsScheduler implements Scheduler {
     }
   }
 
-  public boolean removeRequestMatchingLabel(String labelString) {
+  public Request getRequestForLinkedItem(String linkedItem) {
     try {
       for (Request request : requests) {
-        if (request.request.slaveInfo.getLabelString().equals(labelString)) {
-          requests.remove(request);
-          LOGGER.info("Removed request for Label " + request.request.slaveInfo.getLabelString());
-          return true;
+        if (StringUtils.equals(request.request.slave.getLinkedItem(),linkedItem)) {
+          return request;
         }
       }
     } catch (Exception e) {
-      LOGGER.info("Error while removing request: " + e.getMessage());
-      e.printStackTrace();
+      LOGGER.log(Level.WARNING, "Error while finding request: ", e);
+    }
+    return null;
+  }
+
+  public boolean removeRequestForLinkedItem(String linkedItem) {
+    Request request = getRequestForLinkedItem(linkedItem);
+    if(request != null) {
+      requests.remove(request);
+      return true;
     }
     return false;
   }
