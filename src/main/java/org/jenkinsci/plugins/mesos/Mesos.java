@@ -42,8 +42,11 @@ public abstract class Mesos {
     int numExecutors;
     private final List<DockerInfo.PortMapping> actualPortMappings;
     String linkedItem;
+    double cpus;
+    int mem;
 
-    public JenkinsSlave(String name, String hostName, List<DockerInfo.PortMapping> actualPortMappings, String label, int numExecutors, String linkedItem) {
+
+    public JenkinsSlave(String name, String hostName, List<DockerInfo.PortMapping> actualPortMappings, String label, int numExecutors, String linkedItem, double cpus, int mem) {
       this.name = name;
       this.hostName = hostName;
 
@@ -56,14 +59,16 @@ public abstract class Mesos {
       this.numExecutors = numExecutors;
       this.label = label;
       this.linkedItem = linkedItem;
+      this.cpus = cpus;
+      this.mem = mem;
+    }
+
+    public JenkinsSlave(String name, String label, int numExecutors, String linkedItem, double cpus, int mem) {
+      this(name, null, null, label, numExecutors, linkedItem, cpus, mem);
     }
 
     public JenkinsSlave(String name) {
-        this(name, null, null, null, 1, null);
-      }
-
-    public JenkinsSlave(String name, String label, int numExecutors, String linkedItem) {
-      this(name, null, null, label, numExecutors, linkedItem);
+      this(name, null, null, null, 0, null, 0, 0);
     }
 
     public String getName() {
@@ -89,6 +94,14 @@ public abstract class Mesos {
 
     public String getLinkedItem() {
       return linkedItem;
+    }
+
+    public double getCpus() {
+      return cpus;
+    }
+
+    public int getMem() {
+      return mem;
     }
 
     @Override
@@ -117,12 +130,31 @@ public abstract class Mesos {
   }
 
 
-  interface SlaveResult {
+  public interface SlaveResult {
     void running(JenkinsSlave slave);
 
     void finished(JenkinsSlave slave);
 
-    void failed(JenkinsSlave slave);
+    void failed(JenkinsSlave slave, Mesos.SlaveResult.FAILED_CAUSE cause);
+
+    public static enum FAILED_CAUSE {
+      MESOS_CLOUD_REPORTED_TASK_FAILED("The MesosCloud reported the task as failed"),
+      MESOS_CLOUD_REPORTED_TASK_LOST("The MesosCloud reported the task as lost"),
+      MESOS_CLOUD_REPORTED_TASK_ERROR("The MesosCloud reported the task as erroneous "),
+      RESOURCE_LIMIT_REACHED("The maximum count of CPUs or Memory for your framework is reached"),
+      SLAVE_NEVER_SCHEDULED("The slave never came online");
+
+      private String text;
+
+      private FAILED_CAUSE(String s) {
+        text = s;
+      }
+
+      @Override
+      public String toString() {
+        return text;
+      }
+    }
   }
 
   abstract public void startScheduler(String jenkinsMaster, MesosCloud mesosCloud);

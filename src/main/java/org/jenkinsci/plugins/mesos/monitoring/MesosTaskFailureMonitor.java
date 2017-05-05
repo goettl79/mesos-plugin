@@ -12,18 +12,25 @@ import org.jenkinsci.plugins.mesos.MesosCloud;
 import org.jenkinsci.plugins.mesos.MesosComputer;
 import org.jenkinsci.plugins.mesos.MesosSlave;
 import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import java.io.PrintStream;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Extension
 public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
 
-  private Set<Mesos.JenkinsSlave> failedSlaves = Collections.synchronizedSet(new LinkedHashSet<Mesos.JenkinsSlave>());
+  private Map<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE> failedSlaves;
+
+  public MesosTaskFailureMonitor() {
+    init();
+  }
+
+  private void init() {
+    this.failedSlaves = new ConcurrentHashMap<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE>();
+  }
 
   @Override
   public String getDisplayName() {
@@ -42,13 +49,18 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   @Override
   public void fix(TaskListener taskListener) throws Exception {
     PrintStream logger = taskListener.getLogger();
-    Set<Mesos.JenkinsSlave> failedSlaves = getFailedSlaves();
-    for (Mesos.JenkinsSlave failedSlave : failedSlaves) {
-      removeExistingNode(failedSlave, logger);
-      requestNewNode(failedSlave, logger);
-    }
+    Map<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE> failedSlavesCopy = new HashMap<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE>(failedSlaves);
 
-    this.failedSlaves.removeAll(failedSlaves);
+    for (Mesos.JenkinsSlave failedSlave : failedSlavesCopy.keySet()) {
+      try {
+        this.failedSlaves.remove(failedSlave);
+        removeExistingNode(failedSlave, logger);
+        requestNewNode(failedSlave, logger);
+      } catch (Exception e) {
+        logger.println("Unable to fix failed slave '" + failedSlave + "', because:");
+        e.printStackTrace(logger);
+      }
+    }
   }
 
   private void requestNewNode(Mesos.JenkinsSlave failedSlave, PrintStream logger) {
@@ -89,23 +101,30 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   }
 
   @RequirePOST
-  public HttpResponse doFix() {
+  public HttpResponse doFix(StaplerRequest req) {
+    if(req.hasParameter("fix")) {
+      fixTasks();
+    } else if(req.hasParameter("dismiss")) {
+      ignoreTasks();
+    }
+
+    return HttpResponses.forwardToPreviousPage();
+  }
+
+  public void fixTasks() {
     start(false);
-    return HttpResponses.forwardToPreviousPage();
   }
 
-  @RequirePOST
-  public HttpResponse doDismiss() {
+  public void ignoreTasks() {
     getLogFile().delete();
-    failedSlaves = Collections.synchronizedSet(new LinkedHashSet<Mesos.JenkinsSlave>());
-    return HttpResponses.forwardToPreviousPage();
+    init();
   }
 
-  public boolean addFailedSlave(Mesos.JenkinsSlave slave) {
-    return failedSlaves.add(slave);
+  public void addFailedSlave(Mesos.JenkinsSlave slave, Mesos.SlaveResult.FAILED_CAUSE cause) {
+    failedSlaves.put(slave, cause);
   }
 
-  public Set<Mesos.JenkinsSlave> getFailedSlaves() {
-    return Collections.unmodifiableSet(failedSlaves);
+  public Map<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE> getFailedSlaves() {
+    return Collections.unmodifiableMap(failedSlaves);
   }
 }

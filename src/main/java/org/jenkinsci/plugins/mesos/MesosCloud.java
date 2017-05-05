@@ -58,6 +58,8 @@ public class MesosCloud extends Cloud {
   private String description;
   private String frameworkName;
   private String role;
+  private double maxCpus;
+  private int maxMem;
   private String slavesUser;
   private String principal;
   private String secret;
@@ -121,6 +123,8 @@ public class MesosCloud extends Cloud {
       String description,
       String frameworkName,
       String role,
+      double maxCpus,
+      int maxMem,
       String slavesUser,
       String principal,
       String secret,
@@ -136,6 +140,8 @@ public class MesosCloud extends Cloud {
     this.description = description;
     this.frameworkName = frameworkName;
     this.role = role;
+    this.maxCpus = maxCpus;
+    this.maxMem = maxMem;
     this.slavesUser = slavesUser;
     this.principal = principal;
     this.secret = secret;
@@ -316,7 +322,7 @@ public class MesosCloud extends Cloud {
     int memory = (int)((slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem())) * (1 + JVM_MEM_OVERHEAD_FACTOR));
 
 
-    Mesos.JenkinsSlave jenkinsSlave = new Mesos.JenkinsSlave(name,slaveInfo.getLabelString(), numExecutors, linkedItem);
+    Mesos.JenkinsSlave jenkinsSlave = new Mesos.JenkinsSlave(name,slaveInfo.getLabelString(), numExecutors, linkedItem, cpus, memory);
     Mesos.SlaveRequest slaveRequest = new Mesos.SlaveRequest(jenkinsSlave, cpus, memory, role, slaveInfo);
     Mesos mesos = Mesos.getInstance(this);
 
@@ -334,12 +340,11 @@ public class MesosCloud extends Cloud {
       }
 
       @Override
-      public void failed(Mesos.JenkinsSlave slave) {
+      public void failed(Mesos.JenkinsSlave slave, Mesos.SlaveResult.FAILED_CAUSE cause) {
         try {
-          MesosTaskFailureMonitor.getInstance().addFailedSlave(slave);
+          MesosTaskFailureMonitor.getInstance().addFailedSlave(slave, cause);
         } catch (Exception e) {
-          LOGGER.fine("Error while getting MesosTaskFailureMonitor " + e.getMessage());
-          e.printStackTrace();
+          LOGGER.log(Level.WARNING, "Error while getting MesosTaskFailureMonitor", e);
         }
       }
     });
@@ -449,6 +454,22 @@ public class MesosCloud extends Cloud {
 
   public void setRole(String role) {
     this.role = role;
+  }
+
+  public double getMaxCpus() {
+    return maxCpus;
+  }
+
+  public void setMaxCpus(double maxCpus) {
+    this.maxCpus = maxCpus;
+  }
+
+  public int getMaxMem() {
+    return maxMem;
+  }
+
+  public void setMaxMem(int maxMem) {
+    this.maxMem = maxMem;
   }
 
   public String getSlavesUser() {
@@ -568,6 +589,8 @@ public class MesosCloud extends Cloud {
     private String description;
     private String frameworkName;
     private String role;
+    private double maxCpus;
+    private int maxMem;
     private String slavesUser;
     private String principal;
     private String secret;
@@ -592,6 +615,8 @@ public class MesosCloud extends Cloud {
       description = object.getString("description");
       frameworkName = object.getString("frameworkName");
       role = object.getString("role");
+      maxCpus = object.getDouble("maxCpus");
+      maxMem = object.getInt("maxMem");
       principal = object.getString("principal");
       secret = object.getString("secret");
       slaveAttributes = object.getString("slaveAttributes");
