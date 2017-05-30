@@ -8,6 +8,8 @@ import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
+import org.jenkinsci.plugins.mesos.Mesos;
+import org.jenkinsci.plugins.mesos.MesosCloud;
 import org.jenkinsci.plugins.mesos.Messages;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -73,9 +75,10 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
       return configure(futureSlaveDefinitionsEntries);
     }
 
-    public boolean configure(List<MesosSlaveDefinitions> slaveDefinitionsEntries) {
-      this.slaveDefinitionsEntries = checkSlaveDefinitionsEntires(slaveDefinitionsEntries);
 
+
+    public boolean configure(List<MesosSlaveDefinitions> slaveDefinitionsEntries) {
+      this.slaveDefinitionsEntries = checkSlaveDefinitionsEntries(slaveDefinitionsEntries);
       save();
       return true;
     }
@@ -143,11 +146,37 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
       return result;
     }
 
+    private boolean slaveDefinitionsEntriesContainsUsedEntry(String usedSlaveDefinitionsName, List<MesosSlaveDefinitions> slaveDefinitionsEntries) {
+      for (MesosSlaveDefinitions slaveDefinitions : slaveDefinitionsEntries) {
+        if (StringUtils.equals(usedSlaveDefinitionsName, slaveDefinitions.getDefinitionsName())) {
+          return true;
+        }
+      }
 
-    private List<MesosSlaveDefinitions> checkSlaveDefinitionsEntires(List<MesosSlaveDefinitions> slaveDefinitionsEntries) {
+      return false;
+    }
+
+    private void checkUsedSlaveDefinitionsRemovedOrUpdated(List<MesosSlaveDefinitions> slaveDefinitionsEntries) {
+
+      List<String> errors = new ArrayList<String>();
+
+      for (MesosCloud mesosCloud : Mesos.getAllMesosClouds()) {
+        if (!slaveDefinitionsEntriesContainsUsedEntry(mesosCloud.getSlaveDefinitionsName(), slaveDefinitionsEntries)) {
+          errors.add(Messages.MesosApi_NotRemovedInUseSlaveDefinitionsEntry(mesosCloud.getSlaveDefinitionsName(), mesosCloud.getFrameworkName()));
+        }
+      }
+
+      if (!errors.isEmpty()) {
+        throw new Failure(StringUtils.join(errors, ","));
+      }
+    }
+
+    private List<MesosSlaveDefinitions> checkSlaveDefinitionsEntries(List<MesosSlaveDefinitions> slaveDefinitionsEntries) {
       if (slaveDefinitionsEntries == null) {
         throw new Failure(Messages.SlaveDefinitionsConfiguration_SpecifySlaveDefinitionsEntries());
       }
+
+      checkUsedSlaveDefinitionsRemovedOrUpdated(slaveDefinitionsEntries);
 
       for (MesosSlaveDefinitions defsEntry : slaveDefinitionsEntries) {
         checkSlaveDefinitionsEntry(defsEntry);
@@ -208,7 +237,6 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
 
       return defsEntry;
     }
-
 
   }
 
