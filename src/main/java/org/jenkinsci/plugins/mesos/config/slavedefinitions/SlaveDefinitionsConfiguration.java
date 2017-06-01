@@ -22,12 +22,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.logging.Logger;
 
 @ExportedBean
 public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitionsConfiguration> {
-
-  private static final Logger LOGGER = Logger.getLogger(SlaveDefinitionsConfiguration.class.getName());
 
   @Extension
   public static class DescriptorImpl extends Descriptor<SlaveDefinitionsConfiguration> {
@@ -57,7 +54,7 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
       return null;
     }
 
-    public boolean slaveDefinitionsEntryExists(String slaveDefinitionsName) {
+    private boolean slaveDefinitionsEntryExists(String slaveDefinitionsName) {
       return getSlaveInfos(slaveDefinitionsName) != null;
     }
 
@@ -246,11 +243,12 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public Descriptor<SlaveDefinitionsConfiguration> getDescriptor() {
     return Jenkins.getInstance().getDescriptorOrDie(getClass());
   }
 
-  public DescriptorImpl getDescriptorImpl() {
+  private DescriptorImpl getDescriptorImpl() {
     return (DescriptorImpl) getDescriptor();
   }
 
