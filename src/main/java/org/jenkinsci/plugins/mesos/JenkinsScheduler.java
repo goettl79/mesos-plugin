@@ -1144,9 +1144,9 @@ public class JenkinsScheduler implements Scheduler {
   private String extractContainerIdFromTaskStatus(TaskStatus taskStatus) {
     try {
       if (taskStatus != null) {
-        String tmp = taskStatus.getData().toStringUtf8();
-        if(!tmp.isEmpty()) {
-          String jsonStr = tmp.replaceFirst("\\[", "").substring(0, (tmp.lastIndexOf(']') - 1)).trim();
+        String taskStatusData = taskStatus.getData().toStringUtf8();
+        if(!taskStatusData.isEmpty()) {
+          String jsonStr = taskStatusData.replaceFirst("\\[", "").substring(0, (taskStatusData.lastIndexOf(']') - 1)).trim();
           JSONObject jsonObject = JSONObject.fromObject(jsonStr);
           return jsonObject.getString("Name").replaceFirst("/", "").trim();
         } else {
