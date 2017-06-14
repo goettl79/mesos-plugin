@@ -6,8 +6,10 @@ import hudson.model.Node;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
+import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.mesos.JenkinsScheduler;
 import org.jenkinsci.plugins.mesos.Mesos;
+import org.jenkinsci.plugins.mesos.MesosCloud;
 import org.jenkinsci.plugins.mesos.MesosSlave;
 
 import javax.annotation.CheckForNull;
@@ -86,15 +88,22 @@ public class MesosRunListener extends RunListener<Run> {
         String monitoringUrl = mesosSlave.getMonitoringURL();
         PrintStream logger = listener.getLogger();
 
-        logger.println();
         if(monitoringUrl != null) {
-          logger.println("Slave resource usage: " + monitoringUrl);
+          printMsgToLogger(logger, "Slave resource usage: " + monitoringUrl);
         } else {
-          logger.println("Slave resource usage is not available for this build.");
+          MesosCloud mesosCloud = mesosSlave.getCloud();
+          if(mesosCloud != null && !StringUtils.isBlank(mesosCloud.getGrafanaDashboardURL())){
+            printMsgToLogger(logger, "Slave resource usage is not available for this build.");
+          }
         }
-        logger.println();
       }
     }
+  }
+
+  private void printMsgToLogger(PrintStream logger, String msg) {
+    logger.println();
+    logger.println(msg);
+    logger.println();
   }
 
   private boolean skipLogfileOutputForRun(Run r) {

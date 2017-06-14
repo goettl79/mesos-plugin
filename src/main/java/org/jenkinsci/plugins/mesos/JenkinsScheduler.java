@@ -890,6 +890,10 @@ public class JenkinsScheduler implements Scheduler {
     if(node != null) {
       MesosSlave mesosSlave = (MesosSlave) node;
       mesosSlave.setTaskStatus(status);
+
+      if(StringUtils.isBlank(mesosSlave.getDockerContainerID())) {
+        mesosSlave.setDockerContainerID(extractContainerIdFromTaskStatus(status));
+      }
     }
 
     Result result = results.get(taskId);
@@ -1135,5 +1139,23 @@ public class JenkinsScheduler implements Scheduler {
 
   public void setJenkinsMaster(String jenkinsMaster) {
     this.jenkinsMaster = jenkinsMaster;
+  }
+
+  private String extractContainerIdFromTaskStatus(TaskStatus taskStatus) {
+    try {
+      if (taskStatus != null) {
+        String tmp = taskStatus.getData().toStringUtf8();
+        if(!tmp.isEmpty()) {
+          String jsonStr = tmp.replaceFirst("\\[", "").substring(0, (tmp.lastIndexOf(']') - 1)).trim();
+          JSONObject jsonObject = JSONObject.fromObject(jsonStr);
+          return jsonObject.getString("Name").replaceFirst("/", "").trim();
+        } else {
+          LOGGER.log(Level.WARNING, "Unable to get DockerContainerId, taskStatus has no data");
+        }
+      }
+    } catch (Exception e) {
+      LOGGER.log(Level.WARNING, "Failed to get DockerContainerID from TaskStatus", e);
+    }
+    return null;
   }
 }
