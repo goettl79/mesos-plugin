@@ -89,21 +89,15 @@ public class MesosRunListener extends RunListener<Run> {
         PrintStream logger = listener.getLogger();
 
         if(monitoringUrl != null) {
-          printMsgToLogger(logger, "Slave resource usage: " + monitoringUrl);
+          logger.println("\nSlave resource usage: " + monitoringUrl + "\n");
         } else {
           MesosCloud mesosCloud = mesosSlave.getCloud();
           if(mesosCloud != null && !StringUtils.isBlank(mesosCloud.getGrafanaDashboardURL())){
-            printMsgToLogger(logger, "Slave resource usage is not available for this build.");
+            logger.println("\nSlave resource usage is not available for this build.\n");
           }
         }
       }
     }
-  }
-
-  private void printMsgToLogger(PrintStream logger, String msg) {
-    logger.println();
-    logger.println(msg);
-    logger.println();
   }
 
   private boolean skipLogfileOutputForRun(Run r) {
