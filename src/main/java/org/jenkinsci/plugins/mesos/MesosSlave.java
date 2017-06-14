@@ -26,7 +26,6 @@ import hudson.slaves.ComputerLauncher;
 import hudson.slaves.EphemeralNode;
 import hudson.slaves.NodeProperty;
 import jenkins.model.Jenkins;
-import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.mesos.Protos;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
@@ -43,6 +42,7 @@ public class MesosSlave extends Slave implements EphemeralNode {
   private Protos.TaskStatus taskStatus;
   private boolean pendingDelete;
   private String linkedItem;
+  private String dockerContainerID;
 
   private static final Logger LOGGER = Logger.getLogger(MesosSlave.class
       .getName());
@@ -176,17 +176,11 @@ public class MesosSlave extends Slave implements EphemeralNode {
   }
 
   public String getDockerContainerID() {
-    try {
-      if (taskStatus != null) {
-        String tmp = taskStatus.getData().toStringUtf8();
-        String jsonStr = tmp.replaceFirst("\\[","").substring(0, (tmp.lastIndexOf(']') - 1)).trim();
-        JSONObject jsonObject = JSONObject.fromObject(jsonStr);
-        return jsonObject.getString("Name").replaceFirst("/", "").trim();
-      }
-    } catch (Exception e) {
-      LOGGER.warning("Failed to get DockerContainerID from TaskStatus: " + e.getMessage());
-    }
-    return null;
+    return dockerContainerID;
+  }
+
+  public void setDockerContainerID(String dockerContainerID) {
+    this.dockerContainerID = dockerContainerID;
   }
 
   public String getMonitoringURL() {
