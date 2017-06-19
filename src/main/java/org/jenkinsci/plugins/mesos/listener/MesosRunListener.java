@@ -6,6 +6,7 @@ import hudson.model.Node;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
+import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.mesos.JenkinsScheduler;
 import org.jenkinsci.plugins.mesos.Mesos;
 import org.jenkinsci.plugins.mesos.MesosSlave;
@@ -81,20 +82,20 @@ public class MesosRunListener extends RunListener<Run> {
   public void onCompleted(Run run, TaskListener listener) {
     if (!skipLogfileOutputForRun(run)) {
       Node node = getCurrentNode(run);
-      if (node instanceof MesosSlave) {
+      if (isGrafanaDashboardLinkConfigured(node)) {
         MesosSlave mesosSlave = (MesosSlave) node;
         String monitoringUrl = mesosSlave.getMonitoringURL();
-        PrintStream logger = listener.getLogger();
-
-        logger.println();
-        if(monitoringUrl != null) {
-          logger.println("Slave resource usage: " + monitoringUrl);
+        if (monitoringUrl != null) {
+          listener.getLogger().println("\nSlave resource usage: " + monitoringUrl + "\n");
         } else {
-          logger.println("Slave resource usage is not available for this build.");
+          listener.error("\nSlave resource usage is not available for this build.\n");
         }
-        logger.println();
       }
     }
+  }
+
+  private boolean isGrafanaDashboardLinkConfigured(Node node) {
+    return node instanceof MesosSlave && !StringUtils.isBlank(((MesosSlave) node).getCloud().getGrafanaDashboardURL());
   }
 
   private boolean skipLogfileOutputForRun(Run r) {
