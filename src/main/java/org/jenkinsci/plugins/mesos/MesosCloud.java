@@ -394,6 +394,10 @@ public class MesosCloud extends Cloud {
       return ((Item) task).getFullName();
     }
 
+    if(task.equals(task.getOwnerTask())) {
+      return task.getFullDisplayName();
+    }
+
     return getFullNameOfTask(task.getOwnerTask());
   }
 
