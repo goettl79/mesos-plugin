@@ -66,6 +66,10 @@
           <f:select clazz="setting-input select" value="${instance.slaveDefinitionsName}"/>
         </f:entry>
 
+        <f:entry title="${%Default slave label}" field="defaultSlaveLabel">
+            <f:select clazz="setting-input select" value="${instance.defaultSlaveLabel}"/>
+        </f:entry>
+
     </f:advanced>
 
     <f:validateButton title="${%Test Connection}" progress="${%Testing...}" method="testConnection" with="master,nativeLibraryPath"/>
