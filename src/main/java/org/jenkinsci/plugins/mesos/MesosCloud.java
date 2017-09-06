@@ -72,12 +72,16 @@ public class MesosCloud extends Cloud {
   // src/main/resources/org/jenkinsci/plugins/mesos/MesosCloud/config.jelly.
   private String slaveDefinitionsName;
 
+  private String defaultSlaveLabel;
+
   private static final Logger LOGGER = Logger.getLogger(MesosCloud.class.getName());
 
   // We allocate 10% more memory to the Mesos task to account for the JVM overhead.
   private static final double JVM_MEM_OVERHEAD_FACTOR = 0.1;
 
   private static volatile boolean nativeLibraryLoaded = false;
+
+  public static final String DEFAULT_SLAVE_LABEL_NONE = "None";
 
   /**
    * We want to start the Mesos scheduler as part of the initialization of Jenkins
@@ -132,7 +136,8 @@ public class MesosCloud extends Cloud {
       boolean checkpoint,
       boolean onDemandRegistration,
       String jenkinsURL,
-      String grafanaDashboardURL) throws NumberFormatException {
+      String grafanaDashboardURL,
+      String defaultSlaveLabel) throws NumberFormatException {
     super("MesosCloud");
 
     this.nativeLibraryPath = nativeLibraryPath;
@@ -150,6 +155,8 @@ public class MesosCloud extends Cloud {
     this.onDemandRegistration = onDemandRegistration;
     this.setJenkinsURL(jenkinsURL);
     this.grafanaDashboardURL = grafanaDashboardURL;
+    this.defaultSlaveLabel = defaultSlaveLabel;
+
     if(!onDemandRegistration) {
 	    JenkinsScheduler.SUPERVISOR_LOCK.lock();
 	    try {
@@ -516,6 +523,9 @@ public class MesosCloud extends Cloud {
     return slaveDefinitionsName;
   }
 
+  public String getDefaultSlaveLabel() {
+    return defaultSlaveLabel;
+  }
 
   @Override
   public DescriptorImpl getDescriptor() {
@@ -604,6 +614,7 @@ public class MesosCloud extends Cloud {
     private int provisioningThreshold;
     private String slaveDefinitionsName;
     private String grafanaDashboardURL;
+    private String defaultSlaveLabel;
 
     @Override
     public String getDisplayName() {
@@ -630,6 +641,7 @@ public class MesosCloud extends Cloud {
       provisioningThreshold = object.getInt("provisioningThreshold");
       slavesUser = object.getString("slavesUser");
       slaveDefinitionsName = object.getString("slaveDefinitionsName");
+      defaultSlaveLabel = object.getString("defaultSlaveLabel");
 
       save();
       return super.configure(request, object);
@@ -750,6 +762,29 @@ public class MesosCloud extends Cloud {
       }
 
       return slaveDefinitionsNamesItems;
+    }
+
+    @SuppressWarnings("unused")
+    public ListBoxModel doFillDefaultSlaveLabelItems(@QueryParameter String slaveDefinitionsName) {
+
+      ListBoxModel defaultSlaveLabelItems = new ListBoxModel();
+      defaultSlaveLabelItems.add(DEFAULT_SLAVE_LABEL_NONE, DEFAULT_SLAVE_LABEL_NONE);
+
+      List<MesosSlaveInfo> mesosSlaveInfos = SlaveDefinitionsConfiguration.getDescriptorImplStatic().getSlaveInfos(slaveDefinitionsName);
+
+      if (mesosSlaveInfos != null) {
+        for (MesosSlaveInfo mesosSlaveInfo : mesosSlaveInfos) {
+          String currentMesosSlaveInfoName = mesosSlaveInfo.getLabelString();
+          boolean selected = StringUtils.equals(currentMesosSlaveInfoName, defaultSlaveLabel);
+          defaultSlaveLabelItems.add(new ListBoxModel.Option(
+                  currentMesosSlaveInfoName,
+                  currentMesosSlaveInfoName,
+                  selected
+          ));
+        }
+      }
+
+      return defaultSlaveLabelItems;
     }
 
   }
