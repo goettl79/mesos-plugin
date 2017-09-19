@@ -344,6 +344,8 @@ public class JenkinsScheduler implements Scheduler {
   private boolean matches(Offer offer, Request request) {
     double cpus = -1;
     double mem = -1;
+    int disk = -1;
+
     List<Range> ports = null;
 
     for (Resource resource : offer.getResourcesList()) {
@@ -367,7 +369,12 @@ public class JenkinsScheduler implements Scheduler {
           LOGGER.severe("Mem resource was not a scalar: " + resource.getType().toString());
         }
       } else if (resource.getName().equals("disk")) {
-        LOGGER.fine("Ignoring disk resources from offer");
+        //LOGGER.fine("Ignoring disk resources from offer");
+        if (resource.getType().equals(Value.Type.SCALAR)) {
+          disk = (int)resource.getScalar().getValue();
+        } else {
+          LOGGER.severe("Disk resource was not a scalar: " + resource.getType().toString());
+        }
       } else if (resource.getName().equals("ports")) {
         if (resource.getType().equals(Value.Type.RANGES)) {
           ports = resource.getRanges().getRangeList();
@@ -381,6 +388,7 @@ public class JenkinsScheduler implements Scheduler {
 
     if (cpus < 0) LOGGER.fine("No cpus resource present");
     if (mem < 0)  LOGGER.fine("No mem resource present");
+    if (disk < 0) LOGGER.fine("No disk resource present");
 
     MesosSlaveInfo.ContainerInfo containerInfo = request.request.slaveInfo.getContainerInfo();
 
@@ -394,12 +402,15 @@ public class JenkinsScheduler implements Scheduler {
 
     // Check for sufficient cpu and memory resources in the offer.
     double requestedCpus = request.request.cpus;
-    double requestedMem = request.request.mem;
+    double requestedMem  = request.request.mem;
+    int    requestedDisk = request.request.disk;
+
     // Get matching slave attribute for this label.
     JSONObject slaveAttributes = getMesosCloud().getSlaveAttributeForLabel(request.request.slaveInfo.getLabelString());
 
     if (requestedCpus <= cpus
             && requestedMem <= mem
+            && requestedDisk <= disk
             && !(hasPortMappings && !hasPortResources)
             && slaveAttributesMatch(offer, slaveAttributes)) {
       return true;
@@ -408,13 +419,14 @@ public class JenkinsScheduler implements Scheduler {
               ? StringUtils.join(containerInfo.getPortMappings().toArray(), "/")
               : "";
 
-      LOGGER.fine(
+      LOGGER.finer(
           "Offer not sufficient for slave request:\n" +
           offer.getResourcesList().toString() +
           "\n" + offer.getAttributesList().toString() +
           "\nRequested for Jenkins slave:\n" +
           "  cpus:  " + requestedCpus + "\n" +
           "  mem:   " + requestedMem + "\n" +
+          "  disk:  " + requestedDisk + "\n" +
           "  ports: " + requestedPorts + "\n" +
           "  attributes:  " + (slaveAttributes == null ? ""  : slaveAttributes.toString()));
       return false;

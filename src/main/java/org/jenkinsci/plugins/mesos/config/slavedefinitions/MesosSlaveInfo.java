@@ -26,6 +26,7 @@ public class MesosSlaveInfo {
   private final double executorCpus;
   private final int maxExecutors;
   private final int executorMem; // MB.
+  private final int disk; // MB
   private final String remoteFSRoot;
   private final int idleTerminationMinutes;
   private final int maximumTimeToLiveMinutes;
@@ -64,7 +65,8 @@ public class MesosSlaveInfo {
       ContainerInfo containerInfo,
       List<URI> additionalURIs,
       RunAsUserInfo runAsUserInfo,
-      List<Command> additionalCommands)
+      List<Command> additionalCommands,
+      String disk)
       throws NumberFormatException {
     this.slaveCpus = Double.parseDouble(slaveCpus);
     this.slaveMem = Integer.parseInt(slaveMem);
@@ -98,6 +100,7 @@ public class MesosSlaveInfo {
     }
     this.slaveAttributes = jsonObject;
     this.runAsUserInfo = runAsUserInfo;
+    this.disk = Integer.parseInt(disk);
   }
 
   @Exported
@@ -127,6 +130,10 @@ public class MesosSlaveInfo {
 
   public int getExecutorMem() {
     return executorMem;
+  }
+
+  public int getDisk() {
+    return disk;
   }
 
   public String getRemoteFSRoot() {

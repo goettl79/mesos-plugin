@@ -325,12 +325,42 @@ public class MesosCloud extends Cloud {
 
   private void sendSlaveRequest(int numExecutors, MesosSlaveInfo slaveInfo, String linkedItem) throws Descriptor.FormException, IOException {
     String name = slaveInfo.getLabelString() + "-" + UUID.randomUUID().toString();
+
+    /*
+     * Idea for project specific resource overrides
+     *
+     * It would also be possible to calculate appropriate values, for example:
+     * * Project uses -T X -> use min CPU X
+     * * Project uses -XmxY, -Perm/MetaSpaceSize=Z -> use mem = Y + Z (also * X CPU?)
+     * * Project disk space could be determined from last WS size?
+     *
+     * Or maybe: mean/average value of last N builds...
+     *
+     * Also: Possible to manually override these settings (with absolute or min requirements?)
+     *       and reset them (if automatic algorithm was too harsh)
+     */
+
+    //AbstractProject item = (AbstractProject)Jenkins.getActiveInstance().getItemByFullName(linkedItem);
+    //MesosResourceConfigurationAction projectSpecificSlaveInfo = item.getActions(MesosResourceConfigurationAction.class);
+
+    //if (projectSpecificSlaveInfo.hasCpus()) {
+    //  cpus = projectSpecificSlaveInfo.getCpus();
+    //} else
     double cpus = slaveInfo.getSlaveCpus() + (numExecutors * slaveInfo.getExecutorCpus());
+
+    //if (projectSpecificSlaveInfo.hasMemory()) {
+    //  memory = projectSpecificSlaveInfo.getMemory() * (1 + JVM_MEM_OVERHEAD_FACTOR)
+    // } else
     int memory = (int)((slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem())) * (1 + JVM_MEM_OVERHEAD_FACTOR));
+
+    //if (projectSpecificSlaveInfo.hasDisk()) {
+    // disk = projectSpecificSlaveInfo.getDisk();
+    //} else
+    int disk = slaveInfo.getDisk();
 
 
     Mesos.JenkinsSlave jenkinsSlave = new Mesos.JenkinsSlave(name,slaveInfo.getLabelString(), numExecutors, linkedItem, cpus, memory);
-    Mesos.SlaveRequest slaveRequest = new Mesos.SlaveRequest(jenkinsSlave, cpus, memory, role, slaveInfo);
+    Mesos.SlaveRequest slaveRequest = new Mesos.SlaveRequest(jenkinsSlave, cpus, memory, disk, role, slaveInfo);
     Mesos mesos = Mesos.getInstance(this);
 
     mesos.startJenkinsSlave(slaveRequest, new Mesos.SlaveResult() {

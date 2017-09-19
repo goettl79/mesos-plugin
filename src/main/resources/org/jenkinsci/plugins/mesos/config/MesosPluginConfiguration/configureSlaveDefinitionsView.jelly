@@ -79,6 +79,10 @@
                             <f:number field="executorMem" clazz="required positive-number" default="128" value="${slaveInfo.executorMem}"/>
                           </f:entry>
 
+                          <f:entry title="${%Maximum consumed disk space in MB}">
+                            <f:number field="disk" clazz="required positive-number" default="1024" value="${slaveInfo.disk}"/>
+                          </f:entry>
+
                           <!--
                               Below option enables the user to specify the JENKINS_HOME directory of the slave. Defaults to "jenkins" if empty.
                           -->
