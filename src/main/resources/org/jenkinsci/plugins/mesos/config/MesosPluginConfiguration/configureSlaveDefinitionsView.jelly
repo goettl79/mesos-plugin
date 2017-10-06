@@ -237,11 +237,11 @@
                                     minimum="0">
                                   <fieldset>
                                     <table width="100%">
-                                      <f:entry title="${%Container Path}">
+                                      <f:entry title="${%Container Path}" help="/plugin/mesos/help-volumeContainerPath.html" >
                                         <f:textbox field="containerPath" clazz="required" default="" value="${volume.containerPath}" />
                                       </f:entry>
 
-                                      <f:entry title="${%Host Path}">
+                                      <f:entry title="${%Host Path}" help="/plugin/mesos/help-volumeHostPath.html">
                                         <f:textbox field="hostPath" default="" value="${volume.hostPath}" />
                                       </f:entry>
 
@@ -335,7 +335,7 @@
                                   minimum="0">
                                 <fieldset>
                                   <table width="100%">
-                                    <f:entry title="${%Command}">
+                                    <f:entry title="${%Command}" help="/plugin/mesos/help-commandValue.html">
                                       <f:textbox clazz="required" field="value" default="" value="${command.value}" />
                                     </f:entry>
 

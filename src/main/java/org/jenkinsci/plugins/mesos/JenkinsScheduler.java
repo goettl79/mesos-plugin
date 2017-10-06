@@ -44,6 +44,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class JenkinsScheduler implements Scheduler {
+  private static final String ITEM_FULLNAME_TOKEN  = "${ITEM_FULLNAME}";
+  private static final String FRAMEWORK_NAME_TOKEN = "${FRAMEWORK_NAME}";
+  private static final String JENKINS_MASTER_TOKEN = "${JENKINS_MASTER}";
+
   private static final double DEFAULT_DECLINE_OFFER_DURATION = TimeUnit.MINUTES.toSeconds(10);
   private static final double DEFAULT_FAILOVER_TIMEOUT = TimeUnit.DAYS.toSeconds(7);
 
@@ -616,6 +620,14 @@ public class JenkinsScheduler implements Scheduler {
     return builder;
   }
 
+  private String replaceTokens(String text, Request request) {
+      String result = StringUtils.replace(text, ITEM_FULLNAME_TOKEN, request.request.slave.linkedItem);
+      result = StringUtils.replace(result, FRAMEWORK_NAME_TOKEN, mesosCloud.getFrameworkName());
+      result = StringUtils.replace(result, JENKINS_MASTER_TOKEN, jenkinsMaster);
+
+      return result;
+  }
+
   private void getContainerInfoBuilder(Offer offer, Request request, String slaveName, TaskInfo.Builder taskBuilder) {
       MesosSlaveInfo.ContainerInfo containerInfo = request.request.slaveInfo.getContainerInfo();
       ContainerInfo.Type containerType = ContainerInfo.Type.valueOf(containerInfo.getType());
@@ -713,11 +725,14 @@ public class JenkinsScheduler implements Scheduler {
         for (MesosSlaveInfo.Volume volume : containerInfo.getVolumes()) {
           LOGGER.info("Adding volume '" + volume.getContainerPath() + "'");
           Volume.Builder volumeBuilder = Volume.newBuilder()
-              .setContainerPath(volume.getContainerPath())
+              .setContainerPath(replaceTokens(volume.getContainerPath(), request))
               .setMode(volume.isReadOnly() ? Mode.RO : Mode.RW);
-          if (!volume.getHostPath().isEmpty()) {
-            volumeBuilder.setHostPath(volume.getHostPath());
+
+          String hostPath = volume.getHostPath();
+          if (!StringUtils.isBlank(hostPath)) {
+            volumeBuilder.setHostPath(replaceTokens(hostPath, request));
           }
+
           containerInfoBuilder.addVolumes(volumeBuilder.build());
         }
       }
@@ -732,7 +747,14 @@ public class JenkinsScheduler implements Scheduler {
         return commandBuilder;
   }
 
-  String generateJenkinsCommand2Run(int jvmMem, String jvmArgString, String jnlpArgString, String slaveName, MesosSlaveInfo.RunAsUserInfo runAsUserInfo, List<MesosSlaveInfo.Command> additionalCommands) {
+  String generateJenkinsCommand2Run(Request request) {
+
+    int jvmMem = request.request.slaveInfo.getSlaveMem();
+    String jvmArgString = request.request.slaveInfo.getJvmArgs();
+    String jnlpArgString = request.request.slaveInfo.getJnlpArgs();
+    String slaveName = request.request.slave.name;
+    MesosSlaveInfo.RunAsUserInfo runAsUserInfo = request.request.slaveInfo.getRunAsUserInfo();
+    List<MesosSlaveInfo.Command> additionalCommands = request.request.slaveInfo.getAdditionalCommands();
 
     String slaveCmd = String.format(SLAVE_COMMAND_FORMAT,
             jvmMem,
@@ -751,7 +773,7 @@ public class JenkinsScheduler implements Scheduler {
 
     if (additionalCommands != null && !additionalCommands.isEmpty()) {
       for (MesosSlaveInfo.Command additionalCommand : additionalCommands) {
-        commandStringBuilder.append(additionalCommand.getValue() + " && ");
+        commandStringBuilder.append(replaceTokens(additionalCommand.getValue(), request) + " && ");
       }
       commandStringBuilder.append("exec ");
       commandStringBuilder.append(slaveCmd);
@@ -790,13 +812,7 @@ public class JenkinsScheduler implements Scheduler {
                     CommandInfo.URI.newBuilder().setValue(slaveJarUri).setExecutable(false).setExtract(false));
         }
 
-        command += generateJenkinsCommand2Run(
-                request.request.slaveInfo.getSlaveMem(),
-                request.request.slaveInfo.getJvmArgs(),
-                request.request.slaveInfo.getJnlpArgs(),
-                request.request.slave.name,
-                request.request.slaveInfo.getRunAsUserInfo(),
-                request.request.slaveInfo.getAdditionalCommands());
+        command += generateJenkinsCommand2Run(request);
 
         if (request.request.slaveInfo.getContainerInfo() != null &&
                 request.request.slaveInfo.getContainerInfo().getUseCustomDockerCommandShell()) {
