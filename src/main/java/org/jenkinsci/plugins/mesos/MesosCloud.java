@@ -341,6 +341,8 @@ public class MesosCloud extends Cloud {
      */
 
     //AbstractProject item = (AbstractProject)Jenkins.getActiveInstance().getItemByFullName(linkedItem);
+
+    // not action but ap.getProperties() / JobProperty or BuildWrapper?;
     //MesosResourceConfigurationAction projectSpecificSlaveInfo = item.getActions(MesosResourceConfigurationAction.class);
 
     //if (projectSpecificSlaveInfo.hasCpus()) {
@@ -358,6 +360,7 @@ public class MesosCloud extends Cloud {
     //} else
     int disk = slaveInfo.getDisk();
 
+    // TODO: good idea to provide custom resource for: HDD (disk_hdd -> type scalar) and RAM disk (disk_ram -> type scalar) slaves?
 
     Mesos.JenkinsSlave jenkinsSlave = new Mesos.JenkinsSlave(name,slaveInfo.getLabelString(), numExecutors, linkedItem, cpus, memory);
     Mesos.SlaveRequest slaveRequest = new Mesos.SlaveRequest(jenkinsSlave, cpus, memory, disk, role, slaveInfo);
