@@ -155,12 +155,7 @@ public class JenkinsSchedulerTest {
 
         assertTrue("Default shell config (true) should be configured when no container specified", commandInfo.getShell());
 
-        String jenkinsCommand2Run = jenkinsScheduler.generateJenkinsCommand2Run(
-            TEST_JENKINS_SLAVE_MEM,
-            TEST_JENKINS_SLAVE_ARG,
-            TEST_JENKINS_JNLP_ARG,
-            TEST_JENKINS_SLAVE_NAME,
-            null , null);
+        String jenkinsCommand2Run = jenkinsScheduler.generateJenkinsCommand2Run(request);
         assertEquals("jenkins command to run should be specified as value", jenkinsCommand2Run, commandInfo.getValue());
         assertEquals("mesos command should have no args specified by default", 0, commandInfo.getArgumentsCount());
     }
@@ -173,12 +168,7 @@ public class JenkinsSchedulerTest {
         Protos.CommandInfo commandInfo = commandInfoBuilder.build();
 
         assertTrue("Default shell config (true) should be configured when no container specified", commandInfo.getShell());
-        String jenkinsCommand2Run = jenkinsScheduler.generateJenkinsCommand2Run(
-            TEST_JENKINS_SLAVE_MEM,
-            TEST_JENKINS_SLAVE_ARG,
-            TEST_JENKINS_JNLP_ARG,
-            TEST_JENKINS_SLAVE_NAME,
-            null , null);
+        String jenkinsCommand2Run = jenkinsScheduler.generateJenkinsCommand2Run(request);
         assertEquals("jenkins command to run should be specified as value", jenkinsCommand2Run, commandInfo.getValue());
         assertEquals("mesos command should have no args specified by default", 0, commandInfo.getArgumentsCount());
     }
@@ -192,12 +182,7 @@ public class JenkinsSchedulerTest {
 
         assertFalse("shell should be configured as false when using a custom shell", commandInfo.getShell());
         assertEquals("Custom shell should be specified as value", "/bin/wrapdocker", commandInfo.getValue());
-        String jenkinsCommand2Run = jenkinsScheduler.generateJenkinsCommand2Run(
-                TEST_JENKINS_SLAVE_MEM,
-                TEST_JENKINS_SLAVE_ARG,
-                TEST_JENKINS_JNLP_ARG,
-                TEST_JENKINS_SLAVE_NAME,
-                null , null);
+        String jenkinsCommand2Run = jenkinsScheduler.generateJenkinsCommand2Run(request);
 
         assertEquals("args should now consist of the single original command ", 1, commandInfo.getArgumentsCount());
         assertEquals("args should now consist of the original command ", jenkinsCommand2Run, commandInfo.getArguments(0));
