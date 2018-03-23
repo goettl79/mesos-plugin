@@ -305,16 +305,20 @@ public class JenkinsScheduler implements Scheduler {
         continue;
       }
 
-      boolean taskCreated = false;
-
+      // get matching offer for request, and create task
+      TaskInfo task = null;
       if(isOfferAvailable(offer)) {
         for (Request request : requests) {
           if (matches(offer, request)) {
             LOGGER.fine("Offer matched! Creating mesos task");
 
             try {
-              createMesosTask(offer, request);
-              taskCreated = true;
+              task = createMesosTask(offer, request);
+
+              // launch task for request
+              if (task != null) {
+                launchMesosTask(offer, task, request);
+              }
             } catch (Exception e) {
               LOGGER.log(Level.SEVERE, e.getMessage(), e);
             }
@@ -324,10 +328,42 @@ public class JenkinsScheduler implements Scheduler {
         }
       }
 
-      if (!taskCreated) {
-        driver.declineOffer(offer.getId());
+      // refuse/decline offer if no task was created
+      if (task == null) {
+        refuseOffer(offer);
       }
     }
+  }
+
+  private void launchMesosTask(Offer offer, TaskInfo task, Request request) {
+    TaskID taskId = task.getTaskId();
+    LOGGER.fine("Launching task " + taskId.getValue() + " with URI " +
+            joinPaths(jenkinsMaster, SLAVE_JAR_URI_SUFFIX));
+
+    List<TaskInfo> tasks = new LinkedList<TaskInfo>();
+    tasks.add(task);
+
+    List<OfferID> offerIDs = new LinkedList<OfferID>();
+    offerIDs.add(offer.getId());
+
+    Filters filters = Filters.newBuilder().setRefuseSeconds(1).build();
+    driver.launchTasks(offerIDs, tasks, filters);
+
+    List<DockerInfo.PortMapping> actualPortMappings = task.getContainer().getDocker().getPortMappingsList();
+
+    Mesos.JenkinsSlave jenkinsSlave = new Mesos.JenkinsSlave(
+            request.request.slave.getName(),
+            offer.getHostname(),
+            actualPortMappings,
+            request.request.slaveInfo.getLabelString(),
+            request.request.slave.getNumExecutors(),
+            request.request.slave.linkedItem,
+            request.request.cpus,
+            request.request.mem);
+
+    // "transition" to finished
+    results.put(taskId, new Result(request.result, jenkinsSlave));
+    finishedTasks.add(taskId);
   }
 
   private boolean isOfferAvailable(Offer offer) {
@@ -501,17 +537,17 @@ public class JenkinsScheduler implements Scheduler {
       return portsToUse;
   }
 
-  private void createMesosTask(Offer offer, Request request) {
+  private TaskInfo createMesosTask(Offer offer, Request request) {
     final String slaveName = request.request.slave.name;
     TaskID taskId = TaskID.newBuilder().setValue(slaveName).build();
 
-    LOGGER.info("Launching task " + taskId.getValue() + " with URI " +
+    LOGGER.fine("Creating task " + taskId.getValue() + " with URI " +
                 joinPaths(jenkinsMaster, SLAVE_JAR_URI_SUFFIX));
 
     // task for request already exists, or jenkins agent already created for it
     if (isExistingTask(taskId)) {
-        refuseOffer(offer);
-        return;
+        LOGGER.finer("Task '" + taskId + "' already exists");
+        return null;
     }
 
     for (final Computer computer : Jenkins.getInstance().getComputers()) {
@@ -530,8 +566,8 @@ public class JenkinsScheduler implements Scheduler {
         MesosSlave mesosSlave = mesosComputer.getNode();
 
         if (taskId.getValue().equals(computer.getName()) && mesosSlave.isPendingDelete()) {
-            LOGGER.info("This mesos task " + taskId.getValue() + " is pending deletion. Not launching another task");
-            driver.declineOffer(offer.getId());
+            LOGGER.fine("This mesos task " + taskId.getValue() + " is pending deletion. Not launching another task");
+            return null;
         }
     }
 
@@ -542,30 +578,9 @@ public class JenkinsScheduler implements Scheduler {
         getContainerInfoBuilder(offer, request, slaveName, taskBuilder);
     }
 
-    List<TaskInfo> tasks = new LinkedList<TaskInfo>();
-    TaskInfo task = taskBuilder.build();
-    tasks.add(task);
 
-    List<OfferID> offerIDs = new LinkedList<OfferID>();
-    offerIDs.add(offer.getId());
+    return taskBuilder.build();
 
-    Filters filters = Filters.newBuilder().setRefuseSeconds(1).build();
-    driver.launchTasks(offerIDs, tasks, filters);
-
-    List<DockerInfo.PortMapping> actualPortMappings = task.getContainer().getDocker().getPortMappingsList();
-
-    Mesos.JenkinsSlave jenkinsSlave = new Mesos.JenkinsSlave(
-            request.request.slave.getName(),
-            offer.getHostname(),
-            actualPortMappings,
-            request.request.slaveInfo.getLabelString(),
-            request.request.slave.getNumExecutors(),
-            request.request.slave.linkedItem,
-            request.request.cpus,
-            request.request.mem);
-
-    results.put(taskId, new Result(request.result, jenkinsSlave));
-    finishedTasks.add(taskId);
   }
 
   private void detectAndAddAdditionalURIs(Request request, CommandInfo.Builder commandBuilder) {
