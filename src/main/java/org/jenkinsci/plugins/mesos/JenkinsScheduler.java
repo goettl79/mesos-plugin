@@ -89,6 +89,17 @@ public abstract class JenkinsScheduler implements Scheduler {
     String targetUser = mesosCloud.getSlavesUser();
     String webUrl = Jenkins.getInstance().getRootUrl();
     if (webUrl == null) webUrl = System.getenv("JENKINS_URL");
+
+    // TODO: evaluate usage of res refinement and multi role (multi tenancy);
+    //       other stuff is deprecated (see: https://github.com/apache/mesos/blob/master/include/mesos/mesos.proto)
+    //
+    //FrameworkInfo.Capability resRef = FrameworkInfo.Capability.newBuilder().setType(FrameworkInfo.Capability.Type.RESERVATION_REFINEMENT).build();
+    //FrameworkInfo.Capability mulRol = FrameworkInfo.Capability.newBuilder().setType(FrameworkInfo.Capability.Type.MULTI_ROLE).build();
+    //
+    // change <object>.getRole() (where deprecated) to resource.getReservationList(), etc.
+    // change FrameworkInfo.newBuilder().setRole() to .addRoles()
+    //
+
     // Have Mesos fill in the current user.
     FrameworkInfo framework = FrameworkInfo.newBuilder()
       .setUser(targetUser == null ? "" : targetUser)
