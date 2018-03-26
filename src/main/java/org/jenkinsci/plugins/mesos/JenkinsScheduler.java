@@ -346,27 +346,32 @@ public class JenkinsScheduler implements Scheduler {
   }
 
   private boolean matches(Offer offer, Request request) {
-    double cpus = -1;
-    double mem = -1;
-    List<Range> ports = null;
+    double cpus = 0;
+    double mem = 0;
+    List<Range> ports = new ArrayList<Range>();
 
     for (Resource resource : offer.getResourcesList()) {
       String resourceRole = resource.getRole();
+
+      // Start: Not needed, b/c FW only gets resources of * and framework.setRole()
       String expectedRole = mesosCloud.getRole();
       if (! (resourceRole.equals(expectedRole) || resourceRole.equals("*"))) {
         LOGGER.warning("Resource role " + resourceRole +
             " doesn't match expected role " + expectedRole);
         continue;
       }
+      // End: Not needed, b/c FW only gets resources of * and framework.setRole()
+
+      // Add resources of * and role
       if (resource.getName().equals("cpus")) {
         if (resource.getType().equals(Value.Type.SCALAR)) {
-          cpus = resource.getScalar().getValue();
+          cpus += resource.getScalar().getValue();
         } else {
           LOGGER.severe("Cpus resource was not a scalar: " + resource.getType().toString());
         }
       } else if (resource.getName().equals("mem")) {
         if (resource.getType().equals(Value.Type.SCALAR)) {
-          mem = resource.getScalar().getValue();
+          mem += resource.getScalar().getValue();
         } else {
           LOGGER.severe("Mem resource was not a scalar: " + resource.getType().toString());
         }
@@ -374,7 +379,7 @@ public class JenkinsScheduler implements Scheduler {
         LOGGER.fine("Ignoring disk resources from offer");
       } else if (resource.getName().equals("ports")) {
         if (resource.getType().equals(Value.Type.RANGES)) {
-          ports = resource.getRanges().getRangeList();
+          ports.addAll(resource.getRanges().getRangeList());
         } else {
           LOGGER.severe("Ports resource was not a range: " + resource.getType().toString());
         }
@@ -383,14 +388,11 @@ public class JenkinsScheduler implements Scheduler {
       }
     }
 
-    if (cpus < 0) LOGGER.fine("No cpus resource present");
-    if (mem < 0)  LOGGER.fine("No mem resource present");
-
     MesosSlaveInfo.ContainerInfo containerInfo = request.request.slaveInfo.getContainerInfo();
 
-    boolean hasPortMappings = containerInfo != null ? containerInfo.hasPortMappings() : false;
+    boolean hasPortMappings = containerInfo != null && containerInfo.hasPortMappings();
 
-    boolean hasPortResources = ports != null && !ports.isEmpty();
+    boolean hasPortResources = !ports.isEmpty();
 
     if (hasPortMappings && !hasPortResources) {
       LOGGER.severe("No ports resource present");
@@ -506,6 +508,7 @@ public class JenkinsScheduler implements Scheduler {
     LOGGER.info("Launching task " + taskId.getValue() + " with URI " +
                 joinPaths(jenkinsMaster, SLAVE_JAR_URI_SUFFIX));
 
+    // task for request already exists, or jenkins agent already created for it
     if (isExistingTask(taskId)) {
         refuseOffer(offer);
         return;
