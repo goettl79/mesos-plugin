@@ -289,9 +289,43 @@ public class JenkinsScheduler implements Scheduler {
     LOGGER.info("Framework disconnected!");
   }
 
+
+  @Deprecated
+  private void debugLogOffers(List<Offer> offers) {
+    // DEBUG INFO start
+    LOGGER.info("=====[ Offers for " + mesosCloud.getFrameworkName() + " ]=====");
+    for (Offer offer: offers) {
+      LOGGER.info("-----(Resources for Offer: " + offer.getId().getValue() + "( " + offer.getHostname() + ") )-----");
+      for (Resource resource: offer.getResourcesList()) {
+        final String value;
+        switch (resource.getType()) {
+          case SCALAR:
+            value = Double.toString(resource.getScalar().getValue());
+            break;
+          case RANGES:
+            value = resource.getRanges().getRangeList().toString();
+            break;
+          case SET:
+            value = resource.getSet().getItemList().toString();
+            break;
+          default:
+            value = "unknown";
+        }
+
+        LOGGER.info("Name: " + resource.getName() + "; Role: " + resource.getRole() + "; Type: " + resource.getType() + "; Value: " + value);
+      }
+      LOGGER.info("------------------------------");
+    }
+    LOGGER.info("==============================");
+    // DEBUG info end
+  }
+
   @Override
   public synchronized void resourceOffers(SchedulerDriver driver, List<Offer> offers) {
     LOGGER.fine("Received offers " + offers.size());
+
+    debugLogOffers(offers);
+
 
     for (Offer offer : offers) {
       if (requests.isEmpty()) {
