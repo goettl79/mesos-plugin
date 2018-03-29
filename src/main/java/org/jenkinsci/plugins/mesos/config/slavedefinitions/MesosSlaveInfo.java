@@ -21,6 +21,7 @@ public class MesosSlaveInfo {
   private static final String DEFAULT_LABEL_NAME = "mesos";
   private static final String DEFAULT_JVM_ARGS = "-Xms16m -XX:+UseConcMarkSweepGC -Djava.net.preferIPv4Stack=true";
   private static final String JVM_ARGS_PATTERN = "-Xmx.+ ";
+
   private final double slaveCpus;
   private final int slaveMem; // MB.
   private final double executorCpus;
@@ -32,20 +33,61 @@ public class MesosSlaveInfo {
   private final boolean useSlaveOnce;
   private final String jvmArgs;
   private final String jnlpArgs;
-  // Slave attributes JSON representation.
-  private final JSONObject slaveAttributes;
+  @Deprecated
+  private transient JSONObject slaveAttributes;
+  private String slaveAttributesString;
   private final ContainerInfo containerInfo;
   private final List<URI> additionalURIs;
   private final Mode mode;
   private final RunAsUserInfo runAsUserInfo;
   private final List<Command> additionalCommands;
 
-  private String labelString = DEFAULT_LABEL_NAME;
+  private final String labelString;
 
   private static final Logger LOGGER = Logger.getLogger(MesosSlaveInfo.class
       .getName());
 
   @DataBoundConstructor
+  public MesosSlaveInfo(
+          String labelString,
+          Mode mode,
+          String slaveCpus,
+          String slaveMem,
+          String maxExecutors,
+          String executorCpus,
+          String executorMem,
+          String remoteFSRoot,
+          String idleTerminationMinutes,
+          String maximumTimeToLiveMinutes,
+          boolean useSlaveOnce,
+          String slaveAttributes,
+          String jvmArgs,
+          String jnlpArgs,
+          ContainerInfo containerInfo,
+          List<URI> additionalURIs,
+          RunAsUserInfo runAsUserInfo,
+          List<Command> additionalCommands)
+          throws NumberFormatException {
+    this(labelString,
+         mode,
+         slaveCpus,
+         slaveMem,
+         maxExecutors,
+         executorCpus,
+         executorMem,
+         remoteFSRoot,
+         idleTerminationMinutes,
+         maximumTimeToLiveMinutes,
+         useSlaveOnce,
+         parseSlaveAttributes(slaveAttributes),
+         jvmArgs,
+         jnlpArgs,
+         containerInfo,
+         additionalURIs,
+         runAsUserInfo,
+         additionalCommands);
+  }
+
   public MesosSlaveInfo(
       String labelString,
       Mode mode,
@@ -58,7 +100,7 @@ public class MesosSlaveInfo {
       String idleTerminationMinutes,
       String maximumTimeToLiveMinutes,
       boolean useSlaveOnce,
-      String slaveAttributes,
+      JSONObject slaveAttributes,
       String jvmArgs,
       String jnlpArgs,
       ContainerInfo containerInfo,
@@ -85,19 +127,20 @@ public class MesosSlaveInfo {
     this.containerInfo = containerInfo;
     this.additionalURIs = additionalURIs;
     this.additionalCommands = additionalCommands;
-
-    // Parse the attributes provided from the cloud config
-    JSONObject jsonObject = null;
-    if (StringUtils.isNotBlank(slaveAttributes)) {
-        try {
-            jsonObject = (JSONObject) JSONSerializer.toJSON(slaveAttributes);
-        } catch (JSONException e) {
-            LOGGER.warning("Ignoring Mesos slave attributes JSON due to parsing error : "
-                           + slaveAttributes);
-        }
-    }
-    this.slaveAttributes = jsonObject;
+    this.slaveAttributesString = slaveAttributes != null ? slaveAttributes.toString() : null;
     this.runAsUserInfo = runAsUserInfo;
+  }
+
+  private static JSONObject parseSlaveAttributes(String slaveAttributes) {
+    if (StringUtils.isNotBlank(slaveAttributes)) {
+      try {
+        return (JSONObject) JSONSerializer.toJSON(slaveAttributes);
+      } catch (JSONException e) {
+        LOGGER.warning("Ignoring Mesos slave attributes JSON due to parsing error : " + slaveAttributes);
+      }
+    }
+
+    return null;
   }
 
   @Exported
@@ -146,7 +189,7 @@ public class MesosSlaveInfo {
   }
 
   public JSONObject getSlaveAttributes() {
-    return slaveAttributes;
+    return parseSlaveAttributes(slaveAttributesString);
   }
 
   public String getJvmArgs() {
@@ -187,6 +230,17 @@ public class MesosSlaveInfo {
    */
   private String cleanseJvmArgs(final String jvmArgs) {
     return jvmArgs.replaceAll(JVM_ARGS_PATTERN, "");
+  }
+
+
+  @SuppressWarnings("deprecation")
+  public Object readResolve() {
+    if (slaveAttributes != null) {
+      slaveAttributesString = slaveAttributes.toString();
+      slaveAttributes = null;
+    }
+
+    return this;
   }
 
   public static class RunAsUserInfo {
