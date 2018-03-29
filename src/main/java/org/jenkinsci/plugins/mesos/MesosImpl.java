@@ -1,6 +1,8 @@
 package org.jenkinsci.plugins.mesos;
 
 import org.apache.mesos.Scheduler;
+import org.jenkinsci.plugins.mesos.scheduling.SlaveRequest;
+import org.jenkinsci.plugins.mesos.scheduling.SlaveResult;
 
 public class MesosImpl extends Mesos {
   @Override

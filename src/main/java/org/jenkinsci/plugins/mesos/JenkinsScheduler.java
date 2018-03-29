@@ -34,6 +34,8 @@ import org.apache.mesos.Protos.Volume.Mode;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
+import org.jenkinsci.plugins.mesos.scheduling.*;
+import org.jenkinsci.plugins.mesos.scheduling.Request;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -160,14 +162,14 @@ public class JenkinsScheduler implements Scheduler {
     return running;
   }
 
-  public synchronized void requestJenkinsSlave(Mesos.SlaveRequest slaveRequest, Mesos.SlaveResult slaveResult) {
+  public synchronized void requestJenkinsSlave(SlaveRequest slaveRequest, SlaveResult slaveResult) {
     LOGGER.info("Enqueuing jenkins slave request");
 
     Request request = new Request(slaveRequest, slaveResult);
     if(isResourceLimitReached(request)) {
-      LOGGER.info("Maximum number of CPUs or Mem is reached, set request "+ slaveRequest.slave.name +" as failed " +
+      LOGGER.info("Maximum number of CPUs or Mem is reached, set request "+ slaveRequest.getSlave().getName() +" as failed " +
               "for a later retry." );
-      slaveResult.failed(slaveRequest.slave, Mesos.SlaveResult.FAILED_CAUSE.RESOURCE_LIMIT_REACHED);
+      slaveResult.failed(slaveRequest.getSlave(), SlaveResult.FAILED_CAUSE.RESOURCE_LIMIT_REACHED);
       return;
     }
 
@@ -186,7 +188,7 @@ public class JenkinsScheduler implements Scheduler {
   }
 
   private boolean isCpuLimitReached(Request request) {
-    double futureUsedCpus = getUsedCpus() + request.request.cpus;
+    double futureUsedCpus = getUsedCpus() + request.getRequest().getMem();
     return isCpuLimitActivated() && mesosCloud.getMaxCpus() < futureUsedCpus;
   }
 
@@ -196,7 +198,7 @@ public class JenkinsScheduler implements Scheduler {
   }
 
   private boolean isMemoryLimitReached(Request request) {
-    int futureUsedMemory = getUsedMem() + request.request.mem;
+    int futureUsedMemory = getUsedMem() + request.getRequest().getMem();
     return isMemoryLimitActivated() && mesosCloud.getMaxMem() < futureUsedMemory;
   }
 
@@ -252,12 +254,13 @@ public class JenkinsScheduler implements Scheduler {
         // by Jenkins.
 
         for(Request request : requests) {
-           if(request.request.slave.name.equals(name)) {
+          String requestedSlaveName = request.getRequest().getSlave().getName();
+           if(StringUtils.equals(requestedSlaveName, name)) {
              LOGGER.info("Removing enqueued mesos task " + name);
              requests.remove(request);
              // Also signal the Thread of the MesosComputerLauncher.launch() to exit from latch.await()
              // Otherwise the Thread will stay in WAIT forever -> Leak!
-             request.result.failed(request.request.slave, Mesos.SlaveResult.FAILED_CAUSE.SLAVE_NEVER_SCHEDULED);
+             request.getResult().failed(request.getRequest().getSlave(), SlaveResult.FAILED_CAUSE.SLAVE_NEVER_SCHEDULED);
              return;
            }
         }
@@ -385,18 +388,20 @@ public class JenkinsScheduler implements Scheduler {
 
     List<DockerInfo.PortMapping> actualPortMappings = task.getContainer().getDocker().getPortMappingsList();
 
-    Mesos.JenkinsSlave jenkinsSlave = new Mesos.JenkinsSlave(
-            request.request.slave.getName(),
+    SlaveRequest slaveRequest = request.getRequest();
+    JenkinsSlave jenkinsSlave = slaveRequest.getSlave();
+    JenkinsSlave resultJenkinsSlave = new JenkinsSlave(
+            jenkinsSlave.getName(),
             offer.getHostname(),
             actualPortMappings,
-            request.request.slaveInfo.getLabelString(),
-            request.request.slave.getNumExecutors(),
-            request.request.slave.linkedItem,
-            request.request.cpus,
-            request.request.mem);
+            slaveRequest.getSlaveInfo().getLabelString(),
+            jenkinsSlave.getNumExecutors(),
+            jenkinsSlave.getLinkedItem(),
+            jenkinsSlave.getCpus(),
+            jenkinsSlave.getMem());
 
     // "transition" to finished
-    results.put(taskId, new Result(request.result, jenkinsSlave));
+    results.put(taskId, new Result(request.getResult(), resultJenkinsSlave));
     finishedTasks.add(taskId);
   }
 
@@ -458,7 +463,10 @@ public class JenkinsScheduler implements Scheduler {
       }
     }
 
-    MesosSlaveInfo.ContainerInfo containerInfo = request.request.slaveInfo.getContainerInfo();
+    SlaveRequest slaveRequest = request.getRequest();
+    MesosSlaveInfo slaveInfo = slaveRequest.getSlaveInfo();
+
+    MesosSlaveInfo.ContainerInfo containerInfo = slaveInfo.getContainerInfo();
 
     boolean hasPortMappings = containerInfo != null && containerInfo.hasPortMappings();
 
@@ -469,10 +477,10 @@ public class JenkinsScheduler implements Scheduler {
     }
 
     // Check for sufficient cpu and memory resources in the offer.
-    double requestedCpus = request.request.cpus;
-    double requestedMem = request.request.mem;
+    double requestedCpus = slaveRequest.getCpus();
+    double requestedMem = slaveRequest.getMem();
     // Get matching slave attribute for this label.
-    JSONObject slaveAttributes = getMesosCloud().getSlaveAttributeForLabel(request.request.slaveInfo.getLabelString());
+    JSONObject slaveAttributes = getMesosCloud().getSlaveAttributeForLabel(slaveInfo.getLabelString());
 
     if (requestedCpus <= cpus
             && requestedMem <= mem
@@ -572,7 +580,7 @@ public class JenkinsScheduler implements Scheduler {
   }
 
   private TaskInfo createMesosTask(Offer offer, Request request) {
-    final String slaveName = request.request.slave.name;
+    final String slaveName = request.getRequest().getSlave().getName();
     TaskID taskId = TaskID.newBuilder().setValue(slaveName).build();
 
     LOGGER.fine("Creating task " + taskId.getValue() + " with URI " +
@@ -608,7 +616,7 @@ public class JenkinsScheduler implements Scheduler {
     CommandInfo.Builder commandBuilder = getCommandInfoBuilder(request);
     TaskInfo.Builder taskBuilder = getTaskInfoBuilder(offer, request, taskId, commandBuilder);
 
-    if (request.request.slaveInfo.getContainerInfo() != null) {
+    if (request.getRequest().getSlaveInfo().getContainerInfo() != null) {
         getContainerInfoBuilder(offer, request, slaveName, taskBuilder);
     }
 
@@ -618,9 +626,9 @@ public class JenkinsScheduler implements Scheduler {
   }
 
   private void detectAndAddAdditionalURIs(Request request, CommandInfo.Builder commandBuilder) {
-
-    if (request.request.slaveInfo.getAdditionalURIs() != null) {
-      for (MesosSlaveInfo.URI uri : request.request.slaveInfo.getAdditionalURIs()) {
+    MesosSlaveInfo slaveInfo = request.getRequest().getSlaveInfo();
+    if (slaveInfo.getAdditionalURIs() != null) {
+      for (MesosSlaveInfo.URI uri : slaveInfo.getAdditionalURIs()) {
         commandBuilder.addUris(
             CommandInfo.URI.newBuilder().setValue(
                 uri.getValue()).setExecutable(uri.isExecutable()).setExtract(uri.isExtract()));
@@ -635,8 +643,9 @@ public class JenkinsScheduler implements Scheduler {
         .setSlaveId(offer.getSlaveId())
         .setCommand(commandBuilder.build());
 
-    double cpusNeeded = request.request.cpus;
-    double memNeeded = request.request.mem;
+    SlaveRequest slaveRequest = request.getRequest();
+    double cpusNeeded = slaveRequest.getCpus();
+    double memNeeded = slaveRequest.getMem();
 
     for (Resource r : offer.getResourcesList()) {
       if (r.getName().equals("cpus") && cpusNeeded > 0) {
@@ -673,7 +682,7 @@ public class JenkinsScheduler implements Scheduler {
   }
 
   private String replaceTokens(String text, Request request) {
-      String result = StringUtils.replace(text, ITEM_FULLNAME_TOKEN, request.request.slave.linkedItem);
+      String result = StringUtils.replace(text, ITEM_FULLNAME_TOKEN, request.getRequest().getSlave().getLinkedItem());
       result = StringUtils.replace(result, FRAMEWORK_NAME_TOKEN, mesosCloud.getFrameworkName());
       result = StringUtils.replace(result, JENKINS_MASTER_TOKEN, jenkinsMaster);
 
@@ -681,7 +690,9 @@ public class JenkinsScheduler implements Scheduler {
   }
 
   private void getContainerInfoBuilder(Offer offer, Request request, String slaveName, TaskInfo.Builder taskBuilder) {
-      MesosSlaveInfo.ContainerInfo containerInfo = request.request.slaveInfo.getContainerInfo();
+      MesosSlaveInfo slaveInfo = request.getRequest().getSlaveInfo();
+
+      MesosSlaveInfo.ContainerInfo containerInfo = slaveInfo.getContainerInfo();
       ContainerInfo.Type containerType = ContainerInfo.Type.valueOf(containerInfo.getType());
 
       ContainerInfo.Builder containerInfoBuilder = ContainerInfo.newBuilder() //
@@ -702,7 +713,7 @@ public class JenkinsScheduler implements Scheduler {
             }
           }
 
-          String networking = request.request.slaveInfo.getContainerInfo().getNetworking();
+          String networking = slaveInfo.getContainerInfo().getNetworking();
           Network dockerNetwork = Network.valueOf(networking);
 
           dockerInfoBuilder.setNetwork(dockerNetwork);
@@ -730,8 +741,8 @@ public class JenkinsScheduler implements Scheduler {
             containerInfoBuilder.addNetworkInfos(networkInfoBuilder);
           }
 
-          if (request.request.slaveInfo.getContainerInfo().hasPortMappings()) {
-              Set<MesosSlaveInfo.PortMapping> portMappings = request.request.slaveInfo.getContainerInfo().getPortMappings();
+            if (slaveInfo.getContainerInfo().hasPortMappings()) {
+              Set<MesosSlaveInfo.PortMapping> portMappings = slaveInfo.getContainerInfo().getPortMappings();
               Set<Long> portsToUse = findPortsToUse(offer, portMappings.size());
               Iterator<Long> iterator = portsToUse.iterator();
               Value.Ranges.Builder portRangesBuilder = Value.Ranges.newBuilder();
@@ -800,13 +811,15 @@ public class JenkinsScheduler implements Scheduler {
   }
 
   String generateJenkinsCommand2Run(Request request) {
+    SlaveRequest slaveRequest = request.getRequest();
+    MesosSlaveInfo slaveInfo = slaveRequest.getSlaveInfo();
 
-    int jvmMem = request.request.slaveInfo.getSlaveMem();
-    String jvmArgString = request.request.slaveInfo.getJvmArgs();
-    String jnlpArgString = request.request.slaveInfo.getJnlpArgs();
-    String slaveName = request.request.slave.name;
-    MesosSlaveInfo.RunAsUserInfo runAsUserInfo = request.request.slaveInfo.getRunAsUserInfo();
-    List<MesosSlaveInfo.Command> additionalCommands = request.request.slaveInfo.getAdditionalCommands();
+    int jvmMem = slaveInfo.getSlaveMem();
+    String jvmArgString = slaveInfo.getJvmArgs();
+    String jnlpArgString = slaveInfo.getJnlpArgs();
+    String slaveName = slaveRequest.getSlave().getName();
+    MesosSlaveInfo.RunAsUserInfo runAsUserInfo = slaveInfo.getRunAsUserInfo();
+    List<MesosSlaveInfo.Command> additionalCommands = slaveInfo.getAdditionalCommands();
 
     String slaveCmd = String.format(SLAVE_COMMAND_FORMAT,
             jvmMem,
@@ -836,6 +849,8 @@ public class JenkinsScheduler implements Scheduler {
   }
 
     private CommandInfo.Builder getBaseCommandBuilder(Request request) {
+        SlaveRequest slaveRequest = request.getRequest();
+        MesosSlaveInfo slaveInfo = slaveRequest.getSlaveInfo();
 
         CommandInfo.Builder commandBuilder = CommandInfo.newBuilder();
 
@@ -843,17 +858,17 @@ public class JenkinsScheduler implements Scheduler {
 
         // make an "api call" to mesos so that Jenkins knows that he has to create a new slave on Jenkins instance.
         // user network (in our case) means an isolated network, so the fetcher will not be able to access jenkins
-        String slaveRequestUri = joinPaths(jenkinsMaster, String.format(SLAVE_REQUEST_FORMAT, request.request.slave.getName()));
+        String slaveRequestUri = joinPaths(jenkinsMaster, String.format(SLAVE_REQUEST_FORMAT, slaveRequest.getSlave().getName()));
 
         String slaveJarUri = joinPaths(jenkinsMaster, SLAVE_JAR_URI_SUFFIX);
 
         Network slaveNetwork = Network.NONE;
-        if (request.request.slaveInfo.getContainerInfo() != null) {
-            slaveNetwork = Network.valueOf(request.request.slaveInfo.getContainerInfo().getNetworking());
+        if (slaveInfo.getContainerInfo() != null) {
+            slaveNetwork = Network.valueOf(slaveInfo.getContainerInfo().getNetworking());
         }
 
         if (Network.USER.equals(slaveNetwork)) {
-            String requestSlaveCommand = "curl -o ${MESOS_SANDBOX}/" + request.request.slave.getName() + " " + slaveRequestUri;
+            String requestSlaveCommand = "curl -o ${MESOS_SANDBOX}/" + slaveRequest.getSlave().getName() + " " + slaveRequestUri;
             String downloadSlaveJarCommand = "curl -o ${MESOS_SANDBOX}/slave.jar " + slaveJarUri;
 
             command = requestSlaveCommand + " && " + downloadSlaveJarCommand + " && ";
@@ -866,12 +881,12 @@ public class JenkinsScheduler implements Scheduler {
 
         command += generateJenkinsCommand2Run(request);
 
-        if (request.request.slaveInfo.getContainerInfo() != null &&
-                request.request.slaveInfo.getContainerInfo().getUseCustomDockerCommandShell()) {
+        if (slaveInfo.getContainerInfo() != null &&
+                slaveInfo.getContainerInfo().getUseCustomDockerCommandShell()) {
             // Ref http://mesos.apache.org/documentation/latest/upgrades
             // regarding setting the shell value, and the impact on the command to be
             // launched
-            String customShell = request.request.slaveInfo.getContainerInfo().getCustomDockerCommandShell();
+            String customShell = slaveInfo.getContainerInfo().getCustomDockerCommandShell();
             if (StringUtils.stripToNull(customShell) == null) {
                 throw new IllegalArgumentException("Invalid custom shell argument supplied");
             }
@@ -965,36 +980,38 @@ public class JenkinsScheduler implements Scheduler {
     Result result = results.get(taskId);
     boolean terminalState = false;
 
+    SlaveResult slaveResult = result.getResult();
+    JenkinsSlave resultSlave = result.getSlave();
 
     switch (status.getState()) {
-    case TASK_STAGING:
-    case TASK_STARTING:
-      break;
-    case TASK_RUNNING:
-      result.result.running(result.slave);
-      if(mesosSlave != null && StringUtils.isBlank(mesosSlave.getDockerContainerID())) {
-        mesosSlave.setDockerContainerID(extractContainerIdFromTaskStatus(status));
-      }
-      break;
-    case TASK_FINISHED:
-      result.result.finished(result.slave);
-    case TASK_KILLED:
-      terminalState = true;
-      break;
-    case TASK_FAILED:
-      result.result.failed(result.slave, Mesos.SlaveResult.FAILED_CAUSE.MESOS_CLOUD_REPORTED_TASK_FAILED);
-      terminalState = true;
-      break;
-    case TASK_ERROR:
-      result.result.failed(result.slave, Mesos.SlaveResult.FAILED_CAUSE.MESOS_CLOUD_REPORTED_TASK_ERROR);
-      terminalState = true;
-      break;
-    case TASK_LOST:
-      result.result.failed(result.slave, Mesos.SlaveResult.FAILED_CAUSE.MESOS_CLOUD_REPORTED_TASK_LOST);
-      terminalState = true;
-      break;
-    default:
-      throw new IllegalStateException("Invalid State: " + status.getState());
+      case TASK_STAGING:
+      case TASK_STARTING:
+        break;
+      case TASK_RUNNING:
+        slaveResult.running(resultSlave);
+        if(mesosSlave != null && StringUtils.isBlank(mesosSlave.getDockerContainerID())) {
+          mesosSlave.setDockerContainerID(extractContainerIdFromTaskStatus(status));
+        }
+        break;
+      case TASK_FINISHED:
+        slaveResult.finished(resultSlave);
+      case TASK_KILLED:
+        terminalState = true;
+        break;
+      case TASK_FAILED:
+        slaveResult.failed(resultSlave, SlaveResult.FAILED_CAUSE.MESOS_CLOUD_REPORTED_TASK_FAILED);
+        terminalState = true;
+        break;
+      case TASK_ERROR:
+        slaveResult.failed(resultSlave, SlaveResult.FAILED_CAUSE.MESOS_CLOUD_REPORTED_TASK_ERROR);
+        terminalState = true;
+        break;
+      case TASK_LOST:
+        slaveResult.failed(resultSlave, SlaveResult.FAILED_CAUSE.MESOS_CLOUD_REPORTED_TASK_LOST);
+        terminalState = true;
+        break;
+      default:
+        throw new IllegalStateException("Invalid State: " + status.getState());
     }
 
     if (terminalState) {
@@ -1052,7 +1069,8 @@ public class JenkinsScheduler implements Scheduler {
     List<Request> foundRequests = new ArrayList<Request>();
     try {
       for (Request request : requests) {
-        if (request.request.slaveInfo.getLabelString().equals(label.getDisplayName())) {
+        String requestedLabelString = request.getRequest().getSlaveInfo().getLabelString();
+        if (StringUtils.equals(requestedLabelString, label.getDisplayName())) {
           foundRequests.add(request);
         }
       }
@@ -1061,35 +1079,6 @@ public class JenkinsScheduler implements Scheduler {
     }
 
     return foundRequests;
-  }
-
-  public class Result {
-    private final Mesos.SlaveResult result;
-    private final Mesos.JenkinsSlave slave;
-
-    private Result(Mesos.SlaveResult result, Mesos.JenkinsSlave slave) {
-      this.result = result;
-      this.slave = slave;
-    }
-
-    public Mesos.SlaveResult getResult() {
-        return result;
-    }
-
-    public Mesos.JenkinsSlave getSlave() {
-        return slave;
-    }
-  }
-
-  @VisibleForTesting
-  public class Request {
-    private final Mesos.SlaveRequest request;
-    private final Mesos.SlaveResult result;
-
-    public Request(Mesos.SlaveRequest request, Mesos.SlaveResult result) {
-      this.request = request;
-      this.result = result;
-    }
   }
 
   public int getNumberOfPendingTasks() {
@@ -1152,7 +1141,8 @@ public class JenkinsScheduler implements Scheduler {
   public Request getRequestForLinkedItem(String linkedItem) {
     try {
       for (Request request : requests) {
-        if (StringUtils.equals(request.request.slave.getLinkedItem(),linkedItem)) {
+        String requestedLinkedItem = request.getRequest().getSlave().getLinkedItem();
+        if (StringUtils.equals(requestedLinkedItem, linkedItem)) {
           return request;
         }
       }
@@ -1181,7 +1171,7 @@ public class JenkinsScheduler implements Scheduler {
   public double getUsedCpus() {
     double cpus = 0.0;
     for(Request request: requests) {
-      cpus += request.request.cpus;
+      cpus += request.getRequest().getCpus();
     }
 
     for(Result result: results.values()) {
@@ -1192,8 +1182,8 @@ public class JenkinsScheduler implements Scheduler {
 
   public int getUsedMem() {
     int mem = 0;
-    for(Request request:requests) {
-      mem += request.request.mem;
+    for(Request request: requests) {
+      mem += request.getRequest().getMem();
     }
 
     for(Result result: results.values()) {

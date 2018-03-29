@@ -20,142 +20,15 @@ import hudson.model.Saveable;
 import hudson.model.listeners.SaveableListener;
 import hudson.slaves.Cloud;
 import jenkins.model.Jenkins;
-import org.apache.mesos.Protos.ContainerInfo.DockerInfo;
 import org.apache.mesos.Scheduler;
-import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
+import org.jenkinsci.plugins.mesos.scheduling.SlaveRequest;
+import org.jenkinsci.plugins.mesos.scheduling.SlaveResult;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public abstract class Mesos {
   private static Map<MesosCloud, Mesos> clouds = new HashMap<MesosCloud, Mesos>();
 
-  public static class JenkinsSlave {
-    String name;
-    String hostName;
-    String label;
-    int numExecutors;
-    private final List<DockerInfo.PortMapping> actualPortMappings;
-    String linkedItem;
-    double cpus;
-    int mem;
-
-
-    public JenkinsSlave(String name, String hostName, List<DockerInfo.PortMapping> actualPortMappings, String label, int numExecutors, String linkedItem, double cpus, int mem) {
-      this.name = name;
-      this.hostName = hostName;
-
-      if (actualPortMappings == null) {
-          this.actualPortMappings = Collections.emptyList();
-      } else {
-          this.actualPortMappings = actualPortMappings;
-      }
-
-      this.numExecutors = numExecutors;
-      this.label = label;
-      this.linkedItem = linkedItem;
-      this.cpus = cpus;
-      this.mem = mem;
-    }
-
-    public JenkinsSlave(String name, String label, int numExecutors, String linkedItem, double cpus, int mem) {
-      this(name, null, null, label, numExecutors, linkedItem, cpus, mem);
-    }
-
-    public JenkinsSlave(String name) {
-      this(name, null, null, null, 0, null, 0, 0);
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getHostName() {
-        return hostName;
-    }
-
-    public String getLabel() {
-      return label;
-    }
-
-    public int getNumExecutors() {
-      return numExecutors;
-    }
-
-    @SuppressWarnings("unused")
-    public List<DockerInfo.PortMapping> getActualPortMappings() {
-        return Collections.unmodifiableList(actualPortMappings);
-    }
-
-    public String getLinkedItem() {
-      return linkedItem;
-    }
-
-    public double getCpus() {
-      return cpus;
-    }
-
-    public int getMem() {
-      return mem;
-    }
-
-    @Override
-    public String toString() {
-      return name;
-    }
-
-  }
-
-  public static class SlaveRequest {
-    JenkinsSlave slave;
-    final double cpus;
-    final int mem;
-    final String role;
-    final MesosSlaveInfo slaveInfo;
-
-    public SlaveRequest(JenkinsSlave slave, double cpus, int mem, String role,
-        MesosSlaveInfo slaveInfo) {
-      this.slave = slave;
-      this.cpus = cpus;
-      this.mem = mem;
-      this.role = role;
-      this.slaveInfo = slaveInfo;
-    }
-
-  }
-
-
-  public interface SlaveResult {
-    void running(JenkinsSlave slave);
-
-    void finished(JenkinsSlave slave);
-
-    void failed(JenkinsSlave slave, Mesos.SlaveResult.FAILED_CAUSE cause);
-
-    public static enum FAILED_CAUSE {
-      MESOS_CLOUD_REPORTED_TASK_FAILED("The MesosCloud reported the task as failed"),
-      MESOS_CLOUD_REPORTED_TASK_LOST("The MesosCloud reported the task as lost"),
-      MESOS_CLOUD_REPORTED_TASK_ERROR("The MesosCloud reported the task as erroneous "),
-      RESOURCE_LIMIT_REACHED("The maximum count of CPUs or Memory for your framework is reached"),
-      SLAVE_NEVER_SCHEDULED("The slave never came online");
-
-      private String text;
-
-      private FAILED_CAUSE(String s) {
-        text = s;
-      }
-
-      @Override
-      public String toString() {
-        return text;
-      }
-    }
-  }
 
   abstract public void startScheduler(String jenkinsMaster, MesosCloud mesosCloud);
   abstract public void updateScheduler(String jenkinsMaster, MesosCloud mesosCloud);
