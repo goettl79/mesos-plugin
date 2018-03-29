@@ -328,11 +328,11 @@ public class MesosCloud extends Cloud {
   private void sendSlaveRequest(int numExecutors, MesosSlaveInfo slaveInfo, String linkedItem) throws Descriptor.FormException, IOException {
     String name = slaveInfo.getLabelString() + "-" + UUID.randomUUID().toString();
     double cpus = slaveInfo.getSlaveCpus() + (numExecutors * slaveInfo.getExecutorCpus());
-    int memory = (int)((slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem())) * (1 + JVM_MEM_OVERHEAD_FACTOR));
+    double memory = (slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem())) * (1 + JVM_MEM_OVERHEAD_FACTOR);
 
 
-    JenkinsSlave jenkinsSlave = new JenkinsSlave(name,slaveInfo.getLabelString(), numExecutors, linkedItem, cpus, memory);
-    SlaveRequest slaveRequest = new SlaveRequest(jenkinsSlave, cpus, memory, role, slaveInfo);
+    JenkinsSlave jenkinsSlave = new JenkinsSlave(name, slaveInfo.getLabelString(), numExecutors, linkedItem, cpus, memory, role);
+    SlaveRequest slaveRequest = new SlaveRequest(jenkinsSlave, slaveInfo);
     Mesos mesos = Mesos.getInstance(this);
 
     mesos.startJenkinsSlave(slaveRequest, new SlaveResult(this));
