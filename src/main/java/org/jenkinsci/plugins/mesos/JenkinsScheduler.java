@@ -188,7 +188,7 @@ public class JenkinsScheduler implements Scheduler {
   }
 
   private boolean isCpuLimitReached(Request request) {
-    double futureUsedCpus = getUsedCpus() + request.getRequest().getMem();
+    double futureUsedCpus = getUsedCpus() + request.getRequest().getSlave().getCpus();
     return isCpuLimitActivated() && mesosCloud.getMaxCpus() < futureUsedCpus;
   }
 
@@ -198,7 +198,7 @@ public class JenkinsScheduler implements Scheduler {
   }
 
   private boolean isMemoryLimitReached(Request request) {
-    int futureUsedMemory = getUsedMem() + request.getRequest().getMem();
+    double futureUsedMemory = getUsedMem() + request.getRequest().getSlave().getMem();
     return isMemoryLimitActivated() && mesosCloud.getMaxMem() < futureUsedMemory;
   }
 
@@ -364,7 +364,8 @@ public class JenkinsScheduler implements Scheduler {
             jenkinsSlave.getNumExecutors(),
             jenkinsSlave.getLinkedItem(),
             jenkinsSlave.getCpus(),
-            jenkinsSlave.getMem());
+            jenkinsSlave.getMem(),
+            jenkinsSlave.getRole());
 
     // "transition" to finished
     results.put(taskId, new Result(request.getResult(), resultJenkinsSlave));
@@ -443,8 +444,8 @@ public class JenkinsScheduler implements Scheduler {
     }
 
     // Check for sufficient cpu and memory resources in the offer.
-    double requestedCpus = slaveRequest.getCpus();
-    double requestedMem = slaveRequest.getMem();
+    double requestedCpus = slaveRequest.getSlave().getCpus();
+    double requestedMem = slaveRequest.getSlave().getMem();
     // Get matching slave attribute for this label.
     JSONObject slaveAttributes = getMesosCloud().getSlaveAttributeForLabel(slaveInfo.getLabelString());
 
@@ -610,8 +611,8 @@ public class JenkinsScheduler implements Scheduler {
         .setCommand(commandBuilder.build());
 
     SlaveRequest slaveRequest = request.getRequest();
-    double cpusNeeded = slaveRequest.getCpus();
-    double memNeeded = slaveRequest.getMem();
+    double cpusNeeded = slaveRequest.getSlave().getCpus();
+    double memNeeded = slaveRequest.getSlave().getMem();
 
     for (Resource r : offer.getResourcesList()) {
       if (r.getName().equals("cpus") && cpusNeeded > 0) {
@@ -626,7 +627,7 @@ public class JenkinsScheduler implements Scheduler {
                     Value.Scalar.newBuilder()
                         .setValue(cpus).build()).build());
         cpusNeeded -= cpus;
-      } else if (r.getName().equals("mem") && memNeeded > 0) {
+      } else if (r.getName().equals("mem") && memNeeded > 0.0) {
         double mem = Math.min(r.getScalar().getValue(), memNeeded);
         builder.addResources(
             Resource
@@ -640,7 +641,7 @@ public class JenkinsScheduler implements Scheduler {
                         .setValue(mem)
                         .build()).build());
         memNeeded -= mem;
-      } else if (cpusNeeded == 0 && memNeeded == 0) {
+      } else if (cpusNeeded <= 0.0 && memNeeded <= 0.0) {
         break;
       }
     }
@@ -1137,7 +1138,7 @@ public class JenkinsScheduler implements Scheduler {
   public double getUsedCpus() {
     double cpus = 0.0;
     for(Request request: requests) {
-      cpus += request.getRequest().getCpus();
+      cpus += request.getRequest().getSlave().getCpus();
     }
 
     for(Result result: results.values()) {
@@ -1146,10 +1147,10 @@ public class JenkinsScheduler implements Scheduler {
     return cpus;
   }
 
-  public int getUsedMem() {
-    int mem = 0;
+  public double getUsedMem() {
+    double mem = 0.0;
     for(Request request: requests) {
-      mem += request.getRequest().getMem();
+      mem += request.getRequest().getSlave().getMem();
     }
 
     for(Result result: results.values()) {
