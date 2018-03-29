@@ -1,24 +1,19 @@
 package org.jenkinsci.plugins.mesos.api;
 
 import hudson.Extension;
-import hudson.model.AbstractModelObject;
-import hudson.model.Computer;
+import hudson.model.*;
 import hudson.model.Descriptor.FormException;
-import hudson.model.Failure;
-import hudson.model.Node;
-import hudson.model.UnprotectedRootAction;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang.StringUtils;
-import org.jenkinsci.plugins.mesos.JenkinsScheduler;
-import org.jenkinsci.plugins.mesos.Mesos;
-import org.jenkinsci.plugins.mesos.MesosCloud;
-import org.jenkinsci.plugins.mesos.MesosSlave;
+import org.jenkinsci.plugins.mesos.*;
 import org.jenkinsci.plugins.mesos.Messages;
 import org.jenkinsci.plugins.mesos.config.acl.ACLEntry;
 import org.jenkinsci.plugins.mesos.config.acl.MesosFrameworkToItemMapper;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveDefinitions;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.SlaveDefinitionsConfiguration;
+import org.jenkinsci.plugins.mesos.scheduling.JenkinsSlave;
+import org.jenkinsci.plugins.mesos.scheduling.Result;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
@@ -29,9 +24,7 @@ import java.util.Collection;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
-import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
-import static javax.servlet.http.HttpServletResponse.SC_OK;
+import static javax.servlet.http.HttpServletResponse.*;
 
 /**
  * Exposes an entry point to add a new mesos slave.
@@ -134,10 +127,10 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
 
     for (MesosCloud mesosCloud : mesosClouds) {
       JenkinsScheduler jenkinsScheduler = (JenkinsScheduler) Mesos.getInstance(mesosCloud).getScheduler();
-      JenkinsScheduler.Result result = jenkinsScheduler.getResult(taskId);
+      Result result = jenkinsScheduler.getResult(taskId);
 
       if (result != null) {
-        Mesos.JenkinsSlave jenkinsSlave = result.getSlave();
+        JenkinsSlave jenkinsSlave = result.getSlave();
         int executors = jenkinsSlave.getNumExecutors();
         MesosSlaveInfo mesosSlaveInfo =
             mesosCloud.getSlaveInfo(mesosCloud.getSlaveInfos(), jenkins.getLabel(jenkinsSlave.getLabel()));

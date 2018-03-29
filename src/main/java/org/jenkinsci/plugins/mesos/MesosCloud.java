@@ -35,7 +35,9 @@ import org.jenkinsci.plugins.mesos.config.acl.MesosFrameworkToItemMapper;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveDefinitions;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.SlaveDefinitionsConfiguration;
-import org.jenkinsci.plugins.mesos.monitoring.MesosTaskFailureMonitor;
+import org.jenkinsci.plugins.mesos.scheduling.JenkinsSlave;
+import org.jenkinsci.plugins.mesos.scheduling.SlaveRequest;
+import org.jenkinsci.plugins.mesos.scheduling.SlaveResult;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -329,35 +331,14 @@ public class MesosCloud extends Cloud {
     int memory = (int)((slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem())) * (1 + JVM_MEM_OVERHEAD_FACTOR));
 
 
-    Mesos.JenkinsSlave jenkinsSlave = new Mesos.JenkinsSlave(name,slaveInfo.getLabelString(), numExecutors, linkedItem, cpus, memory);
-    Mesos.SlaveRequest slaveRequest = new Mesos.SlaveRequest(jenkinsSlave, cpus, memory, role, slaveInfo);
+    JenkinsSlave jenkinsSlave = new JenkinsSlave(name,slaveInfo.getLabelString(), numExecutors, linkedItem, cpus, memory);
+    SlaveRequest slaveRequest = new SlaveRequest(jenkinsSlave, cpus, memory, role, slaveInfo);
     Mesos mesos = Mesos.getInstance(this);
 
-    mesos.startJenkinsSlave(slaveRequest, new Mesos.SlaveResult() {
-      @Override
-      public void running(Mesos.JenkinsSlave slave) {
-
-      }
-
-      @Override
-      public void finished(Mesos.JenkinsSlave slave) {
-        //yeah, the task finishe. so we can remove the slave from Jenkins instance
-        LOGGER.info(String.format("remove finished Node %s from Jenkins", slave.getName()));
-        removeSlaveFromJenkins(slave);
-      }
-
-      @Override
-      public void failed(Mesos.JenkinsSlave slave, Mesos.SlaveResult.FAILED_CAUSE cause) {
-        try {
-          MesosTaskFailureMonitor.getInstance().addFailedSlave(slave, cause);
-        } catch (Exception e) {
-          LOGGER.log(Level.WARNING, "Error while getting MesosTaskFailureMonitor", e);
-        }
-      }
-    });
+    mesos.startJenkinsSlave(slaveRequest, new SlaveResult(this));
   }
 
-  private void removeSlaveFromJenkins(Mesos.JenkinsSlave slave) {
+  public void removeSlaveFromJenkins(JenkinsSlave slave) {
     Jenkins jenkins = Jenkins.getInstance();
     Node n = jenkins.getNode(slave.getName());
     if(n != null) {

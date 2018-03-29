@@ -5,6 +5,10 @@ import hudson.model.Node;
 import jenkins.model.Jenkins;
 import org.apache.mesos.Protos;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
+import org.jenkinsci.plugins.mesos.scheduling.JenkinsSlave;
+import org.jenkinsci.plugins.mesos.scheduling.Request;
+import org.jenkinsci.plugins.mesos.scheduling.SlaveRequest;
+import org.jenkinsci.plugins.mesos.scheduling.SlaveResult;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -148,7 +152,7 @@ public class JenkinsSchedulerTest {
 
     @Test
     public void testConstructMesosCommandInfoWithNoContainer() throws Exception {
-        JenkinsScheduler.Request request = mockMesosRequest(Boolean.FALSE, null, null);
+        Request request = mockMesosRequest(Boolean.FALSE, null, null);
 
         Protos.CommandInfo.Builder commandInfoBuilder = jenkinsScheduler.getCommandInfoBuilder(request);
         Protos.CommandInfo commandInfo = commandInfoBuilder.build();
@@ -162,7 +166,7 @@ public class JenkinsSchedulerTest {
 
     @Test
     public void testConstructMesosCommandInfoWithDefaultDockerShell() throws Exception {
-        JenkinsScheduler.Request request = mockMesosRequest(Boolean.TRUE,false,null);
+        Request request = mockMesosRequest(Boolean.TRUE,false,null);
 
         Protos.CommandInfo.Builder commandInfoBuilder = jenkinsScheduler.getCommandInfoBuilder(request);
         Protos.CommandInfo commandInfo = commandInfoBuilder.build();
@@ -175,7 +179,7 @@ public class JenkinsSchedulerTest {
 
     @Test
     public void testConstructMesosCommandInfoWithCustomDockerShell() throws Exception {
-        JenkinsScheduler.Request request = mockMesosRequest(Boolean.TRUE, true, "/bin/wrapdocker");
+        Request request = mockMesosRequest(Boolean.TRUE, true, "/bin/wrapdocker");
 
         Protos.CommandInfo.Builder commandInfoBuilder = jenkinsScheduler.getCommandInfoBuilder(request);
         Protos.CommandInfo commandInfo = commandInfoBuilder.build();
@@ -190,19 +194,19 @@ public class JenkinsSchedulerTest {
 
     @Test(expected = java.lang.IllegalArgumentException.class)
     public void testConstructMesosCommandInfoWithBlankCustomDockerShell() throws Exception {
-        JenkinsScheduler.Request request = mockMesosRequest(Boolean.TRUE, true, " ");
+        Request request = mockMesosRequest(Boolean.TRUE, true, " ");
 
         jenkinsScheduler.getCommandInfoBuilder(request);
     }
 
     @Test(expected = java.lang.IllegalArgumentException.class)
     public void testConstructMesosCommandInfoWithNullCustomDockerShell() throws Exception {
-        JenkinsScheduler.Request request = mockMesosRequest(Boolean.TRUE, true, null);
+        Request request = mockMesosRequest(Boolean.TRUE, true, null);
 
         jenkinsScheduler.getCommandInfoBuilder(request);
     }
 
-    private JenkinsScheduler.Request mockMesosRequest(
+    private Request mockMesosRequest(
             Boolean useDocker,
             Boolean useCustomDockerCommandShell,
             String customDockerCommandShell) throws Descriptor.FormException {
@@ -244,10 +248,10 @@ public class JenkinsSchedulerTest {
         );
 
 
-        Mesos.SlaveRequest slaveReq = new Mesos.SlaveRequest(new Mesos.JenkinsSlave(TEST_JENKINS_SLAVE_NAME),0.2d,TEST_JENKINS_SLAVE_MEM,"jenkins",mesosSlaveInfo);
-        Mesos.SlaveResult slaveResult = Mockito.mock(Mesos.SlaveResult.class);
+        SlaveRequest slaveReq = new SlaveRequest(new JenkinsSlave(TEST_JENKINS_SLAVE_NAME),0.2d,TEST_JENKINS_SLAVE_MEM,"jenkins",mesosSlaveInfo);
+        SlaveResult slaveResult = Mockito.mock(SlaveResult.class);
 
-        return jenkinsScheduler.new Request(slaveReq,slaveResult);
+        return new Request(slaveReq,slaveResult);
     }
 
     private Protos.Offer createOfferWithVariableRanges(long rangeBegin, long rangeEnd) {

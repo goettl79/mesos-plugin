@@ -11,25 +11,30 @@ import org.jenkinsci.plugins.mesos.Mesos;
 import org.jenkinsci.plugins.mesos.MesosCloud;
 import org.jenkinsci.plugins.mesos.MesosComputer;
 import org.jenkinsci.plugins.mesos.MesosSlave;
+import org.jenkinsci.plugins.mesos.scheduling.JenkinsSlave;
+import org.jenkinsci.plugins.mesos.scheduling.SlaveResult;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import java.io.PrintStream;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Extension
 public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
 
-  private Map<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE> failedSlaves;
+  private Map<JenkinsSlave, SlaveResult.FAILED_CAUSE> failedSlaves;
 
   public MesosTaskFailureMonitor() {
     init();
   }
 
   private void init() {
-    this.failedSlaves = new ConcurrentHashMap<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE>();
+    this.failedSlaves = new ConcurrentHashMap<JenkinsSlave, SlaveResult.FAILED_CAUSE>();
   }
 
   @Override
@@ -47,11 +52,11 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   }
 
   @Override
-  public void fix(TaskListener taskListener) throws Exception {
+  public void fix(TaskListener taskListener) {
     PrintStream logger = taskListener.getLogger();
-    Map<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE> failedSlavesCopy = new HashMap<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE>(failedSlaves);
+    Map<JenkinsSlave, SlaveResult.FAILED_CAUSE> failedSlavesCopy = new HashMap<JenkinsSlave, SlaveResult.FAILED_CAUSE>(failedSlaves);
 
-    for (Mesos.JenkinsSlave failedSlave : failedSlavesCopy.keySet()) {
+    for (JenkinsSlave failedSlave : failedSlavesCopy.keySet()) {
       try {
         this.failedSlaves.remove(failedSlave);
         removeExistingNode(failedSlave, logger);
@@ -63,7 +68,7 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
     }
   }
 
-  private void requestNewNode(Mesos.JenkinsSlave failedSlave, PrintStream logger) {
+  private void requestNewNode(JenkinsSlave failedSlave, PrintStream logger) {
     Jenkins jenkins = Jenkins.getInstance();
 
     try {
@@ -87,7 +92,7 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
     }
   }
 
-  private void removeExistingNode(Mesos.JenkinsSlave failedSlave, PrintStream logger) {
+  private void removeExistingNode(JenkinsSlave failedSlave, PrintStream logger) {
     Jenkins jenkins = Jenkins.getInstance();
     Node node = jenkins.getNode(failedSlave.getName());
     if (node != null) {
@@ -120,11 +125,11 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
     init();
   }
 
-  public void addFailedSlave(Mesos.JenkinsSlave slave, Mesos.SlaveResult.FAILED_CAUSE cause) {
+  public void addFailedSlave(JenkinsSlave slave, SlaveResult.FAILED_CAUSE cause) {
     failedSlaves.put(slave, cause);
   }
 
-  public Map<Mesos.JenkinsSlave, Mesos.SlaveResult.FAILED_CAUSE> getFailedSlaves() {
+  public Map<JenkinsSlave, SlaveResult.FAILED_CAUSE> getFailedSlaves() {
     return Collections.unmodifiableMap(failedSlaves);
   }
 }

@@ -1,6 +1,5 @@
 package org.jenkinsci.plugins.mesos;
 
-import org.jenkinsci.plugins.mesos.MesosSlave;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeUtils;
 import org.junit.After;
