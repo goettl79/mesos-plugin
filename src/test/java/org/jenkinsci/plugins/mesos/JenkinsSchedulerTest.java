@@ -37,7 +37,7 @@ public class JenkinsSchedulerTest {
 
     private JenkinsScheduler jenkinsScheduler;
 
-    private static int    TEST_JENKINS_SLAVE_MEM   = 512;
+    private static double TEST_JENKINS_SLAVE_MEM   = 512;
     private static String TEST_JENKINS_SLAVE_ARG   = "-Xms16m -XX:+UseConcMarkSweepGC -Djava.net.preferIPv4Stack=true";
     private static String TEST_JENKINS_JNLP_ARG    = "";
     private static String TEST_JENKINS_SLAVE_NAME  = "testSlave1";
@@ -238,7 +238,7 @@ public class JenkinsSchedulerTest {
                 "2",                // idleTerminationMinutes,
                 "2",                // maxTtl,
                 false,
-                null,               // slaveAttributes,
+                "",               // slaveAttributes,
                 null,               // jvmArgs,
                 null,               //jnlpArgs,
                 containerInfo,      // containerInfo,
@@ -248,7 +248,8 @@ public class JenkinsSchedulerTest {
         );
 
 
-        SlaveRequest slaveReq = new SlaveRequest(new JenkinsSlave(TEST_JENKINS_SLAVE_NAME),0.2d,TEST_JENKINS_SLAVE_MEM,"jenkins",mesosSlaveInfo);
+        JenkinsSlave jenkinsSlave = new JenkinsSlave(TEST_JENKINS_SLAVE_NAME, "label", 1, "linkedItem", 0.2, TEST_JENKINS_SLAVE_MEM, "jenkins");
+        SlaveRequest slaveReq = new SlaveRequest(jenkinsSlave, mesosSlaveInfo);
         SlaveResult slaveResult = Mockito.mock(SlaveResult.class);
 
         return new Request(slaveReq,slaveResult);

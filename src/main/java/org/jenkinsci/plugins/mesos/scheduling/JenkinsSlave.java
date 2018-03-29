@@ -9,14 +9,15 @@ public class JenkinsSlave {
     private final String name;
     private final String hostName;
     private final String label;
-    private final int numExecutors;
+    private final Integer numExecutors;
     private final List<Protos.ContainerInfo.DockerInfo.PortMapping> actualPortMappings;
     private final String linkedItem;
-    private final double cpus;
-    private final int mem;
+    private final Double cpus;
+    private final Double mem;
+    private final String role;
 
 
-    public JenkinsSlave(String name, String hostName, List<Protos.ContainerInfo.DockerInfo.PortMapping> actualPortMappings, String label, int numExecutors, String linkedItem, double cpus, int mem) {
+    public JenkinsSlave(String name, String hostName, List<Protos.ContainerInfo.DockerInfo.PortMapping> actualPortMappings, String label, Integer numExecutors, String linkedItem, Double cpus, Double mem, String role) {
         this.name = name;
         this.hostName = hostName;
 
@@ -31,14 +32,15 @@ public class JenkinsSlave {
         this.linkedItem = linkedItem;
         this.cpus = cpus;
         this.mem = mem;
+        this.role = role;
     }
 
-    public JenkinsSlave(String name, String label, int numExecutors, String linkedItem, double cpus, int mem) {
-        this(name, null, null, label, numExecutors, linkedItem, cpus, mem);
+    public JenkinsSlave(String name, String label, Integer numExecutors, String linkedItem, Double cpus, Double mem, String role) {
+        this(name, null, null, label, numExecutors, linkedItem, cpus, mem, role);
     }
 
-    public JenkinsSlave(String name) {
-        this(name, null, null, null, 0, null, 0, 0);
+    public JenkinsSlave(String name, String role) {
+        this(name, null, null, null, 0, null, 0.0, 0.0, role);
     }
 
     public String getName() {
@@ -70,8 +72,12 @@ public class JenkinsSlave {
         return cpus;
     }
 
-    public int getMem() {
+    public double getMem() {
         return mem;
+    }
+
+    public String getRole() {
+        return role;
     }
 
     @Override
