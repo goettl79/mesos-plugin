@@ -169,7 +169,10 @@ public class JenkinsScheduler implements Scheduler {
     if(isResourceLimitReached(request)) {
       LOGGER.info("Maximum number of CPUs or Mem is reached, set request "+ slaveRequest.getSlave().getName() +" as failed " +
               "for a later retry." );
-      slaveResult.failed(slaveRequest.getSlave(), SlaveResult.FAILED_CAUSE.RESOURCE_LIMIT_REACHED);
+
+      JenkinsSlave.ResultJenkinsSlave resultJenkinsSlave =
+              new JenkinsSlave.ResultJenkinsSlave(request.getRequest().getSlave(), null, null);
+      slaveResult.failed(resultJenkinsSlave, SlaveResult.FAILED_CAUSE.RESOURCE_LIMIT_REACHED);
       return;
     }
 
@@ -260,7 +263,9 @@ public class JenkinsScheduler implements Scheduler {
              requests.remove(request);
              // Also signal the Thread of the MesosComputerLauncher.launch() to exit from latch.await()
              // Otherwise the Thread will stay in WAIT forever -> Leak!
-             request.getResult().failed(request.getRequest().getSlave(), SlaveResult.FAILED_CAUSE.SLAVE_NEVER_SCHEDULED);
+             JenkinsSlave.ResultJenkinsSlave resultJenkinsSlave =
+                     new JenkinsSlave.ResultJenkinsSlave(request.getRequest().getSlave(), null, null);
+             request.getResult().failed(resultJenkinsSlave, SlaveResult.FAILED_CAUSE.SLAVE_NEVER_SCHEDULED);
              return;
            }
         }
@@ -386,22 +391,12 @@ public class JenkinsScheduler implements Scheduler {
     Filters filters = Filters.newBuilder().setRefuseSeconds(1).build();
     driver.launchTasks(offerIDs, tasks, filters);
 
+    // "transition" to finished
     List<DockerInfo.PortMapping> actualPortMappings = task.getContainer().getDocker().getPortMappingsList();
 
-    SlaveRequest slaveRequest = request.getRequest();
-    JenkinsSlave jenkinsSlave = slaveRequest.getSlave();
-    JenkinsSlave resultJenkinsSlave = new JenkinsSlave(
-            jenkinsSlave.getName(),
-            offer.getHostname(),
-            actualPortMappings,
-            slaveRequest.getSlaveInfo().getLabelString(),
-            jenkinsSlave.getNumExecutors(),
-            jenkinsSlave.getLinkedItem(),
-            jenkinsSlave.getCpus(),
-            jenkinsSlave.getMem(),
-            jenkinsSlave.getRole());
+    JenkinsSlave.ResultJenkinsSlave resultJenkinsSlave =
+            new JenkinsSlave.ResultJenkinsSlave(request.getRequest().getSlave(), offer.getHostname(), actualPortMappings);
 
-    // "transition" to finished
     results.put(taskId, new Result(request.getResult(), resultJenkinsSlave));
     finishedTasks.add(taskId);
   }
@@ -982,7 +977,7 @@ public class JenkinsScheduler implements Scheduler {
     boolean terminalState = false;
 
     SlaveResult slaveResult = result.getResult();
-    JenkinsSlave resultSlave = result.getSlave();
+    JenkinsSlave.ResultJenkinsSlave resultSlave = result.getSlave();
 
     switch (status.getState()) {
       case TASK_STAGING:

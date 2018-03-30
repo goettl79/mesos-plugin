@@ -3,15 +3,15 @@ package org.jenkinsci.plugins.mesos.scheduling;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 
 public class SlaveRequest {
-    private final JenkinsSlave jenkinsSlave;
+    private final JenkinsSlave.RequestJenkinsSlave jenkinsSlave;
     private final MesosSlaveInfo slaveInfo;
 
-    public SlaveRequest(JenkinsSlave jenkinsSlave, MesosSlaveInfo slaveInfo) {
+    public SlaveRequest(JenkinsSlave.RequestJenkinsSlave jenkinsSlave, MesosSlaveInfo slaveInfo) {
         this.jenkinsSlave = jenkinsSlave;
         this.slaveInfo = slaveInfo;
     }
 
-    public JenkinsSlave getSlave() {
+    public JenkinsSlave.RequestJenkinsSlave getSlave() {
         return jenkinsSlave;
     }
 
