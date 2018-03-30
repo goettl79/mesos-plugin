@@ -3,9 +3,9 @@ package org.jenkinsci.plugins.mesos.scheduling;
 
 public class Result {
     private final SlaveResult slaveResult;
-    private final JenkinsSlave jenkinsSlave;
+    private final JenkinsSlave.ResultJenkinsSlave jenkinsSlave;
 
-    public Result(SlaveResult slaveResult, JenkinsSlave jenkinsSlave) {
+    public Result(SlaveResult slaveResult, JenkinsSlave.ResultJenkinsSlave jenkinsSlave) {
         this.slaveResult = slaveResult;
         this.jenkinsSlave = jenkinsSlave;
     }
@@ -14,7 +14,7 @@ public class Result {
         return slaveResult;
     }
 
-    public JenkinsSlave getSlave() {
+    public JenkinsSlave.ResultJenkinsSlave getSlave() {
         return jenkinsSlave;
     }
 }

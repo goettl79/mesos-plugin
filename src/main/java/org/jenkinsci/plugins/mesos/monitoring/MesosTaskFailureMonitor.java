@@ -27,14 +27,14 @@ import java.util.concurrent.ConcurrentHashMap;
 @Extension
 public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
 
-  private Map<JenkinsSlave, SlaveResult.FAILED_CAUSE> failedSlaves;
+  private Map<JenkinsSlave.ResultJenkinsSlave, SlaveResult.FAILED_CAUSE> failedSlaves;
 
   public MesosTaskFailureMonitor() {
     init();
   }
 
   private void init() {
-    this.failedSlaves = new ConcurrentHashMap<JenkinsSlave, SlaveResult.FAILED_CAUSE>();
+    this.failedSlaves = new ConcurrentHashMap<JenkinsSlave.ResultJenkinsSlave, SlaveResult.FAILED_CAUSE>();
   }
 
   @Override
@@ -54,9 +54,9 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   @Override
   public void fix(TaskListener taskListener) {
     PrintStream logger = taskListener.getLogger();
-    Map<JenkinsSlave, SlaveResult.FAILED_CAUSE> failedSlavesCopy = new HashMap<JenkinsSlave, SlaveResult.FAILED_CAUSE>(failedSlaves);
+    Map<JenkinsSlave.ResultJenkinsSlave, SlaveResult.FAILED_CAUSE> failedSlavesCopy = new HashMap<JenkinsSlave.ResultJenkinsSlave, SlaveResult.FAILED_CAUSE>(failedSlaves);
 
-    for (JenkinsSlave failedSlave : failedSlavesCopy.keySet()) {
+    for (JenkinsSlave.ResultJenkinsSlave failedSlave : failedSlavesCopy.keySet()) {
       try {
         this.failedSlaves.remove(failedSlave);
         removeExistingNode(failedSlave, logger);
@@ -68,7 +68,7 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
     }
   }
 
-  private void requestNewNode(JenkinsSlave failedSlave, PrintStream logger) {
+  private void requestNewNode(JenkinsSlave.ResultJenkinsSlave failedSlave, PrintStream logger) {
     Jenkins jenkins = Jenkins.getInstance();
 
     try {
@@ -92,7 +92,7 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
     }
   }
 
-  private void removeExistingNode(JenkinsSlave failedSlave, PrintStream logger) {
+  private void removeExistingNode(JenkinsSlave.ResultJenkinsSlave failedSlave, PrintStream logger) {
     Jenkins jenkins = Jenkins.getInstance();
     Node node = jenkins.getNode(failedSlave.getName());
     if (node != null) {
@@ -125,11 +125,11 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
     init();
   }
 
-  public void addFailedSlave(JenkinsSlave slave, SlaveResult.FAILED_CAUSE cause) {
+  public void addFailedSlave(JenkinsSlave.ResultJenkinsSlave slave, SlaveResult.FAILED_CAUSE cause) {
     failedSlaves.put(slave, cause);
   }
 
-  public Map<JenkinsSlave, SlaveResult.FAILED_CAUSE> getFailedSlaves() {
+  public Map<JenkinsSlave.ResultJenkinsSlave, SlaveResult.FAILED_CAUSE> getFailedSlaves() {
     return Collections.unmodifiableMap(failedSlaves);
   }
 }

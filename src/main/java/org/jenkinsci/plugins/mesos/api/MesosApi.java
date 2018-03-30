@@ -130,7 +130,7 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
       Result result = jenkinsScheduler.getResult(taskId);
 
       if (result != null) {
-        JenkinsSlave jenkinsSlave = result.getSlave();
+        JenkinsSlave.ResultJenkinsSlave jenkinsSlave = result.getSlave();
         int executors = jenkinsSlave.getNumExecutors();
         MesosSlaveInfo mesosSlaveInfo =
             mesosCloud.getSlaveInfo(mesosCloud.getSlaveInfos(), jenkins.getLabel(jenkinsSlave.getLabel()));
