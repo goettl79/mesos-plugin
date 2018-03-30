@@ -19,4 +19,13 @@ public class Request {
     public SlaveResult getResult() {
         return slaveResult;
     }
+
+    @Override
+    public String toString() {
+        if (slaveRequest != null && slaveRequest.getSlave() != null) {
+            return slaveRequest.getSlave().getClass().getSimpleName();
+        }
+
+        return "Unspecified";
+    }
 }
