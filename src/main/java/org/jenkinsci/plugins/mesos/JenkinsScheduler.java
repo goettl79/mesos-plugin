@@ -171,7 +171,7 @@ public class JenkinsScheduler implements Scheduler {
               "for a later retry." );
 
       JenkinsSlave.ResultJenkinsSlave resultJenkinsSlave =
-              new JenkinsSlave.ResultJenkinsSlave(request.getRequest().getSlave(), null, null);
+              new JenkinsSlave.ResultJenkinsSlave(request.getRequest().getSlave());
       slaveResult.failed(resultJenkinsSlave, SlaveResult.FAILED_CAUSE.RESOURCE_LIMIT_REACHED);
       return;
     }
@@ -264,7 +264,7 @@ public class JenkinsScheduler implements Scheduler {
              // Also signal the Thread of the MesosComputerLauncher.launch() to exit from latch.await()
              // Otherwise the Thread will stay in WAIT forever -> Leak!
              JenkinsSlave.ResultJenkinsSlave resultJenkinsSlave =
-                     new JenkinsSlave.ResultJenkinsSlave(request.getRequest().getSlave(), null, null);
+                     new JenkinsSlave.ResultJenkinsSlave(request.getRequest().getSlave());
              request.getResult().failed(resultJenkinsSlave, SlaveResult.FAILED_CAUSE.SLAVE_NEVER_SCHEDULED);
              return;
            }
@@ -392,7 +392,21 @@ public class JenkinsScheduler implements Scheduler {
     driver.launchTasks(offerIDs, tasks, filters);
 
     // "transition" to finished
-    List<DockerInfo.PortMapping> actualPortMappings = task.getContainer().getDocker().getPortMappingsList();
+    List<DockerInfo.PortMapping> actualDockerPortMappings = task.getContainer().getDocker().getPortMappingsList();
+    Set<MesosSlaveInfo.PortMapping> actualPortMappings = new LinkedHashSet<MesosSlaveInfo.PortMapping>();
+    for (DockerInfo.PortMapping actualDockerPortMapping : actualDockerPortMappings) {
+      MesosSlaveInfo.PortMapping requestedPortMapping = request.getRequest().getSlave().getPortMapping(actualDockerPortMapping.getContainerPort());
+
+      actualPortMappings.add(new MesosSlaveInfo.PortMapping(
+              actualDockerPortMapping.getContainerPort(),
+              actualDockerPortMapping.getHostPort(),
+              actualDockerPortMapping.getProtocol(),
+              requestedPortMapping.getDescription(),
+              requestedPortMapping.getUrlFormat(),
+              requestedPortMapping.isStaticHostPort()
+      ));
+    }
+
 
     JenkinsSlave.ResultJenkinsSlave resultJenkinsSlave =
             new JenkinsSlave.ResultJenkinsSlave(request.getRequest().getSlave(), offer.getHostname(), actualPortMappings);
@@ -748,7 +762,7 @@ public class JenkinsScheduler implements Scheduler {
                           .setContainerPort(portMapping.getContainerPort()) //
                           .setProtocol(portMapping.getProtocol());
 
-                  Long portToUse = portMapping.getHostPort() == null ? iterator.next() : portMapping.getHostPort();
+                  Long portToUse = portMapping.isStaticHostPort() ? portMapping.getHostPort() : iterator.next();
 
                   portMappingBuilder.setHostPort(portToUse.intValue());
 
