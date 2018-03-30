@@ -28,18 +28,18 @@
       <j:when test="${!slaveResult.slave.actualPortMappings.isEmpty()}">
          <ul>
            <j:forEach var="portMapping" items="${slaveResult.slave.actualPortMappings}">
-             <j:set var="definedMapping" value="${containerInfo.getPortMapping(portMapping.containerPort)}"/>
-             <j:set var="description" value="${definedMapping.description}"/>
+             <j:set var="description" value="${portMapping.description}"/>
              <j:set var="hostname" value="${slaveResult.slave.hostname}"/>
              <j:set var="hostPort" value="${portMapping.hostPort}"/>
+             <j:set var="isStaticHostPort" value="${portMapping.staticHostPort}"/>
              <j:set var="containerPort" value="${portMapping.containerPort}"/>
              <li>
                <j:choose>
-                 <j:when test="${definedMapping.hasUrlFormat()}">
-                   ${description}: <a href="${definedMapping.getFormattedUrl(hostname, hostPort)}" target="_blank">${hostname}:${hostPort}</a> (Container Port: ${portMapping.containerPort})
+                 <j:when test="${portMapping.hasUrlFormat()}">
+                   ${description}: <a href="${portMapping.getFormattedUrl(hostname, hostPort)}" target="_blank">${hostname}:${hostPort}</a> (Container Port: ${portMapping.containerPort}, static Host Port: ${isStaticHostPort})
                  </j:when>
                  <j:otherwise>
-                   ${description}: ${hostname}:${hostPort} (Container Port: ${portMapping.containerPort})
+                   ${description}: ${hostname}:${hostPort} (Container Port: ${portMapping.containerPort}, static Host Port: ${isStaticHostPort})
                  </j:otherwise>
                </j:choose>
              </li>
