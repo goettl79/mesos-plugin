@@ -35,16 +35,16 @@ public class SlaveResult {
         this.cloud = cloud;
     }
 
-    public void running(JenkinsSlave slave) {
+    public void running(JenkinsSlave.ResultJenkinsSlave slave) {
         // do nothing
     }
 
-    public void finished(JenkinsSlave slave) {
+    public void finished(JenkinsSlave.ResultJenkinsSlave slave) {
         LOGGER.info(String.format("Remove finished Node %s from Jenkins", slave.getName()));
         cloud.removeSlaveFromJenkins(slave);
     }
 
-    public void failed(JenkinsSlave slave, SlaveResult.FAILED_CAUSE cause) {
+    public void failed(JenkinsSlave.ResultJenkinsSlave slave, SlaveResult.FAILED_CAUSE cause) {
         try {
             MesosTaskFailureMonitor.getInstance().addFailedSlave(slave, cause);
         } catch (Exception e) {

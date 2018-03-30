@@ -49,7 +49,7 @@ public class MesosRunListener extends RunListener<Run> {
           MesosSlave mesosSlave = (MesosSlave) node;
           JenkinsScheduler jenkinsScheduler = (JenkinsScheduler) Mesos.getInstance(mesosSlave.getCloud()).getScheduler();
 
-          String mesosNodeHostname = jenkinsScheduler.getResult(mesosSlave.getDisplayName()).getSlave().getHostName();
+          String mesosNodeHostname = jenkinsScheduler.getResult(mesosSlave.getDisplayName()).getSlave().getHostname();
           String hostname = node.toComputer().getHostName();
 
           String msg = String.format("This build is running on %s", mesosNodeHostname);

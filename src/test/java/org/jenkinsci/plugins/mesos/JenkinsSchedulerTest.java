@@ -248,7 +248,7 @@ public class JenkinsSchedulerTest {
         );
 
 
-        JenkinsSlave jenkinsSlave = new JenkinsSlave(TEST_JENKINS_SLAVE_NAME, "label", 1, "linkedItem", 0.2, TEST_JENKINS_SLAVE_MEM, "jenkins");
+        JenkinsSlave.RequestJenkinsSlave jenkinsSlave = new JenkinsSlave.SharedResourcesFirst(TEST_JENKINS_SLAVE_NAME, "label", 1, "linkedItem", 0.2, TEST_JENKINS_SLAVE_MEM, "jenkins");
         SlaveRequest slaveReq = new SlaveRequest(jenkinsSlave, mesosSlaveInfo);
         SlaveResult slaveResult = Mockito.mock(SlaveResult.class);
 

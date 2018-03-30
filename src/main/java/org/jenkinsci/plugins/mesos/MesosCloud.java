@@ -331,14 +331,16 @@ public class MesosCloud extends Cloud {
     double memory = (slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem())) * (1 + JVM_MEM_OVERHEAD_FACTOR);
 
 
-    JenkinsSlave jenkinsSlave = new JenkinsSlave(name, slaveInfo.getLabelString(), numExecutors, linkedItem, cpus, memory, role);
+    // TODO: consider making this configurable (on MesosCloud/Framework level)
+    JenkinsSlave.RequestJenkinsSlave jenkinsSlave = new JenkinsSlave.SharedResourcesFirst(name, slaveInfo.getLabelString(), numExecutors, linkedItem, cpus, memory, role);
+
     SlaveRequest slaveRequest = new SlaveRequest(jenkinsSlave, slaveInfo);
     Mesos mesos = Mesos.getInstance(this);
 
     mesos.startJenkinsSlave(slaveRequest, new SlaveResult(this));
   }
 
-  public void removeSlaveFromJenkins(JenkinsSlave slave) {
+  public void removeSlaveFromJenkins(JenkinsSlave.ResultJenkinsSlave slave) {
     Jenkins jenkins = Jenkins.getInstance();
     Node n = jenkins.getNode(slave.getName());
     if(n != null) {

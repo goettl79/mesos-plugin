@@ -12,8 +12,8 @@
 
     <h2>${%Additional Mesos Information}</h2>
 
-    <p>Mesos Agent: ${slaveResult.slave.hostName}</p>
-    <p>Task Status: ${it.node.taskStatus.getState()}</p>
+    <p>Mesos Agent: ${slaveResult.slave.hostname}</p>
+    <p>Task Status: ${it.node.taskStatus.state}</p>
     <j:set var="failureCause" value="${org.jenkinsci.plugins.mesos.monitoring.MesosTaskFailureMonitor.instance.failedSlaves.get(slaveResult.slave)}"/>
     <j:choose>
       <j:when test="${failureCause != null}">
@@ -21,16 +21,16 @@
       </j:when>
     </j:choose>
     <p>Image: ${containerInfo.dockerImage}</p>
-    <p>Container: ${it.node.getDockerContainerID()}</p>
+    <p>Container: ${it.node.dockerContainerID}</p>
 
     <p>Port mappings:</p>
     <j:choose>
-      <j:when test="${containerInfo.hasPortMappings()}">
+      <j:when test="${!slaveResult.slave.actualPortMappings.isEmpty()}">
          <ul>
            <j:forEach var="portMapping" items="${slaveResult.slave.actualPortMappings}">
              <j:set var="definedMapping" value="${containerInfo.getPortMapping(portMapping.containerPort)}"/>
              <j:set var="description" value="${definedMapping.description}"/>
-             <j:set var="hostname" value="${slaveResult.slave.hostName}"/>
+             <j:set var="hostname" value="${slaveResult.slave.hostname}"/>
              <j:set var="hostPort" value="${portMapping.hostPort}"/>
              <j:set var="containerPort" value="${portMapping.containerPort}"/>
              <li>
@@ -54,9 +54,9 @@
     </j:choose>
 
     <j:choose>
-      <j:when test="${it.node.getMonitoringURL() != null}">
+      <j:when test="${it.node.monitoringURL != null}">
         <h2>${%Grafana:}</h2>
-        <iframe width="100%" height="380px" src="${it.node.getMonitoringURL()}"></iframe>
+        <iframe width="100%" height="380px" src="${it.node.monitoringURL}"></iframe>
         <p><a href="${it.node.getMonitoringURL()}" target="_blank">open graph in new tab</a></p>
       </j:when>
     </j:choose>
