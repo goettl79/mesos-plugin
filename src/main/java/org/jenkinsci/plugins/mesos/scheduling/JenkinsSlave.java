@@ -1,32 +1,35 @@
 package org.jenkinsci.plugins.mesos.scheduling;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.mesos.Protos;
+import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 public abstract class JenkinsSlave {
 
     public static class RoleCapped extends RequestJenkinsSlave {
 
-        public RoleCapped(String name, String label, Integer numExecutors, String linkedItem, Double cpus, Double mem, String role) {
-            super(name, label, numExecutors, linkedItem, cpus, mem, new LinkedHashSet<String>(Arrays.asList(role)));
+        public RoleCapped(String name, String label, Integer numExecutors, String linkedItem, String lastBuildHostname, Long estimatedDuration, Double cpus, Double mem, Set<MesosSlaveInfo.PortMapping> portMappings, String role) {
+            super(name, label, numExecutors, linkedItem, lastBuildHostname, estimatedDuration, cpus, mem, portMappings, new LinkedHashSet<String>(Arrays.asList(SHARED_ROLE, role)));
         }
 
     }
 
     public static class RoleResourcesFirst extends RequestJenkinsSlave {
 
-        public RoleResourcesFirst(String name, String label, Integer numExecutors, String linkedItem, Double cpus, Double mem, String role) {
-            super(name, label, numExecutors, linkedItem, cpus, mem, new LinkedHashSet<String>(Arrays.asList(role, SHARED_ROLE)));
+        public RoleResourcesFirst(String name, String label, Integer numExecutors, String linkedItem, String lastBuildHostname, Long estimatedDuration, Double cpus, Double mem, Set<MesosSlaveInfo.PortMapping> portMappings, String role) {
+            super(name, label, numExecutors, linkedItem, lastBuildHostname, estimatedDuration, cpus, mem, portMappings, new LinkedHashSet<String>(Arrays.asList(SHARED_ROLE, role)));
         }
 
     }
 
     public static class SharedResourcesFirst extends RequestJenkinsSlave {
 
-        public SharedResourcesFirst(String name, String label, Integer numExecutors, String linkedItem, Double cpus, Double mem, String role) {
-            super(name, label, numExecutors, linkedItem, cpus, mem, new LinkedHashSet<String>(Arrays.asList(SHARED_ROLE, role)));
+        public SharedResourcesFirst(String name, String label, Integer numExecutors, String linkedItem, String lastBuildHostname, Long estimatedDuration, Double cpus, Double mem, Set<MesosSlaveInfo.PortMapping> portMappings, String role) {
+            super(name, label, numExecutors, linkedItem, lastBuildHostname, estimatedDuration, cpus, mem, portMappings, new LinkedHashSet<String>(Arrays.asList(SHARED_ROLE, role)));
         }
 
     }
@@ -34,19 +37,52 @@ public abstract class JenkinsSlave {
 
     public static abstract class RequestJenkinsSlave extends JenkinsSlave {
 
-        public RequestJenkinsSlave(String name, String label, Integer numExecutors, String linkedItem, Double cpus, Double mem, Set<String> roles) {
+        private final String lastBuildHostname;
+        private final Long estimatedDuration;
+        private final Set<MesosSlaveInfo.PortMapping> portMappings;
+
+        public RequestJenkinsSlave(String name, String label, Integer numExecutors, String linkedItem, String lastBuildHostname, Long estimatedDuration, Double cpus, Double mem, Set<MesosSlaveInfo.PortMapping> portMappings, Set<String> roles) {
             super(name, label, numExecutors, linkedItem, cpus, mem, roles);
+
+            this.lastBuildHostname = lastBuildHostname;
+            this.portMappings = portMappings;
+            this.estimatedDuration = estimatedDuration;
         }
 
+        public String getLastBuildHostname() {
+            return lastBuildHostname;
+        }
+
+        public Long getEstimatedDuration() {
+            return estimatedDuration;
+        }
+
+        public Set<MesosSlaveInfo.PortMapping> getPortMappings() {
+            return Collections.unmodifiableSet(portMappings);
+        }
+
+        public MesosSlaveInfo.PortMapping getPortMapping(int containerPort) {
+            for (MesosSlaveInfo.PortMapping portMapping : portMappings) {
+                if (portMapping.getContainerPort() == containerPort) {
+                    return portMapping;
+                }
+            }
+
+            return null;
+        }
     }
 
     public static class ResultJenkinsSlave extends JenkinsSlave {
-        // result specific
-        private final List<Protos.ContainerInfo.DockerInfo.PortMapping> actualPortMappings;
+
+        private final Set<MesosSlaveInfo.PortMapping> actualPortMappings;
         private final String hostname;
         private final String requestJenkinsClass;
 
-        public ResultJenkinsSlave(RequestJenkinsSlave requestJenkinsSlave, String hostname, List<Protos.ContainerInfo.DockerInfo.PortMapping> actualPortMappings) {
+        public ResultJenkinsSlave(RequestJenkinsSlave requestJenkinsSlave) {
+            this(requestJenkinsSlave, StringUtils.EMPTY, Collections.<MesosSlaveInfo.PortMapping>emptySet());
+        }
+
+        public ResultJenkinsSlave(RequestJenkinsSlave requestJenkinsSlave, String hostname, Set<MesosSlaveInfo.PortMapping> actualPortMappings) {
             super(requestJenkinsSlave.getName(),
                     requestJenkinsSlave.getLabel(),
                     requestJenkinsSlave.getNumExecutors(),
@@ -56,13 +92,7 @@ public abstract class JenkinsSlave {
                     requestJenkinsSlave.getRoles());
 
             this.hostname = hostname;
-
-            if (actualPortMappings == null) {
-                this.actualPortMappings = Collections.emptyList();
-            } else {
-                this.actualPortMappings = actualPortMappings;
-            }
-
+            this.actualPortMappings = actualPortMappings;
             this.requestJenkinsClass = requestJenkinsSlave.getClass().getSimpleName();
         }
 
@@ -71,8 +101,8 @@ public abstract class JenkinsSlave {
         }
 
         @SuppressWarnings("unused")
-        public List<Protos.ContainerInfo.DockerInfo.PortMapping> getActualPortMappings() {
-            return Collections.unmodifiableList(actualPortMappings);
+        public Set<MesosSlaveInfo.PortMapping> getActualPortMappings() {
+            return Collections.unmodifiableSet(actualPortMappings);
         }
 
         public String getRequestJenkinsClass() {

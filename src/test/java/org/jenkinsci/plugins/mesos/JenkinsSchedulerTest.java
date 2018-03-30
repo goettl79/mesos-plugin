@@ -1,6 +1,5 @@
 package org.jenkinsci.plugins.mesos;
 
-import hudson.model.Descriptor;
 import hudson.model.Node;
 import jenkins.model.Jenkins;
 import org.apache.mesos.Protos;
@@ -209,7 +208,7 @@ public class JenkinsSchedulerTest {
     private Request mockMesosRequest(
             Boolean useDocker,
             Boolean useCustomDockerCommandShell,
-            String customDockerCommandShell) throws Descriptor.FormException {
+            String customDockerCommandShell) {
 
         MesosSlaveInfo.ContainerInfo containerInfo = null;
         if (useDocker) {
@@ -248,7 +247,12 @@ public class JenkinsSchedulerTest {
         );
 
 
-        JenkinsSlave.RequestJenkinsSlave jenkinsSlave = new JenkinsSlave.SharedResourcesFirst(TEST_JENKINS_SLAVE_NAME, "label", 1, "linkedItem", 0.2, TEST_JENKINS_SLAVE_MEM, "jenkins");
+        JenkinsSlave.RequestJenkinsSlave jenkinsSlave = new JenkinsSlave.SharedResourcesFirst(
+                TEST_JENKINS_SLAVE_NAME,"label",1,
+                "linkedItem", "dummy.host-na.me", 0L,
+                0.2, TEST_JENKINS_SLAVE_MEM, Collections.<MesosSlaveInfo.PortMapping>emptySet(),"jenkins");
+
+
         SlaveRequest slaveReq = new SlaveRequest(jenkinsSlave, mesosSlaveInfo);
         SlaveResult slaveResult = Mockito.mock(SlaveResult.class);
 
