@@ -1,18 +1,18 @@
 package org.jenkinsci.plugins.mesos.config.slavedefinitions;
 
-import hudson.model.Descriptor.FormException;
 import hudson.model.Node.Mode;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import net.sf.json.JSONSerializer;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.mesos.Protos.ContainerInfo.DockerInfo.Network;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Logger;
 
 @ExportedBean
@@ -219,11 +219,13 @@ public class MesosSlaveInfo {
     private final List<Parameter> parameters;
     private final String networking;
     private static final String DEFAULT_NETWORKING = Network.BRIDGE.name();
-    private final List<PortMapping> portMappings;
     private final boolean useCustomDockerCommandShell;
     private final String customDockerCommandShell;
     private final Boolean dockerPrivilegedMode;
     private final Boolean dockerForcePullImage;
+
+    private transient Map<Network, Set<PortMapping>> portMappingsMap;
+    private Set<PortMapping> portMappings;
 
     @DataBoundConstructor
     public ContainerInfo(String type,
@@ -235,7 +237,7 @@ public class MesosSlaveInfo {
                          List<Volume> volumes,
                          List<Parameter> parameters,
                          String networking,
-                         List<PortMapping> portMappings) throws FormException {
+                         Set<PortMapping> portMappings) {
       this.type = type;
       this.dockerImage = dockerImage;
       this.dockerPrivilegedMode = dockerPrivilegedMode;
@@ -246,16 +248,48 @@ public class MesosSlaveInfo {
       this.parameters = parameters;
 
       if (networking == null) {
-          this.networking = DEFAULT_NETWORKING;
+        this.networking = DEFAULT_NETWORKING;
       } else {
-          this.networking = networking;
+        this.networking = networking;
       }
 
       if (Network.HOST.equals(Network.valueOf(networking))) {
-          this.portMappings = Collections.emptyList();
+        this.portMappings = Collections.emptySet();
       } else {
-          this.portMappings = portMappings;
+        this.portMappings = portMappings;
       }
+
+      initPortMappings();
+    }
+
+    public ContainerInfo(String type,
+                         String dockerImage,
+                         Boolean dockerPrivilegedMode,
+                         Boolean dockerForcePullImage,
+                         boolean useCustomDockerCommandShell,
+                         String customDockerCommandShell,
+                         List<Volume> volumes,
+                         List<Parameter> parameters,
+                         String networking,
+                         List<PortMapping> portMappings) {
+      this(type, dockerImage, dockerPrivilegedMode, dockerForcePullImage,
+              useCustomDockerCommandShell, customDockerCommandShell, volumes, parameters,
+              networking, new LinkedHashSet<PortMapping>(portMappings));
+    }
+
+
+    private void initPortMappings() {
+      this.portMappingsMap = new HashMap<Network, Set<PortMapping>>();
+      this.portMappingsMap.put(Network.valueOf(networking),this.portMappings);
+    }
+
+    @SuppressWarnings("unused")
+    public Object readResolve() {
+      if (portMappingsMap == null && portMappings != null) {
+        initPortMappings();
+      }
+
+      return this;
     }
 
     public String getType() {
@@ -283,12 +317,26 @@ public class MesosSlaveInfo {
       }
     }
 
-    public List<PortMapping> getPortMappings() {
-      if (portMappings != null) {
-        return portMappings;
+    private Set<PortMapping> getPortMappings(Network currentNetworking) {
+      if (portMappingsMap != null && portMappingsMap.get(currentNetworking) != null) {
+        return Collections.unmodifiableSet(portMappingsMap.get(currentNetworking));
       } else {
-        return Collections.emptyList();
+        return Collections.emptySet();
       }
+    }
+
+    public Set<PortMapping> getPortMappings() {
+      return getPortMappings(Network.valueOf(networking));
+    }
+
+    @SuppressWarnings("unused")
+    public Set<PortMapping> getBridgePortMappings() {
+      return getPortMappings(Network.BRIDGE);
+    }
+
+    @SuppressWarnings("unused")
+    public Set<PortMapping> getUserPortMappings() {
+      return getPortMappings(Network.USER);
     }
 
     public boolean hasPortMappings() {
@@ -306,17 +354,6 @@ public class MesosSlaveInfo {
     public boolean getUseCustomDockerCommandShell() {  return useCustomDockerCommandShell; }
 
     public String getCustomDockerCommandShell() {  return customDockerCommandShell; }
-
-    @SuppressWarnings("unused")
-    public PortMapping getPortMapping(int containerPort) {
-      for (PortMapping portMapping : portMappings) {
-          if (portMapping.getContainerPort() == containerPort) {
-              return portMapping;
-          }
-      }
-    
-      return null;
-    }
 
   }
 
@@ -347,13 +384,21 @@ public class MesosSlaveInfo {
     private final String description;
     private final String urlFormat;
 
+    private transient final boolean staticHostPort;
+
     @DataBoundConstructor
     public PortMapping(Integer containerPort, Integer hostPort, String protocol, String description, String urlFormat) {
-        this.containerPort = containerPort;
-        this.hostPort = hostPort;
-        this.protocol = protocol;
-        this.description = description;
-        this.urlFormat = urlFormat;
+      this(containerPort, hostPort, protocol, description, urlFormat, hostPort != null);
+    }
+
+    public PortMapping(Integer containerPort, Integer hostPort, String protocol, String description, String urlFormat, boolean staticHostPort) {
+      this.containerPort = containerPort;
+      this.hostPort = hostPort;
+      this.protocol = protocol;
+      this.description = description;
+      this.urlFormat = urlFormat;
+
+      this.staticHostPort = staticHostPort;
     }
 
     public Integer getContainerPort() {
@@ -388,6 +433,34 @@ public class MesosSlaveInfo {
         String[] replaceList = {hostname, String.valueOf(hostPort)};
         return StringUtils.replaceEach(urlFormat, searchList, replaceList);
 
+    }
+
+    public boolean isStaticHostPort() {
+      return staticHostPort;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == null) { return false; }
+      if (obj == this) { return true; }
+      if (obj.getClass() != getClass()) {
+        return false;
+      }
+      PortMapping rhs = (PortMapping) obj;
+      return new EqualsBuilder()
+              .append(containerPort, rhs.containerPort)
+              .append(hostPort, rhs.hostPort)
+              .append(protocol, rhs.protocol)
+              .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+      return new HashCodeBuilder(19, 57)
+              .append(containerPort)
+              .append(hostPort)
+              .append(protocol)
+              .toHashCode();
     }
 
   }
