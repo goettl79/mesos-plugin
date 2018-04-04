@@ -151,7 +151,7 @@
                                         add="${%Add Port Mapping}"
                                         var="portMapping"
                                         name="portMappings"
-                                        items="${slaveInfo.containerInfo.portMappings}"
+                                        items="${slaveInfo.containerInfo.bridgePortMappings}"
                                         noAddButton="false"
                                         minimum="0">
                                       <fieldset>
@@ -191,7 +191,7 @@
                                             add="${%Add Port Mapping}"
                                             var="portMapping"
                                             name="portMappings"
-                                            items="${slaveInfo.containerInfo.portMappings}"
+                                            items="${slaveInfo.containerInfo.userPortMappings}"
                                             noAddButton="false"
                                             minimum="0">
                                       <fieldset>

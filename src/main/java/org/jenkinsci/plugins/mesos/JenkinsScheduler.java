@@ -713,7 +713,7 @@ public class JenkinsScheduler implements Scheduler {
           }
 
           if (request.request.slaveInfo.getContainerInfo().hasPortMappings()) {
-              List<MesosSlaveInfo.PortMapping> portMappings = request.request.slaveInfo.getContainerInfo().getPortMappings();
+              Set<MesosSlaveInfo.PortMapping> portMappings = request.request.slaveInfo.getContainerInfo().getPortMappings();
               Set<Long> portsToUse = findPortsToUse(offer, portMappings.size());
               Iterator<Long> iterator = portsToUse.iterator();
               Value.Ranges.Builder portRangesBuilder = Value.Ranges.newBuilder();
