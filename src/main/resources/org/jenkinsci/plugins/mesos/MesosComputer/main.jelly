@@ -14,6 +14,12 @@
 
     <p>Mesos Agent: ${slaveResult.slave.hostName}</p>
     <p>Task Status: ${it.node.taskStatus.getState()}</p>
+    <j:set var="failureCause" value="${org.jenkinsci.plugins.mesos.monitoring.MesosTaskFailureMonitor.instance.failedSlaves.get(slaveResult.slave)}"/>
+    <j:choose>
+      <j:when test="${failureCause != null}">
+      <p>Failure cause: ${failureCause.text}</p>
+      </j:when>
+    </j:choose>
     <p>Image: ${containerInfo.dockerImage}</p>
     <p>Container: ${it.node.getDockerContainerID()}</p>
 
