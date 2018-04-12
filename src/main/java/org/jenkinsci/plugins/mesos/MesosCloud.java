@@ -31,6 +31,8 @@ import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.mesos.MesosNativeLibrary;
+import org.jenkinsci.plugins.mesos.actions.MesosBuiltOnAction;
+import org.jenkinsci.plugins.mesos.actions.MesosBuiltOnProjectAction;
 import org.jenkinsci.plugins.mesos.config.acl.MesosFrameworkToItemMapper;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveDefinitions;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
@@ -325,14 +327,52 @@ public class MesosCloud extends Cloud {
     }
   }
 
+  private long getEstimatedDuration(Job jenkinsJob) {
+    if (jenkinsJob == null) {
+      LOGGER.warning("Unable to determine estimated duration because job/linked item was not found");
+      return 0;
+    }
+
+    return jenkinsJob.getEstimatedDuration();
+  }
+
+  private String getLastBuildHostname(Job jenkinsJob) {
+    if (jenkinsJob == null) {
+      LOGGER.warning("Unable to determine hostname of last build because job/linked item was not found");
+      return StringUtils.EMPTY;
+    }
+
+    MesosBuiltOnProjectAction builtOnProjectAction = jenkinsJob.getAction(MesosBuiltOnProjectAction.class);
+    // it could be that there was:
+    // * an error when saving the action, try to imitate
+    // * not run yet but MesosBuiltOnAction already exists in builds
+    // also: benefit of using logic of .getAction() from MesosBuiltOnProjectAction
+    if (builtOnProjectAction == null) {
+      builtOnProjectAction = new MesosBuiltOnProjectAction(jenkinsJob);
+    }
+
+    MesosBuiltOnAction builtOnAction = builtOnProjectAction.getAction();
+    if (builtOnAction == null) {
+      LOGGER.warning("Unable to determine hostname of last build because last build on action was not found");
+      return StringUtils.EMPTY;
+    }
+
+    return builtOnAction.getMesosAgentHostname();
+  }
+
   private void sendSlaveRequest(int numExecutors, MesosSlaveInfo slaveInfo, String linkedItem) throws Descriptor.FormException, IOException {
     String name = slaveInfo.getLabelString() + "-" + UUID.randomUUID().toString();
     double cpus = slaveInfo.getSlaveCpus() + (numExecutors * slaveInfo.getExecutorCpus());
     double memory = (slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem())) * (1 + JVM_MEM_OVERHEAD_FACTOR);
 
+    LOGGER.finer("Trying to get additional information from '" + linkedItem + "'");
+    Job jenkinsJob = (Job)Jenkins.getInstance().getItemByFullName(linkedItem);
+    long estimatedDuration = getEstimatedDuration(jenkinsJob);
+    String lastBuildHostname = getLastBuildHostname(jenkinsJob);
 
-    // TODO: consider making this configurable (on MesosCloud/Framework level)
-    JenkinsSlave.RequestJenkinsSlave jenkinsSlave = new JenkinsSlave.SharedResourcesFirst(name, slaveInfo.getLabelString(), numExecutors, linkedItem, cpus, memory, role);
+      // TODO: consider making this configurable (on MesosCloud/Framework level)
+    JenkinsSlave.RequestJenkinsSlave jenkinsSlave = new JenkinsSlave.SharedResourcesFirst(
+            name, slaveInfo.getLabelString(), numExecutors, linkedItem, lastBuildHostname, estimatedDuration, cpus, memory, slaveInfo.getContainerInfo().getPortMappings(), role);
 
     SlaveRequest slaveRequest = new SlaveRequest(jenkinsSlave, slaveInfo);
     Mesos mesos = Mesos.getInstance(this);
