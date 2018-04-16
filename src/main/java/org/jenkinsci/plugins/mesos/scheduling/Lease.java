@@ -220,7 +220,8 @@ public class Lease {
     }
 
     public List<Protos.Value.Range> getTotalAvailableRangeResources(String name) {
-        return getAvailableRangeResources(name, availableRangeResources.get(name).keySet());
+        Set<String> roles = availableRangeResources.containsKey(name) ? availableRangeResources.get(name).keySet() : Collections.<String>emptySet();
+        return getAvailableRangeResources(name, roles);
     }
 
     public List<Protos.Value.Range> getTotalAvailablePortResources() {
@@ -265,7 +266,8 @@ public class Lease {
     }
 
     public Double getTotalAvailableScalarResources(String name) {
-        return getAvailableScalarResources(name, availableScalarResources.get(name).keySet());
+        Set<String> roles = availableScalarResources.containsKey(name) ? availableScalarResources.get(name).keySet() : Collections.<String>emptySet();
+        return getAvailableScalarResources(name, roles);
     }
 
     public Double getTotalAvailableCpus() {
@@ -293,63 +295,116 @@ public class Lease {
     }
 
 
-    private void assignRequestedScalarResource(String name, String role, Double amount) {
+    private boolean isAssignable(Double newValue) {
+        return !(newValue < 0.0);
+    }
+
+    private boolean assignRequestedScalarResource(String name, String role, Double requestedAmount) {
         Map<String, Double> availableResources = availableScalarResources.get(name);
-        Double currentValue = availableResources.get(role);
+        Double availableValue = availableResources.get(role);
 
-        availableResources.put(role, currentValue - amount);
+        Double newValue = availableValue - requestedAmount;
+
+        boolean assignable = isAssignable(newValue);
+        if (assignable) {
+            availableResources.put(role, newValue);
+        }
+        return assignable;
     }
 
-    private void assignRequestedMem(String role, Double amount) {
-        assignRequestedScalarResource(MEM_NAME, role, amount);
-    }
+    private boolean assignRequestedRangeResources(String name, String role, List<Protos.Value.Range> requestedRanges) {
+        if (!(availableRangeResources.containsKey(name) && availableRangeResources.get(name).containsKey(role))) {
+            return requestedRanges.isEmpty();
+        }
 
-    private void assignRequestedCpus(String role, Double amount) {
-        assignRequestedScalarResource(CPUS_NAME, role, amount);
-    }
+        Map<String, List<Protos.Value.Range>> availableResources = availableRangeResources.get(name);
+        List<Protos.Value.Range> availableRanges = new ArrayList<Protos.Value.Range>(availableResources.get(role));
 
-    public boolean assign(Request request) {
-        //throw new NotImplementedException("not yet implemented");
-        return true;
+        boolean allAssignable = true;
+        for (Protos.Value.Range requestedRange : requestedRanges) {
 
-        /*Protos.Task task = new Protos.Task("T" + request.getId());
+            List<Protos.Value.Range> newRanges = new ArrayList<Protos.Value.Range>(2);
+            Iterator<Protos.Value.Range> currentRangeIterator = availableRanges.iterator();
+            boolean assigned = false;
+            while (!assigned && currentRangeIterator.hasNext()) {
+                Protos.Value.Range currentRange = currentRangeIterator.next();
 
-        Double cpusToAssign = request.getCpus();
-        Iterator<String> iterator = request.getRoles().iterator();
-        while (cpusToAssign > 0.0 && iterator.hasNext()) {
-            String role = iterator.next();
+                if (requestedRange.getBegin() == currentRange.getBegin()) {
+                    if (requestedRange.getEnd() == currentRange.getEnd()) {
+                        assigned = true;
+                    } else if (requestedRange.getEnd() < currentRange.getEnd()) {
+                        newRanges.add(Protos.Value.Range.newBuilder()
+                                .setBegin(requestedRange.getEnd() + 1)
+                                .setEnd(currentRange.getEnd())
+                                .build());
+                        assigned = true;
+                    }
+                } else if (requestedRange.getBegin() > currentRange.getBegin()) {
+                    if (requestedRange.getEnd() == currentRange.getEnd()) {
+                        newRanges.add(Protos.Value.Range.newBuilder()
+                                .setBegin(currentRange.getBegin())
+                                .setEnd(requestedRange.getBegin() - 1)
+                                .build());
+                        assigned = true;
+                    } else if (requestedRange.getEnd() < currentRange.getEnd()) {
+                        newRanges.add(Protos.Value.Range.newBuilder()
+                                .setBegin(currentRange.getBegin())
+                                .setEnd(requestedRange.getBegin() -1)
+                                .build());
+                        newRanges.add(Protos.Value.Range.newBuilder()
+                                .setBegin(requestedRange.getEnd() + 1)
+                                .setEnd(currentRange.getEnd())
+                                .build());
+                        assigned = true;
+                    }
+                }
+            }
 
-            // assign cpus
-            Double availableCpus = getAvailableCpus(role);
-            Double assignableCpus = Math.min(cpusToAssign, availableCpus);
-
-            if (assignableCpus > 0.0) {
-                task.addResource(CPUS_NAME, assignableCpus, role);
-                cpusToAssign -= assignableCpus;
-                substractAvailableCpus(role, assignableCpus);
+            if (assigned) {
+                currentRangeIterator.remove();
+                availableRanges.addAll(newRanges);
+            } else {
+                allAssignable = false;
             }
         }
 
-        Double memToAssign = request.getMem();
-        iterator = request.getRoles().iterator();
-        while (memToAssign > 0.0 && iterator.hasNext()) {
-            String role = iterator.next();
+        if (allAssignable) {
+            availableResources.put(role, availableRanges);
+        }
 
-            // assign cpus
-            Double availableMem = getAvailableMem(role);
-            Double assignableMem = Math.min(memToAssign, availableMem);
+        return allAssignable;
+    }
 
-            if (assignableMem > 0.0) {
-                task.addResource(MEM_NAME, assignableMem, role);
-                memToAssign -= assignableMem;
-                substractAvailableMem(role, assignableMem);
+    public boolean assign(@Nonnull Request request, @Nonnull Protos.TaskInfo taskInfo) {
+        boolean allAssigned = true;
+        for (Protos.Resource resource : taskInfo.getResourcesList()) {
+            boolean assigned = true;
+            switch (resource.getType()) {
+                case SCALAR:
+                    assigned = assignRequestedScalarResource(resource.getName(), resource.getRole(), resource.getScalar().getValue());
+                    break;
+                case RANGES:
+                    assigned = assignRequestedRangeResources(resource.getName(), resource.getRole(), resource.getRanges().getRangeList());
+                    break;
+                case SET:
+                case TEXT:
+                default:
+                    LOGGER.warning("Unable to assign unsupported resource type '" + resource.getType() + "' to Lease '" + id + "' for task '" + taskInfo.getTaskId().getValue() + "'");
+            }
+
+            if (!assigned) {
+                LOGGER.severe("Unable to assign resource type '" + resource.getType() + "' to Lease '" + id + "' for task '" + taskInfo.getTaskId().getValue() + "'");
+                allAssigned &= assigned;
             }
         }
 
-        // TODO: same stuff for ports...
-        task.addResource(PORTS_NAME, request.getPorts(), request.getRoles().iterator().next());
+        if (allAssigned) {
+            // commit changes made by assigns...
 
-        tasks.add(task);*/
+            assignments.put(taskInfo, request);
+        }
+
+        return allAssigned;
     }
 
     public String toString() {

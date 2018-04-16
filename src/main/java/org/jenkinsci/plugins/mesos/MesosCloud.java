@@ -373,6 +373,7 @@ public class MesosCloud extends Cloud {
       // TODO: consider making this configurable (on MesosCloud/Framework level)
     JenkinsSlave.RequestJenkinsSlave jenkinsSlave = new JenkinsSlave.SharedResourcesFirst(
             name, slaveInfo.getLabelString(), numExecutors, linkedItem, lastBuildHostname, estimatedDuration, cpus, memory, slaveInfo.getContainerInfo().getPortMappings(), role);
+    LOGGER.finer("Requesting " + jenkinsSlave);
 
     SlaveRequest slaveRequest = new SlaveRequest(jenkinsSlave, slaveInfo);
     Mesos mesos = Mesos.getInstance(this);
@@ -411,8 +412,7 @@ public class MesosCloud extends Cloud {
   public String getFullNameOfItem(Queue.BuildableItem buildableItem) {
     if (buildableItem != null) {
       Queue.Task task = buildableItem.task;
-      String taskName = getFullNameOfTask(task);
-      return taskName;
+      return getFullNameOfTask(task);
     }
 
     throw new IllegalArgumentException(Messages.MesosCloud_InvalidItem(buildableItem));

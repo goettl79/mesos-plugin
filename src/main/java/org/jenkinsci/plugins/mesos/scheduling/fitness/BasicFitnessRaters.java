@@ -7,9 +7,11 @@ import org.jenkinsci.plugins.mesos.scheduling.JenkinsSlave;
 import org.jenkinsci.plugins.mesos.scheduling.Lease;
 import org.jenkinsci.plugins.mesos.scheduling.Request;
 
-import java.util.*;
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
 
-final class BasicFitnessRaters {
+public final class BasicFitnessRaters {
 
     private BasicFitnessRaters() {}
 
