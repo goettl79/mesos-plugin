@@ -34,7 +34,7 @@ public class JenkinsSchedulerTest {
     @Mock
     private MesosCloud mesosCloud;
 
-    private JenkinsScheduler jenkinsScheduler;
+    private JenkinsSchedulerOld jenkinsScheduler;
 
     private static double TEST_JENKINS_SLAVE_MEM   = 512;
     private static String TEST_JENKINS_SLAVE_ARG   = "-Xms16m -XX:+UseConcMarkSweepGC -Djava.net.preferIPv4Stack=true";
@@ -53,7 +53,7 @@ public class JenkinsSchedulerTest {
         PowerMockito.mockStatic(Jenkins.class);
         Mockito.when(Jenkins.getInstance()).thenReturn(jenkins);
 
-        jenkinsScheduler = new JenkinsScheduler("jenkinsMaster", mesosCloud);
+        jenkinsScheduler = new JenkinsSchedulerOld("jenkinsMaster", mesosCloud);
 
     }
 

@@ -8,7 +8,12 @@ public class MesosImpl extends Mesos {
   @Override
   public synchronized void startScheduler(String jenkinsMaster, MesosCloud mesosCloud) {
     stopScheduler();
-    scheduler = new JenkinsScheduler(jenkinsMaster, mesosCloud);
+
+    // if config == useLegacy/Old
+    scheduler = new JenkinsSchedulerOld(jenkinsMaster, mesosCloud);
+    // else
+    // scheduler = new JenkinsSchedulerNew(jenkinsMasdter, mesosCloud);
+
     scheduler.init();
   }
 
