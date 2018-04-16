@@ -70,6 +70,17 @@ public abstract class JenkinsSlave {
 
             return null;
         }
+
+        @Override
+        public String toString() {
+            return new StringBuilder()
+                    .append("Agent request: ").append(this.getClass().getSimpleName())
+                    .append(", name: ").append(getName())
+                    .append(", label:").append(getLabel())
+                    .append(", lastHost: ").append(lastBuildHostname)
+                    .append(", estimatedDuration: ").append(estimatedDuration)
+                    .toString();
+        }
     }
 
     public static class ResultJenkinsSlave extends JenkinsSlave {

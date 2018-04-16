@@ -5,9 +5,9 @@ import org.jenkinsci.plugins.mesos.scheduling.Request;
 
 public abstract class FitnessRater {
 
-    protected static final double NOT_FIT   = -1.0;
-    protected static final double FITTEST   =  1.0;
-    protected static final double UNFITTEST =  0.0;
+    public static final double NOT_FIT   = -1.0;
+    public static final double FITTEST   =  1.0;
+    public static final double UNFITTEST =  0.0;
 
 
     /**
