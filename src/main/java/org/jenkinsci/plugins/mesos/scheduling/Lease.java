@@ -1,6 +1,7 @@
 package org.jenkinsci.plugins.mesos.scheduling;
 
 
+import com.google.common.annotations.VisibleForTesting;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.mesos.Protos;
@@ -289,24 +290,115 @@ public class Lease {
     }
 
 
-    private void assignRequestedScalarResource(String name, String role, Double amount) {
-        Map<String, Double> availableResources = availableScalarResources.get(name);
-        Double currentValue = availableResources.get(role);
-
-        availableResources.put(role, currentValue - amount);
+    private boolean isAssignable(Double newValue) {
+        return !(newValue < 0.0);
     }
 
-    private void assignRequestedMem(String role, Double amount) {
+    private boolean assignRequestedScalarResource(String name, String role, Double requestedAmount) {
+        Map<String, Double> availableResources = availableScalarResources.get(name);
+        Double availableValue = availableResources.get(role);
+
+        Double newValue = availableValue - requestedAmount;
+
+        boolean assignable = isAssignable(newValue);
+        if (assignable) {
+            availableResources.put(role, newValue);
+        }
+        return assignable;
+    }
+
+    private boolean assignRequestedRangeResources(String name, String role, List<Protos.Value.Range> requestedRanges) {
+        Map<String, List<Protos.Value.Range>> availableResources = availableRangeResources.get(name);
+        List<Protos.Value.Range> availableRanges = new ArrayList<Protos.Value.Range>(availableResources.get(role));
+
+        boolean allAssignable = true;
+        for (Protos.Value.Range requestedRange : requestedRanges) {
+
+            List<Protos.Value.Range> newRanges = new ArrayList<Protos.Value.Range>(2);
+            Iterator<Protos.Value.Range> currentRangeIterator = availableRanges.iterator();
+            boolean assigned = false;
+            while (!assigned && currentRangeIterator.hasNext()) {
+                Protos.Value.Range currentRange = currentRangeIterator.next();
+
+                if (requestedRange.getBegin() == currentRange.getBegin()) {
+                    if (requestedRange.getEnd() == currentRange.getEnd()) {
+                        assigned = true;
+                    } else if (requestedRange.getEnd() < currentRange.getEnd()) {
+                        newRanges.add(Protos.Value.Range.newBuilder()
+                                .setBegin(requestedRange.getEnd() + 1)
+                                .setEnd(currentRange.getEnd())
+                                .build());
+                        assigned = true;
+                    }
+                } else if (requestedRange.getBegin() > currentRange.getBegin()) {
+                    if (requestedRange.getEnd() == currentRange.getEnd()) {
+                        newRanges.add(Protos.Value.Range.newBuilder()
+                                .setBegin(currentRange.getBegin())
+                                .setEnd(requestedRange.getBegin() - 1)
+                                .build());
+                        assigned = true;
+                    } else if (requestedRange.getEnd() < currentRange.getEnd()) {
+                        newRanges.add(Protos.Value.Range.newBuilder()
+                                .setBegin(currentRange.getBegin())
+                                .setEnd(requestedRange.getBegin() -1)
+                                .build());
+                        newRanges.add(Protos.Value.Range.newBuilder()
+                                .setBegin(requestedRange.getEnd() + 1)
+                                .setEnd(currentRange.getEnd())
+                                .build());
+                        assigned = true;
+                    }
+                }
+            }
+
+            if (assigned) {
+                currentRangeIterator.remove();
+                availableRanges.addAll(newRanges);
+            } else {
+                allAssignable = false;
+            }
+        }
+
+        if (allAssignable) {
+            availableResources.put(role, availableRanges);
+        }
+
+        return allAssignable;
+    }
+
+    /*private void assignRequestedMem(String role, Double amount) {
         assignRequestedScalarResource(MEM_NAME, role, amount);
     }
 
     private void assignRequestedCpus(String role, Double amount) {
         assignRequestedScalarResource(CPUS_NAME, role, amount);
-    }
+    }*/
 
-    public boolean assign(Request request) {
-        //throw new NotImplementedException("not yet implemented");
-        return true;
+    public boolean assign(@Nonnull Request request, @Nonnull Protos.TaskInfo taskInfo) {
+        boolean allAssigned = true;
+        for (Protos.Resource resource : taskInfo.getResourcesList()) {
+            boolean assigned = true;
+            switch (resource.getType()) {
+                case SCALAR:
+                    assigned = assignRequestedScalarResource(resource.getName(), resource.getRole(), resource.getScalar().getValue());
+                    break;
+                case RANGES:
+                    assigned = assignRequestedRangeResources(resource.getName(), resource.getRole(), resource.getRanges().getRangeList());
+                    break;
+                case SET:
+                case TEXT:
+                default:
+                    LOGGER.warning("Unable to assign unsupported resource type '" + resource.getType() + "' to Lease '" + id + "' for task '" + taskInfo.getTaskId().getValue() + "'");
+            }
+
+            if (!assigned) {
+                LOGGER.severe("Unable to assign resource type '" + resource.getType() + "' to Lease '" + id + "' for task '" + taskInfo.getTaskId().getValue() + "'");
+                allAssigned &= assigned;
+            }
+
+        }
+
+        return allAssigned;
 
         /*Protos.Task task = new Protos.Task("T" + request.getId());
 

@@ -75,7 +75,8 @@ public class JenkinsSchedulerNew extends JenkinsScheduler {
         Lease fittestLease = findFittestLease(request, leases);
 
         // assign request to fittest lease/offer ("create task")
-        return fittestLease != null && fittestLease.assign(request);
+        //return fittestLease != null && fittestLease.assign(request);
+        return true;
     }
 
     private List<Request> assignRequests(List<Request> currentRequests, List<Lease> leases) {

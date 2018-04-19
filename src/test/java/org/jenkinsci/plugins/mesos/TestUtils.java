@@ -106,6 +106,16 @@ public class TestUtils {
         return createRequest(jenkinsAgent);
     }
 
+
+    public static Protos.Resource createRangesResource(String name, String role, Protos.Value.Ranges ranges) {
+        return Protos.Resource.newBuilder()
+                .setName(name)
+                .setRanges(ranges)
+                .setType(Protos.Value.Type.RANGES)
+                .setRole(role)
+                .build();
+    }
+
     @SuppressWarnings("deprecation")
     public static Protos.Resource createRangesResource(String name, long rangeBegin, long rangeEnd, String role) {
         Protos.Value.Range range = Protos.Value.Range.newBuilder()
@@ -117,12 +127,7 @@ public class TestUtils {
                 .addRange(range)
                 .build();
 
-        return Protos.Resource.newBuilder()
-                .setName(name)
-                .setRanges(ranges)
-                .setType(Protos.Value.Type.RANGES)
-                .setRole(role)
-                .build();
+        return createRangesResource(name, role, ranges);
     }
 
     @SuppressWarnings("deprecation")
