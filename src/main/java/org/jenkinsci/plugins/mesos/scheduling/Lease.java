@@ -312,6 +312,18 @@ public class Lease {
         return assignable;
     }
 
+    /**
+     *         // in:          availableRangeList
+     *         // in:          requestedRangeList
+     *         // validate:    availableRangeList.unifyRanges.containsAll(requestedRangeList.unifyRanges)
+     *         // side-effect: availableRangeList.unifyRanges.removeAll(requestedRangeList.unifyRanges).rangify
+     *         // out:         isAssignSuccess
+     *
+     * @param name Name of the resource
+     * @param role Role of the resource
+     * @param requestedRanges Requested ranges as list
+     * @return whether or not the assignment was successful
+     */
     private boolean assignRequestedRangeResources(String name, String role, List<Protos.Value.Range> requestedRanges) {
         if (!(availableRangeResources.containsKey(name) && availableRangeResources.get(name).containsKey(role))) {
             return requestedRanges.isEmpty();
@@ -320,59 +332,53 @@ public class Lease {
         Map<String, List<Protos.Value.Range>> availableResources = availableRangeResources.get(name);
         List<Protos.Value.Range> availableRanges = new ArrayList<Protos.Value.Range>(availableResources.get(role));
 
-        boolean allAssignable = true;
-        for (Protos.Value.Range requestedRange : requestedRanges) {
+        Set<Long> unifiedAvailableRanges = getUnifiedSetOfRanges(availableRanges);
+        Set<Long> unifiedRequestedRanges = getUnifiedSetOfRanges(requestedRanges);
 
-            List<Protos.Value.Range> newRanges = new ArrayList<Protos.Value.Range>(2);
-            Iterator<Protos.Value.Range> currentRangeIterator = availableRanges.iterator();
-            boolean assigned = false;
-            while (!assigned && currentRangeIterator.hasNext()) {
-                Protos.Value.Range currentRange = currentRangeIterator.next();
-
-                if (requestedRange.getBegin() == currentRange.getBegin()) {
-                    if (requestedRange.getEnd() == currentRange.getEnd()) {
-                        assigned = true;
-                    } else if (requestedRange.getEnd() < currentRange.getEnd()) {
-                        newRanges.add(Protos.Value.Range.newBuilder()
-                                .setBegin(requestedRange.getEnd() + 1)
-                                .setEnd(currentRange.getEnd())
-                                .build());
-                        assigned = true;
-                    }
-                } else if (requestedRange.getBegin() > currentRange.getBegin()) {
-                    if (requestedRange.getEnd() == currentRange.getEnd()) {
-                        newRanges.add(Protos.Value.Range.newBuilder()
-                                .setBegin(currentRange.getBegin())
-                                .setEnd(requestedRange.getBegin() - 1)
-                                .build());
-                        assigned = true;
-                    } else if (requestedRange.getEnd() < currentRange.getEnd()) {
-                        newRanges.add(Protos.Value.Range.newBuilder()
-                                .setBegin(currentRange.getBegin())
-                                .setEnd(requestedRange.getBegin() -1)
-                                .build());
-                        newRanges.add(Protos.Value.Range.newBuilder()
-                                .setBegin(requestedRange.getEnd() + 1)
-                                .setEnd(currentRange.getEnd())
-                                .build());
-                        assigned = true;
-                    }
-                }
-            }
-
-            if (assigned) {
-                currentRangeIterator.remove();
-                availableRanges.addAll(newRanges);
-            } else {
-                allAssignable = false;
-            }
+        // validate:
+        if (!unifiedAvailableRanges.containsAll(unifiedRequestedRanges)) {
+            return false;
         }
 
-        if (allAssignable) {
-            availableResources.put(role, availableRanges);
+        // assign
+        unifiedAvailableRanges.removeAll(unifiedRequestedRanges);
+        availableResources.put(role, createRangeList(new TreeSet<Long>(unifiedAvailableRanges)));
+        return true;
+    }
+
+    private List<Protos.Value.Range> createRangeList(SortedSet<Long> sortedRanges) {
+        ArrayList<Protos.Value.Range> resultRangeList = new ArrayList<Protos.Value.Range>();
+
+        if (!sortedRanges.isEmpty()) {
+            mutateRangeAndAddToListWhileRangesConnect(sortedRanges, resultRangeList, sortedRanges.first());
         }
 
-        return allAssignable;
+        return resultRangeList;
+    }
+
+    private void mutateRangeAndAddToListWhileRangesConnect(SortedSet<Long> sortedRanges, List<Protos.Value.Range> resultRangeList, Long currentRange) {
+        Protos.Value.Range.Builder rangeBuilder = Protos.Value.Range.newBuilder().setBegin(currentRange);
+
+        while (sortedRanges.remove(currentRange)) {
+            currentRange++;
+        }
+        rangeBuilder.setEnd(currentRange - 1);
+        resultRangeList.add(rangeBuilder.build());
+
+        if (!sortedRanges.isEmpty()) {
+            mutateRangeAndAddToListWhileRangesConnect(sortedRanges, resultRangeList, sortedRanges.first());
+        }
+    }
+
+
+    private Set<Long> getUnifiedSetOfRanges(List<Protos.Value.Range> listOfRanges) {
+        Set<Long> setOfRanges = new HashSet<Long>();
+        for (Protos.Value.Range range : listOfRanges) {
+            for (long i = range.getBegin(); i <= range.getEnd(); i++) {
+                setOfRanges.add(i);
+            }
+        }
+        return setOfRanges;
     }
 
     public boolean assign(@Nonnull Request request, @Nonnull Protos.TaskInfo taskInfo) {
