@@ -1,7 +1,6 @@
 package org.jenkinsci.plugins.mesos.scheduling;
 
 
-import com.google.common.annotations.VisibleForTesting;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.mesos.Protos;
@@ -309,61 +308,67 @@ public class Lease {
 
     private boolean assignRequestedRangeResources(String name, String role, List<Protos.Value.Range> requestedRanges) {
         Map<String, List<Protos.Value.Range>> availableResources = availableRangeResources.get(name);
-        List<Protos.Value.Range> availableRanges = new ArrayList<Protos.Value.Range>(availableResources.get(role));
+        List<Protos.Value.Range> availableRangeList = new ArrayList<Protos.Value.Range>(availableResources.get(role));
 
-        boolean allAssignable = true;
-        for (Protos.Value.Range requestedRange : requestedRanges) {
+        // in:          availableRangeList
+        // in:          requestedRangeList
+        // validate:    availableRangeList.unifyRanges.containsAll(requestedRangeList.unifyRanges)
+        // side-effect: availableRangeList.unifyRanges.removeAll(requestedRangeList.unifyRanges).rangify
+        // out:         isAssignSuccess
 
-            List<Protos.Value.Range> newRanges = new ArrayList<Protos.Value.Range>(2);
-            Iterator<Protos.Value.Range> currentRangeIterator = availableRanges.iterator();
-            boolean assigned = false;
-            while (!assigned && currentRangeIterator.hasNext()) {
-                Protos.Value.Range currentRange = currentRangeIterator.next();
+        HashSet<Long> availablePorts = getUnifiedSetOfPorts(availableRangeList);
+        HashSet<Long> requestedPorts = getUnifiedSetOfPorts(requestedRanges);
 
-                if (requestedRange.getBegin() == currentRange.getBegin()) {
-                    if (requestedRange.getEnd() == currentRange.getEnd()) {
-                        assigned = true;
-                    } else if (requestedRange.getEnd() < currentRange.getEnd()) {
-                        newRanges.add(Protos.Value.Range.newBuilder()
-                                .setBegin(requestedRange.getEnd() + 1)
-                                .setEnd(currentRange.getEnd())
-                                .build());
-                        assigned = true;
-                    }
-                } else if (requestedRange.getBegin() > currentRange.getBegin()) {
-                    if (requestedRange.getEnd() == currentRange.getEnd()) {
-                        newRanges.add(Protos.Value.Range.newBuilder()
-                                .setBegin(currentRange.getBegin())
-                                .setEnd(requestedRange.getBegin() - 1)
-                                .build());
-                        assigned = true;
-                    } else if (requestedRange.getEnd() < currentRange.getEnd()) {
-                        newRanges.add(Protos.Value.Range.newBuilder()
-                                .setBegin(currentRange.getBegin())
-                                .setEnd(requestedRange.getBegin() -1)
-                                .build());
-                        newRanges.add(Protos.Value.Range.newBuilder()
-                                .setBegin(requestedRange.getEnd() + 1)
-                                .setEnd(currentRange.getEnd())
-                                .build());
-                        assigned = true;
-                    }
-                }
-            }
-
-            if (assigned) {
-                currentRangeIterator.remove();
-                availableRanges.addAll(newRanges);
-            } else {
-                allAssignable = false;
-            }
+        // validate:
+        if (!availablePorts.containsAll(requestedPorts)) {
+            return false;
         }
 
-        if (allAssignable) {
-            availableResources.put(role, availableRanges);
-        }
+        // assign
+        availablePorts.removeAll(requestedPorts);
+        availableResources.put(role, rangifySetOfPorts(availablePorts));
 
-        return allAssignable;
+        return true;
+
+    }
+
+    private List<Protos.Value.Range> rangifySetOfPorts(Set<Long> ports) {
+        if (ports.isEmpty())
+            return new ArrayList<Protos.Value.Range>(0);
+
+        ArrayList<Protos.Value.Range> toBeReturnedRangeList = new ArrayList<Protos.Value.Range>();
+
+        SortedSet<Long> sortedPorts = new TreeSet<Long>();
+        sortedPorts.addAll(ports);
+
+        mutateRangeAndAddToListWhilePortsConnect(sortedPorts, toBeReturnedRangeList, sortedPorts.first());
+
+        return toBeReturnedRangeList;
+    }
+
+    private void mutateRangeAndAddToListWhilePortsConnect(SortedSet<Long> sortedPorts, List<Protos.Value.Range> toBeReturnedRangeList, Long currentPort) {
+        Protos.Value.Range.Builder rangeBuilder = Protos.Value.Range.newBuilder().setBegin(currentPort);
+
+        while (sortedPorts.remove(currentPort)) {
+            currentPort++;
+        }
+        rangeBuilder.setEnd(currentPort - 1);
+        toBeReturnedRangeList.add(rangeBuilder.build());
+
+        if (!sortedPorts.isEmpty()) {
+            mutateRangeAndAddToListWhilePortsConnect(sortedPorts, toBeReturnedRangeList, sortedPorts.first());
+        }
+    }
+
+
+    private HashSet<Long> getUnifiedSetOfPorts(List<Protos.Value.Range> listOfRanges) {
+        HashSet<Long> setOfPorts = new HashSet<Long>();
+        for (Protos.Value.Range range : listOfRanges) {
+            for (long i = range.getBegin(); i <= range.getEnd(); i++) {
+                setOfPorts.add(Long.valueOf(i));
+            }
+        }
+        return setOfPorts;
     }
 
     /*private void assignRequestedMem(String role, Double amount) {
