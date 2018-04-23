@@ -274,8 +274,8 @@ public class LeaseTest {
         boolean expectedAssigned = false;
         int expectedTotalSize = 2;
 
-        // TODO: implement "commit" when all resources are assignable, otherwise this won't work
-        //double expectedMem = lease.getAvailableMem("testRole");
+        double expectedMem = lease.getAvailableMem("testRole");
+        double expectedTotalMem = lease.getTotalAvailableMem();
 
         List<Protos.Value.Range> expectedRoleRanges = TestUtils.createRangesResource("ports", 8000, 8010, "testRole").getRanges().getRangeList();
         List<Protos.Value.Range> expectedSharedRanges = TestUtils.createRangesResource("ports", 9000, 9010, "*").getRanges().getRangeList();
@@ -290,14 +290,16 @@ public class LeaseTest {
         List<Protos.Value.Range> actualRoleRanges = lease.getAvailablePortResources("testRole");
         List<Protos.Value.Range> actualSharedRanges = lease.getAvailablePortResources("*");
 
-        //double actualMem = lease.getAvailableMem("testRole");
+        double actualMem = lease.getAvailableMem("testRole");
+        double actualTotalMem = lease.getTotalAvailableMem();
 
         assertThat(actualAssigned, is(equalTo(expectedAssigned)));
         assertThat(actualTotalSize, is(equalTo(expectedTotalSize)));
         assertThat(actualRoleRanges, is(equalTo(expectedRoleRanges)));
         assertThat(actualSharedRanges, is(equalTo(expectedSharedRanges)));
 
-        //assertThat(actualMem, is(equalTo(expectedMem)));
+        assertThat(actualMem, is(equalTo(expectedMem)));
+        assertThat(actualTotalMem, is(equalTo(expectedTotalMem)));
     }
 
     @Test
