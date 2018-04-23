@@ -299,8 +299,22 @@ public class Lease {
         return !(newValue < 0.0);
     }
 
-    private boolean assignRequestedScalarResource(String name, String role, Double requestedAmount) {
-        Map<String, Double> availableResources = availableScalarResources.get(name);
+     /**
+     * (Virtually) assign scalar resources to a temporary resources map which will be committed if all other resources
+     * are assignable.
+     *
+     * @param name Name of the resource
+     * @param role Role of the resource
+     * @param requestedAmount Requested amount to assign to lease
+     * @param tempAvailableScalarResources Temporary available resources to act assignments upon
+     * @return whether or not the assignment was successful
+     */
+    private boolean assignRequestedScalarResource(String name, String role, Double requestedAmount, Map<String, Map<String, Double>> tempAvailableScalarResources) {
+        if (!(tempAvailableScalarResources.containsKey(name) && tempAvailableScalarResources.get(name).containsKey(role))) {
+            return requestedAmount > 0.0;
+        }
+
+        Map<String, Double> availableResources = tempAvailableScalarResources.get(name);
         Double availableValue = availableResources.get(role);
 
         Double newValue = availableValue - requestedAmount;
@@ -313,23 +327,21 @@ public class Lease {
     }
 
     /**
-     *         // in:          availableRangeList
-     *         // in:          requestedRangeList
-     *         // validate:    availableRangeList.unifyRanges.containsAll(requestedRangeList.unifyRanges)
-     *         // side-effect: availableRangeList.unifyRanges.removeAll(requestedRangeList.unifyRanges).rangify
-     *         // out:         isAssignSuccess
+     * (Virtually) assign range resources to a temporary resources map which will be committed if all other resources
+     * are assignable.
      *
      * @param name Name of the resource
      * @param role Role of the resource
      * @param requestedRanges Requested ranges as list
+     * @param tempAvailableRangeResources Temporary resources to act assignments upon
      * @return whether or not the assignment was successful
      */
-    private boolean assignRequestedRangeResources(String name, String role, List<Protos.Value.Range> requestedRanges) {
-        if (!(availableRangeResources.containsKey(name) && availableRangeResources.get(name).containsKey(role))) {
+    private boolean assignRequestedRangeResources(String name, String role, List<Protos.Value.Range> requestedRanges, Map<String, Map<String, List<Protos.Value.Range>>> tempAvailableRangeResources) {
+        if (!(tempAvailableRangeResources.containsKey(name) && tempAvailableRangeResources.get(name).containsKey(role))) {
             return requestedRanges.isEmpty();
         }
 
-        Map<String, List<Protos.Value.Range>> availableResources = availableRangeResources.get(name);
+        Map<String, List<Protos.Value.Range>> availableResources = tempAvailableRangeResources.get(name);
         List<Protos.Value.Range> availableRanges = new ArrayList<Protos.Value.Range>(availableResources.get(role));
 
         Set<Long> unifiedAvailableRanges = getUnifiedSetOfRanges(availableRanges);
@@ -381,21 +393,36 @@ public class Lease {
         return setOfRanges;
     }
 
+
+    private <K, V> Map<K, Map<K, V>> createTempMap(Map<K, Map<K, V>> source) {
+        Map<K, Map<K, V>> target = new LinkedHashMap<K, Map<K, V>>();
+        for (Map.Entry<K, Map<K, V>> entry : source.entrySet()) {
+            target.put(entry.getKey(), new LinkedHashMap<K, V>(entry.getValue()));
+        }
+        return target;
+    }
+
     public boolean assign(@Nonnull Request request, @Nonnull Protos.TaskInfo taskInfo) {
         boolean allAssigned = true;
+
+        // "start transaction"
+        Map<String, Map<String, Double>> tempAvailableScalarResources = createTempMap(availableScalarResources);
+        Map<String, Map<String, List<Protos.Value.Range>>> tempAvailableRangeResources = createTempMap(availableRangeResources);
+
         for (Protos.Resource resource : taskInfo.getResourcesList()) {
             boolean assigned = true;
             switch (resource.getType()) {
                 case SCALAR:
-                    assigned = assignRequestedScalarResource(resource.getName(), resource.getRole(), resource.getScalar().getValue());
+                    assigned = assignRequestedScalarResource(resource.getName(), resource.getRole(), resource.getScalar().getValue(), tempAvailableScalarResources);
                     break;
                 case RANGES:
-                    assigned = assignRequestedRangeResources(resource.getName(), resource.getRole(), resource.getRanges().getRangeList());
+                    assigned = assignRequestedRangeResources(resource.getName(), resource.getRole(), resource.getRanges().getRangeList(), tempAvailableRangeResources);
                     break;
                 case SET:
                 case TEXT:
                 default:
                     LOGGER.warning("Unable to assign unsupported resource type '" + resource.getType() + "' to Lease '" + id + "' for task '" + taskInfo.getTaskId().getValue() + "'");
+                    break;
             }
 
             if (!assigned) {
@@ -405,7 +432,9 @@ public class Lease {
         }
 
         if (allAssigned) {
-            // commit changes made by assigns...
+            // "commit transaction"
+            availableScalarResources.putAll(tempAvailableScalarResources);
+            availableRangeResources.putAll(tempAvailableRangeResources);
 
             assignments.put(taskInfo, request);
         }
