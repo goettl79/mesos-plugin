@@ -364,18 +364,19 @@ public class MesosCloud extends Cloud {
     return builtOnAction.getMesosAgentHostname();
   }
 
+  private Job asJob(String linkedItem) {
+    try (ACLContext original = ACL.as(ACL.SYSTEM)) {
+      return Jenkins.getInstance().getItemByFullName(linkedItem, Job.class);
+    }
+  }
+
   private void sendSlaveRequest(int numExecutors, MesosSlaveInfo slaveInfo, String linkedItem) throws Descriptor.FormException, IOException {
     String name = slaveInfo.getLabelString() + "-" + UUID.randomUUID().toString();
     double cpus = slaveInfo.getSlaveCpus() + (numExecutors * slaveInfo.getExecutorCpus());
     double memory = (slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem())) * (1 + JVM_MEM_OVERHEAD_FACTOR);
 
     LOGGER.finer("Trying to get additional information from '" + linkedItem + "'");
-
-    Job jenkinsJob;
-    try(ACLContext original = ACL.as(ACL.SYSTEM)) {
-      jenkinsJob = Jenkins.getInstance().getItemByFullName(linkedItem, Job.class);
-    }
-
+    Job jenkinsJob = asJob(linkedItem);
     long estimatedDuration = getEstimatedDuration(jenkinsJob);
     String lastBuildHostname = getLastBuildHostname(jenkinsJob);
 
