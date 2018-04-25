@@ -37,7 +37,7 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
 
     @Override
     public String getDisplayName() {
-      return null;
+      return "SlaveDefinitionsConfiguration";
     }
 
     public List<MesosSlaveDefinitions> getSlaveDefinitionsEntries() {

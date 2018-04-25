@@ -2,6 +2,7 @@ package org.jenkinsci.plugins.mesos.config.acl;
 
 
 import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -51,5 +52,12 @@ public class ACLEntry {
     return new EqualsBuilder()
         .append(itemPattern, other.itemPattern)
         .isEquals();
+  }
+
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder(19, 57)
+            .append(itemPattern)
+            .toHashCode();
   }
 }

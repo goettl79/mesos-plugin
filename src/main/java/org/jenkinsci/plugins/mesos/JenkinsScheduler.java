@@ -181,8 +181,8 @@ public abstract class JenkinsScheduler implements Scheduler {
    */
   public static void supervise() {
     SUPERVISOR_LOCK.lock();
-    Collection<Mesos> clouds = Mesos.getAllClouds();
     try {
+      Collection<Mesos> clouds = Mesos.getAllClouds();
       for (Mesos cloud : clouds) {
         try {
           JenkinsScheduler scheduler = (JenkinsScheduler) cloud.getScheduler();
@@ -222,14 +222,17 @@ public abstract class JenkinsScheduler implements Scheduler {
 
   public synchronized void stop() {
     SUPERVISOR_LOCK.lock();
-    if (driver != null) {
-      LOGGER.finer("Stopping Mesos driver.");
-      driver.stop();
-    } else {
-      LOGGER.warning("Unable to stop Mesos driver:  driver is null.");
+    try {
+      if (driver != null) {
+        LOGGER.finer("Stopping Mesos driver");
+        driver.stop();
+      } else {
+        LOGGER.warning("Unable to stop Mesos driver: driver is null");
+      }
+    } finally {
+      running = false;
+      SUPERVISOR_LOCK.unlock();
     }
-    running = false;
-    SUPERVISOR_LOCK.unlock();
   }
 
   public synchronized boolean isRunning() {
@@ -305,7 +308,8 @@ public abstract class JenkinsScheduler implements Scheduler {
 
   /**
    * Refuses the offer provided by launching no tasks.
-   * @param offer The offer to refuse
+   * @param driver driver for declining the offer
+   * @param offer the offer to decline
    */
   @VisibleForTesting
   protected void declineOffer(SchedulerDriver driver, Offer offer) {
@@ -451,6 +455,8 @@ public abstract class JenkinsScheduler implements Scheduler {
         break;
       case TASK_FINISHED:
         slaveResult.finished(resultSlave);
+        terminalState = true;
+        break;
       case TASK_KILLED:
         terminalState = true;
         break;

@@ -43,7 +43,7 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
 
     @Override
     public String getDisplayName() {
-      return null;
+      return "FrameworkToItemMapper";
     }
 
     @RequirePOST
@@ -262,7 +262,7 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
 
 
     /**
-     * Returns the Mesos Framework name which is mapped to the specified item with an {@link ACLEntry}.<br />
+     * Returns the Mesos Framework name which is mapped to the specified item with an {@link ACLEntry}.<br>
      * In case the item is not mapped or not matched against the patterns of the entries, it returns the default Framework
      * to use for the item.
      *

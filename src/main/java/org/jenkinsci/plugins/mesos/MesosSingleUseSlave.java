@@ -3,17 +3,13 @@ package org.jenkinsci.plugins.mesos;
 
 import hudson.Extension;
 import hudson.Launcher;
-import hudson.model.BuildListener;
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
+import hudson.model.*;
 import hudson.slaves.OfflineCause;
 import hudson.tasks.BuildWrapper;
 import hudson.tasks.BuildWrapperDescriptor;
-
-import java.io.IOException;
-import java.util.logging.Logger;
-
 import org.kohsuke.stapler.DataBoundConstructor;
+
+import java.util.logging.Logger;
 
 /**
  This file is part of the JCloud Jenkins Plugin. (https://github.com/jenkinsci/jclouds-plugin)
@@ -55,21 +51,28 @@ public class MesosSingleUseSlave extends BuildWrapper {
     @Override
     @SuppressWarnings("rawtypes")
     public Environment setUp(AbstractBuild build, Launcher launcher, final BuildListener listener) {
-        if (MesosComputer.class.isInstance(build.getExecutor().getOwner())) {
-            final MesosComputer c = (MesosComputer) build.getExecutor().getOwner();
+        final Executor executor = build.getExecutor();
+        if (executor == null) {
+            LOGGER.warning("Unable to determine executor for build '" + build + "' (was null)");
+            return null;
+        }
+
+        Computer computer = executor.getOwner();
+        if (computer instanceof MesosComputer) {
+            final MesosComputer c = (MesosComputer) computer;
             return new Environment() {
                 @Override
-                public boolean tearDown(AbstractBuild build, final BuildListener listener) throws IOException, InterruptedException {
+                public boolean tearDown(AbstractBuild build, final BuildListener listener) {
                     LOGGER.warning("Single-use slave " + c.getName() + " getting torn down.");
-                    c.setTemporarilyOffline(true, OfflineCause.create(Messages._SingleUseCause()));
+                    c.setTemporarilyOffline(true, OfflineCause.create(Messages._singleUseCause()));
                     return true;
                 }
             };
         } else {
             return new Environment() {
                 @Override
-                public boolean tearDown(AbstractBuild build, final BuildListener listener) throws IOException, InterruptedException {
-                    LOGGER.fine("Not a single use slave, this is a " + build.getExecutor().getOwner().getClass());
+                public boolean tearDown(AbstractBuild build, final BuildListener listener) {
+                    LOGGER.fine("Not a single use slave, this is a " + executor.getOwner().getClass());
                     return true;
                 }
             };

@@ -49,7 +49,7 @@ public class MesosQueueListener extends QueueListener {
    * Collect cancelled Items from queue
    * due to the fact, that for every buildable item (Labeltype Mesos) was sent a mesos request, this request must be
    * cancelled.
-   * @param li
+   * @param li item which left the queue
    */
   @Override
   public void onLeft(Queue.LeftItem li) {
