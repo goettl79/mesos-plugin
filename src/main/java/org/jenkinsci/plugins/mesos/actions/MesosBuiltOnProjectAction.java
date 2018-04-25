@@ -14,16 +14,22 @@ public class MesosBuiltOnProjectAction extends InvisibleAction {
         this.job = job;
     }
 
+    private MesosBuiltOnAction getFirstActionOrNull(@Nonnull Run... runs) {
+        for (Run run : runs) {
+            if (run != null) {
+                MesosBuiltOnAction action = run.getAction(MesosBuiltOnAction.class);
+                if (action != null) {
+                    return action;
+                }
+            }
+        }
+        // log that no action was found
+        return null;
+    }
+
     public MesosBuiltOnAction getAction() {
         // TODO: better logic to determine last built with MesosBuiltOnAction, b/c might not be contained in lastBuild()
-        Run<?, ?> build = job.getLastBuild();
-
-        if (build == null) {
-            return null;
-        }
-
-        MesosBuiltOnAction action = build.getAction(MesosBuiltOnAction.class);
-        return action;
+        return getFirstActionOrNull(job.getLastBuild(), job.getLastCompletedBuild());
     }
 
 }
