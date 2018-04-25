@@ -1,18 +1,17 @@
 package org.jenkinsci.plugins.mesos.listener;
 
 import hudson.Extension;
-import hudson.model.*;
+import hudson.model.Executor;
+import hudson.model.Node;
+import hudson.model.Run;
+import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import org.apache.commons.lang.StringUtils;
-import org.jenkinsci.plugins.mesos.JenkinsScheduler;
-import org.jenkinsci.plugins.mesos.Mesos;
 import org.jenkinsci.plugins.mesos.MesosSlave;
 import org.jenkinsci.plugins.mesos.actions.MesosBuiltOnAction;
-import org.jenkinsci.plugins.mesos.actions.MesosBuiltOnProperty;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
@@ -33,27 +32,6 @@ public class MesosRunListener extends RunListener<Run> {
   }
 
 
-  private MesosBuiltOnAction createBuiltOnAction(MesosSlave mesosJenkinsAgent) {
-    JenkinsScheduler jenkinsScheduler = (JenkinsScheduler) Mesos.getInstance(mesosJenkinsAgent.getCloud()).getScheduler();
-
-    String mesosAgentHostname = StringUtils.defaultIfBlank(jenkinsScheduler.getResult(mesosJenkinsAgent.getDisplayName()).getSlave().getHostname(), "N/A");
-
-    String jenkinsAgentHostname = "N/A";
-    try {
-        Computer computer = mesosJenkinsAgent.toComputer();
-        if (computer != null) {
-            jenkinsAgentHostname = StringUtils.defaultIfBlank(computer.getHostName(), jenkinsAgentHostname);
-        }
-    } catch (Exception e) {
-      LOGGER.log(Level.WARNING, "Error while trying to get hostname of node", e);
-      jenkinsAgentHostname = "N/A";
-    }
-
-    String containerId = StringUtils.defaultIfBlank(mesosJenkinsAgent.getDockerContainerID(), "N/A");
-
-    return new MesosBuiltOnAction(mesosAgentHostname, jenkinsAgentHostname, containerId);
-  }
-
   /**
    * Prints the actual Hostname where Mesos slave is provisioned in console output.
    * This would help us debug/take action if build fails in that slave.
@@ -63,26 +41,18 @@ public class MesosRunListener extends RunListener<Run> {
     if (doNotSkipLogfileOutput(run)) {
       Node node = getCurrentNode(run);
       if (node instanceof MesosSlave) {
-        MesosBuiltOnAction builtOnAction = createBuiltOnAction((MesosSlave)node);
 
-        // add to current build
-        run.replaceAction(builtOnAction);
+        MesosBuiltOnAction builtOnAction = run.getAction(MesosBuiltOnAction.class);
 
-        StringBuilder msgBuilder = new StringBuilder()
-                .append("\nThis build is running on:\n")
-                .append("  * Mesos Agent:   ").append(builtOnAction.getMesosAgentHostname()).append("\n")
-                .append("  * Jenkins Agent: ").append(builtOnAction.getJenkinsAgentHostname()).append("\n")
-                .append("  * Container ID:  ").append(builtOnAction.getContainerId()).append("\n");
-
-        // always add, or only if was built on mesos node?
-        // b/c: sometimes could be configured to run on mesos node, and other times not
-        try {
-          if (run.getParent().getProperty(MesosBuiltOnProperty.class) == null) {
-            run.getParent().addProperty(new MesosBuiltOnProperty());
-          }
-        } catch (Exception e) {
-          LOGGER.log(Level.WARNING, "Failed to add MesosBuiltOnProperty to " + run.getParent().getFullDisplayName(), e);
-          msgBuilder.append("WARNING! Failed to add the built-on property to this job.\n");
+        StringBuilder msgBuilder = new StringBuilder();
+        if (builtOnAction != null) {
+          msgBuilder
+            .append("\nThis build is running on:\n")
+            .append("  * Mesos Agent:   ").append(builtOnAction.getMesosAgentHostname()).append("\n")
+            .append("  * Jenkins Agent: ").append(builtOnAction.getJenkinsAgentHostname()).append("\n")
+            .append("  * Container ID:  ").append(builtOnAction.getContainerId()).append("\n");
+        } else {
+          msgBuilder.append("\nUnable to determine where this build runs on (missing action)\n");
         }
 
         listener.getLogger().println(msgBuilder.toString());

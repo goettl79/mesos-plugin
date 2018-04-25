@@ -366,7 +366,7 @@ public class MesosCloud extends Cloud {
     double memory = (slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem())) * (1 + JVM_MEM_OVERHEAD_FACTOR);
 
     LOGGER.finer("Trying to get additional information from '" + linkedItem + "'");
-    Job jenkinsJob = (Job)Jenkins.getInstance().getItemByFullName(linkedItem);
+    Job jenkinsJob = Jenkins.getInstance().getItemByFullName( linkedItem, Job.class);
     long estimatedDuration = getEstimatedDuration(jenkinsJob);
     String lastBuildHostname = getLastBuildHostname(jenkinsJob);
 

@@ -14,18 +14,23 @@
  */
 package org.jenkinsci.plugins.mesos;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
+import hudson.model.*;
+import hudson.slaves.OfflineCause;
+import hudson.slaves.RetentionStrategy;
+import jenkins.model.Jenkins;
+import org.apache.commons.lang.StringUtils;
+import org.apache.mesos.Protos;
+import org.jenkinsci.plugins.mesos.actions.MesosBuiltOnAction;
+import org.jenkinsci.plugins.mesos.actions.MesosBuiltOnProjectAction;
+import org.jenkinsci.plugins.mesos.actions.MesosBuiltOnProperty;
+import org.jenkinsci.plugins.workflow.support.steps.ExecutorStepExecution;
+import org.joda.time.DateTimeUtils;
 
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import hudson.model.*;
-import hudson.slaves.SlaveComputer;
-import org.apache.mesos.Protos;
-import org.joda.time.DateTimeUtils;
-import hudson.slaves.OfflineCause;
-
-import hudson.slaves.RetentionStrategy;
+import static java.util.concurrent.TimeUnit.MINUTES;
 
 /**
  * This is inspired by {@link hudson.slaves.CloudRetentionStrategy}.
@@ -124,8 +129,7 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
         }
       }
     } catch (Exception e) {
-      LOGGER.fine("Error while check IdleTerminationTime an TTL: "+e.getMessage());
-      e.printStackTrace();
+      LOGGER.log(Level.FINE, "Error while check IdleTerminationTime an TTL:", e);
     }
     return 1;
   }
@@ -138,44 +142,108 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
     c.connect(false);
   }
 
+
+  private MesosBuiltOnAction createBuiltOnAction(MesosSlave mesosJenkinsAgent) {
+    JenkinsScheduler jenkinsScheduler = (JenkinsScheduler) Mesos.getInstance(mesosJenkinsAgent.getCloud()).getScheduler();
+
+    String mesosAgentHostname = StringUtils.defaultIfBlank(jenkinsScheduler.getResult(mesosJenkinsAgent.getDisplayName()).getSlave().getHostname(), "N/A");
+
+    String jenkinsAgentHostname = "N/A";
+    try {
+      Computer computer = mesosJenkinsAgent.toComputer();
+      if (computer != null) {
+        jenkinsAgentHostname = StringUtils.defaultIfBlank(computer.getHostName(), jenkinsAgentHostname);
+      }
+    } catch (Exception e) {
+      LOGGER.log(Level.WARNING, "Error while trying to get hostname of node", e);
+    }
+
+    String containerId = StringUtils.defaultIfBlank(mesosJenkinsAgent.getDockerContainerID(), "N/A");
+
+    return new MesosBuiltOnAction(mesosAgentHostname, jenkinsAgentHostname, containerId);
+  }
+
+  private Run getCurrentRun(Queue.Executable executable) {
+    if (executable instanceof Run) {
+      return (Run)executable;
+    }
+
+    if (Jenkins.get().getPlugin("workflow-durable-task-step") != null) {
+      if (executable.getParent() instanceof ExecutorStepExecution.PlaceholderTask) {
+        return ((ExecutorStepExecution.PlaceholderTask) executable.getParent()).run();
+      }
+    }
+
+    if (executable != null && executable.getParent().getOwnerTask() instanceof Job) {
+      Job job = (Job)executable.getParent().getOwnerTask();
+      return job.getLastBuild();
+    }
+
+    return null;
+  }
+
+  private synchronized void addBuiltOnActionOrProperty(Job job) {
+    if (job instanceof AbstractProject) {
+      try {
+        if (job.getProperty(MesosBuiltOnProperty.class) == null) {
+          job.addProperty(new MesosBuiltOnProperty());
+        }
+      } catch (Exception e) {
+        LOGGER.log(Level.WARNING, "Failed to add built on information to " + job.getFullDisplayName(), e);
+      }
+    } else {
+      try {
+        job.replaceAction(new MesosBuiltOnProjectAction(job));
+      } catch (Exception e) {
+        LOGGER.log(Level.WARNING, "Failed to add MesosBuiltOnProjectAction to " + job.getFullDisplayName(), e);
+      }
+    }
+  }
+
   @Override
   public void taskAccepted(Executor executor, Queue.Task task) {
     try {
+      Run run = getCurrentRun(executor.getCurrentExecutable());
+      LOGGER.finest("The current build: " + run);
+
+      addBuiltOnActionOrProperty(run.getParent());
+
       Node node = executor.getOwner().getNode();
-      if (node != null && node instanceof MesosSlave) {
-        MesosSlave mesosSlave = (MesosSlave) executor.getOwner().getNode();
-        if (mesosSlave.getSlaveInfo().isUseSlaveOnce()) {
+      if (node instanceof MesosSlave) {
+        MesosSlave mesosJenkinsAgent = (MesosSlave) executor.getOwner().getNode();
+
+        // add to current build
+        run.replaceAction(createBuiltOnAction(mesosJenkinsAgent));
+
+        if (mesosJenkinsAgent.getSlaveInfo().isUseSlaveOnce()) {
           // Force Use Once Only on all executors
-          ((SlaveComputer) mesosSlave.getComputer()).setAcceptingTasks(false);
+          mesosJenkinsAgent.getComputer().setAcceptingTasks(false);
         }
       }
     } catch (Exception e) {
-      LOGGER.warning("Exception while trying to mark Computer as pending delete: " + e);
-      e.printStackTrace();
+      LOGGER.log(Level.WARNING, "Exception while trying to mark Computer as pending delete:", e);
     }
   }
 
   @Override
   public void taskCompleted(Executor executor, Queue.Task task, long l) {
     Node node = executor.getOwner().getNode();
-    if (node != null && node instanceof MesosSlave) {
+    if (node instanceof MesosSlave) {
       try {
-        MesosSlave mesosSlave = (MesosSlave) node;
-        if(mesosSlave.getSlaveInfo().isUseSlaveOnce()) {
+        MesosSlave mesosJenkinsAgent = (MesosSlave) node;
+        if(mesosJenkinsAgent.getSlaveInfo().isUseSlaveOnce()) {
           // Force Use Once Only on all executors
-          mesosSlave.setPendingDelete(true);
+          mesosJenkinsAgent.setPendingDelete(true);
         }
       } catch (Exception e) {
-        LOGGER.warning("Exception while trying to mark Computer as pendingDelete: " + e);
-        e.printStackTrace();
+        LOGGER.log(Level.WARNING,"Exception while trying to mark Computer as pendingDelete:", e);
       }
     }
   }
 
   @Override
   public void taskCompletedWithProblems(Executor executor, Queue.Task task, long l, Throwable throwable) {
-    LOGGER.warning("Task completed with Problems " + throwable.getMessage() + " on " + executor.getDisplayName());
-    throwable.printStackTrace();
+    LOGGER.log(Level.WARNING, "Task on executor '" + executor.getDisplayName() + "' completed with problems:", throwable);
     taskCompleted(executor, task, l);
   }
 
