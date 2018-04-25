@@ -56,6 +56,9 @@ public abstract class Mesos {
   abstract public void stopJenkinsSlave(String name);
 
   /**
+   * Retrieves a Mesos cloud instance.
+   *
+   * @param key name of the mesos cloud/framework
    * @return the mesos implementation instance for the cloud instances (since there might be more than one
    */
   public static synchronized Mesos getInstance(MesosCloud key) {

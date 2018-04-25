@@ -55,7 +55,7 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
    * Creates a new Jenkins Mesos slave by providing a task id in the URL, which corresponds to an existing task request
    * made by Mesos. Basically, the task id is the resulting name of the Jenkins slave.
    *
-   * <br /><br />
+   * <br><br>
    *
    * Example: &lt;JenkinsURL&gt;/mesos/createSlave/&lt;taskId&gt;
    *
@@ -64,7 +64,7 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
    * @return a message containing whether or not creating and adding the slave was successful
    */
   @SuppressWarnings("unused")
-  public synchronized String doCreateSlave(StaplerRequest req, StaplerResponse rsp) throws IOException {
+  public synchronized String doCreateSlave(StaplerRequest req, StaplerResponse rsp) {
     String taskId = req.getRestOfPath().replaceFirst("/", "");
     return doCreateSlaveWithParameter(taskId, rsp);
   }
@@ -73,7 +73,7 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
    * Creates a new Jenkins Mesos slave by providing a task id as a parameter (taskId) which corresponds to an existing
    * task request made by Mesos (Jenkins slave name).
    *
-   * <br /><br />
+   * <br><br>
    *
    * Example: &lt;JenkinsURL&gt;/mesos/createSlave?taskId=&lt;taskId&gt;
    *
@@ -85,7 +85,7 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
   @SuppressWarnings("unused")
   public synchronized String doCreateSlaveWithParameter(
       @QueryParameter(fixEmpty = true, required = true) String taskId,
-      StaplerResponse rsp) throws IOException {
+      StaplerResponse rsp) {
     //TODO: make Mesos authenticate itself on Jenkins to enforce ADMINISTER permission
     //Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
@@ -257,6 +257,7 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
    * @param req Request object which contains the XML of the configuration
    * @param rsp Response object which will contain the status code and message
    * @return a message containing whether or not adding the specified definitions was successful
+   * @throws IOException when something goes awry
    */
   @RequirePOST
   @SuppressWarnings("unused")
@@ -292,6 +293,7 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
    * @param req Request object which contains the XML of the configuration
    * @param rsp Response object which will contain the status code and message
    * @return a message containing whether or not adding the specified definitions was successful
+   * @throws IOException when something goes awry
    */
   @RequirePOST
   @SuppressWarnings("unused")
