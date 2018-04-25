@@ -14,11 +14,14 @@
  */
 package org.jenkinsci.plugins.mesos;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.*;
+import hudson.security.ACL;
+import hudson.security.ACLContext;
 import hudson.slaves.Cloud;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 import hudson.slaves.NodeProperty;
@@ -45,7 +48,6 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import javax.annotation.Nonnull;
-import javax.servlet.ServletException;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -83,6 +85,8 @@ public class MesosCloud extends Cloud {
   // We allocate 10% more memory to the Mesos task to account for the JVM overhead.
   private static final double JVM_MEM_OVERHEAD_FACTOR = 0.1;
 
+  // TODO: this is bad man
+  @SuppressFBWarnings
   private static volatile boolean nativeLibraryLoaded = false;
 
   public static final String DEFAULT_SLAVE_LABEL_NONE = "None";
@@ -366,7 +370,12 @@ public class MesosCloud extends Cloud {
     double memory = (slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem())) * (1 + JVM_MEM_OVERHEAD_FACTOR);
 
     LOGGER.finer("Trying to get additional information from '" + linkedItem + "'");
-    Job jenkinsJob = Jenkins.getInstance().getItemByFullName( linkedItem, Job.class);
+
+    Job jenkinsJob;
+    try(ACLContext original = ACL.as(ACL.SYSTEM)) {
+      jenkinsJob = Jenkins.getInstance().getItemByFullName(linkedItem, Job.class);
+    }
+
     long estimatedDuration = getEstimatedDuration(jenkinsJob);
     String lastBuildHostname = getLastBuildHostname(jenkinsJob);
 
@@ -415,7 +424,7 @@ public class MesosCloud extends Cloud {
       return getFullNameOfTask(task);
     }
 
-    throw new IllegalArgumentException(Messages.MesosCloud_InvalidItem(buildableItem));
+    throw new IllegalArgumentException(Messages.MesosCloud_InvalidItem("(item was null)"));
   }
 
   @Nonnull
@@ -620,6 +629,7 @@ public class MesosCloud extends Cloud {
 }
 
   @Extension
+  @SuppressFBWarnings
   public static class DescriptorImpl extends Descriptor<Cloud> {
     private String nativeLibraryPath;
     private String master;
@@ -672,12 +682,15 @@ public class MesosCloud extends Cloud {
 
     /**
      * Test connection from configuration page.
+     *
+     * @param master url of the Jenkins master
+     * @param nativeLibraryPath path to the native library on the Jenkins master
+     * @return whether or not the connection test succeeded
      */
     @SuppressWarnings("unused")
     public FormValidation doTestConnection(
         @QueryParameter("master") String master,
-        @QueryParameter("nativeLibraryPath") String nativeLibraryPath)
-        throws IOException, ServletException {
+        @QueryParameter("nativeLibraryPath") String nativeLibraryPath) {
       master = master.trim();
 
       if (master.equals("local")) {

@@ -42,7 +42,7 @@ public class MesosComputer extends SlaveComputer {
     checkPermission(DELETE);
 
     if(getChannel() != null) {
-      disconnect(OfflineCause.create(Messages._DeletedCause()));
+      disconnect(OfflineCause.create(Messages._deletedCause()));
     } else {
       deleteSlave();
     }
@@ -57,8 +57,6 @@ public class MesosComputer extends SlaveComputer {
 
   /**
    * Delete the slave, terminate the instance. Can be called either by doDoDelete() or from MesosRetentionStrategy.
-   *
-   * @throws InterruptedException
    */
   public void deleteSlave() {
     LOGGER.info("Terminating " + getName() + " slave");

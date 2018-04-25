@@ -86,7 +86,7 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
                       comp.deleteSlave();
                     } else {
                       //disconnect slave so the task at mesos can finish and dont get killed.
-                      comp.disconnect(OfflineCause.create(Messages._DeletedCause()));
+                      comp.disconnect(OfflineCause.create(Messages._deletedCause()));
                     }
                   }
                 });

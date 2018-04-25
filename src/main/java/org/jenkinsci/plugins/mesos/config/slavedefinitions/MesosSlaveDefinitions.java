@@ -1,6 +1,7 @@
 package org.jenkinsci.plugins.mesos.config.slavedefinitions;
 
 import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -53,6 +54,14 @@ public class MesosSlaveDefinitions {
     return new EqualsBuilder()
         .append(definitionsName, other.definitionsName)
         .isEquals();
+  }
+
+
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder(23, 97)
+            .append(definitionsName)
+            .toHashCode();
   }
 
   @Override

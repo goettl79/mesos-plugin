@@ -75,13 +75,14 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
    * @return The number of minutes to check again afterwards
    */
   private long checkInternal(MesosComputer c) {
-    if (c.getNode() == null) {
+    MesosSlave mesosJenkinsAgent = c.getNode();
+    if (mesosJenkinsAgent == null) {
       return 1;
     }
 
     //if an executor is "dead", determining the conntectionTime may cause an NullPointer Exception
     try {
-      Protos.TaskStatus taskStatus = c.getNode().getTaskStatus();
+      Protos.TaskStatus taskStatus = mesosJenkinsAgent.getTaskStatus();
       if(taskStatus != null) {
         //if task is staging, check again in a minute
         if(Protos.TaskState.TASK_STAGING.equals(taskStatus.getState())) {
@@ -104,10 +105,10 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
 
         if (idleMilliseconds > MINUTES.toMillis(idleTerminationMinutes)) {
           LOGGER.info("Disconnecting idle computer " + c.getName());
-          c.getNode().setPendingDelete(true);
+          mesosJenkinsAgent.setPendingDelete(true);
 
           if (!c.isOffline()) {
-            c.setTemporarilyOffline(true, OfflineCause.create(Messages._DeletedCause()));
+            c.setTemporarilyOffline(true, OfflineCause.create(Messages._deletedCause()));
           }
         }
       }
@@ -210,7 +211,7 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
 
       Node node = executor.getOwner().getNode();
       if (node instanceof MesosSlave) {
-        MesosSlave mesosJenkinsAgent = (MesosSlave) executor.getOwner().getNode();
+        MesosSlave mesosJenkinsAgent = (MesosSlave) node;
 
         // add to current build
         run.replaceAction(createBuiltOnAction(mesosJenkinsAgent));

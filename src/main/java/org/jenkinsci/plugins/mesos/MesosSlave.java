@@ -22,6 +22,7 @@ import hudson.model.Node;
 import hudson.model.Queue;
 import hudson.model.Slave;
 import hudson.model.queue.CauseOfBlockage;
+import hudson.remoting.VirtualChannel;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.EphemeralNode;
 import hudson.slaves.NodeProperty;
@@ -37,8 +38,11 @@ import java.util.logging.Logger;
 
 public class MesosSlave extends Slave implements EphemeralNode {
 
-  private final MesosCloud cloud;
-  private final MesosSlaveInfo slaveInfo;
+  public static final long serialVersionUID = 42;
+
+  private final transient MesosCloud cloud;
+  private final transient MesosSlaveInfo slaveInfo;
+
   private Protos.TaskStatus taskStatus;
   private boolean pendingDelete;
   private String linkedItem;
@@ -90,11 +94,12 @@ public class MesosSlave extends Slave implements EphemeralNode {
       ComputerLauncher launcher = getLauncher();
       // If this is a mesos computer launcher, terminate the launcher.
 
-      if (this.getChannel() != null) {
+      VirtualChannel channel = this.getChannel();
+      if (channel != null) {
         if (launcher instanceof MesosComputerLauncher) {
           ((MesosComputerLauncher) launcher).terminate();
         }
-        this.getChannel().close();
+        channel.close();
       }
 
       Jenkins.getInstance().removeNode(this);

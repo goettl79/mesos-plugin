@@ -95,13 +95,16 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   private void removeExistingNode(JenkinsSlave.ResultJenkinsSlave failedSlave, PrintStream logger) {
     Jenkins jenkins = Jenkins.getInstance();
     Node node = jenkins.getNode(failedSlave.getName());
-    if (node != null) {
-      if(node instanceof MesosSlave) {
-        MesosSlave mesosSlave = (MesosSlave) node;
-        MesosComputer mesosComputer = (MesosComputer) mesosSlave.toComputer();
+    if(node instanceof MesosSlave) {
+      MesosSlave mesosJenkinsAgent = (MesosSlave) node;
+      MesosComputer mesosComputer = (MesosComputer) mesosJenkinsAgent.toComputer();
+
+      if (mesosComputer != null) {
         mesosComputer.deleteSlave();
+        logger.println("Removed node '" + failedSlave + "' from Jenkins");
+      } else {
+        logger.println("Unable to remove agent '" + mesosJenkinsAgent + "' because computer was null");
       }
-      logger.println("Removed node '" + failedSlave + "' from Jenkins");
     }
   }
 
@@ -120,9 +123,13 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
     start(false);
   }
 
+  //@SuppressFBWarnings
   public void ignoreTasks() {
-    getLogFile().delete();
-    init();
+    try {
+      getLogFile().delete();
+    } finally {
+      init();
+    }
   }
 
   public void addFailedSlave(JenkinsSlave.ResultJenkinsSlave slave, SlaveResult.FAILED_CAUSE cause) {

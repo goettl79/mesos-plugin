@@ -366,9 +366,9 @@ public class TaskCreator {
                                 .setContainerPort(portMapping.getContainerPort()) //
                                 .setProtocol(portMapping.getProtocol());
 
-                        Long portToUse = portMapping.isStaticHostPort() ? portMapping.getHostPort() : iterator.next();
+                        Integer portToUse = portMapping.isStaticHostPort() ? portMapping.getHostPort() : iterator.next().intValue();
 
-                        portMappingBuilder.setHostPort(portToUse.intValue());
+                        portMappingBuilder.setHostPort(portToUse);
 
                         portRangesBuilder.addRange(
                                 Protos.Value.Range
@@ -430,21 +430,25 @@ public class TaskCreator {
             }
         }
 
-        LOGGER.fine("portRangesList=" + portRangesList);
+        if (portRangesList != null) {
+            LOGGER.fine("portRangesList=" + portRangesList);
 
-        /**
-         * We need to find maxCount ports to use.
-         * We are provided a list of port ranges to use
-         * We are assured by the offer check that we have enough ports to use
-         */
-        // Check this port range for ports that we can use
-        for (Protos.Value.Range currentPortRange : portRangesList) {
-            // Check each port until we reach the end of the current range
-            long begin = currentPortRange.getBegin();
-            long end = currentPortRange.getEnd();
-            for (long candidatePort = begin; candidatePort <= end && portsToUse.size() < maxCount; candidatePort++) {
-                portsToUse.add(candidatePort);
+            /**
+             * We need to find maxCount ports to use.
+             * We are provided a list of port ranges to use
+             * We are assured by the offer check that we have enough ports to use
+             */
+            // Check this port range for ports that we can use
+            for (Protos.Value.Range currentPortRange : portRangesList) {
+                // Check each port until we reach the end of the current range
+                long begin = currentPortRange.getBegin();
+                long end = currentPortRange.getEnd();
+                for (long candidatePort = begin; candidatePort <= end && portsToUse.size() < maxCount; candidatePort++) {
+                    portsToUse.add(candidatePort);
+                }
             }
+        } else {
+            LOGGER.fine("Unable to determine ports to use, because no port resources were found in " + offer);
         }
 
         return portsToUse;
