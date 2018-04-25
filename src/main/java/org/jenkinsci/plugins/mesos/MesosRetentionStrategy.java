@@ -44,7 +44,7 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
    */
   public final int idleTerminationMinutes;
   private final int maximumTimeToLive;
-  private ReentrantLock checkLock = new ReentrantLock(false);
+  private transient ReentrantLock computerCheckLock = new ReentrantLock(false);
 
   private static final Logger LOGGER = Logger
       .getLogger(MesosRetentionStrategy.class.getName());
@@ -54,16 +54,19 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
     this.maximumTimeToLive = maximumTimeToLive;
   }
 
+  private void readResolve() {
+      computerCheckLock = new ReentrantLock(false);
+  }
 
   @Override
   public long check(MesosComputer c) {
-    if (!checkLock.tryLock()) {
+    if (!computerCheckLock.tryLock()) {
       return 1;
     } else {
       try {
         return checkInternal(c);
       } finally {
-        checkLock.unlock();
+          computerCheckLock.unlock();
       }
     }
   }
