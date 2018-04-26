@@ -54,7 +54,7 @@ public class TaskCreatorTest {
         Jenkins jenkins = Mockito.mock(Jenkins.class);
         when(jenkins.isUseSecurity()).thenReturn(false);
         PowerMockito.mockStatic(Jenkins.class);
-        Mockito.when(Jenkins.getInstance()).thenReturn(jenkins);
+        Mockito.when(Jenkins.get()).thenReturn(jenkins);
     }
 
     @Test
@@ -64,7 +64,7 @@ public class TaskCreatorTest {
         Request request = mockMesosRequest(Boolean.FALSE, null, null);
         taskCreator = new TaskCreator(request, offer, scheduler);
 
-        SortedSet<Long> portsToUse = taskCreator.findPortsToUse(offer, 1);;
+        SortedSet<Long> portsToUse = taskCreator.findPortsToUse(offer, 1);
 
         assertEquals(1, portsToUse.size());
         assertEquals(Long.valueOf(31000), portsToUse.first());
@@ -78,14 +78,11 @@ public class TaskCreatorTest {
         taskCreator = new TaskCreator(request, offer, scheduler);
 
         final ExecutorService executorService = Executors.newFixedThreadPool(1);
-        executorService.execute(new Runnable() {
-            @Override
-            public void run() {
-                SortedSet<Long> portsToUse = taskCreator.findPortsToUse(offer, 1);
+        executorService.execute(() -> {
+            SortedSet<Long> portsToUse = taskCreator.findPortsToUse(offer, 1);
 
-                assertEquals(1, portsToUse.size());
-                assertEquals(Long.valueOf(31000), portsToUse.first());
-            }
+            assertEquals(1, portsToUse.size());
+            assertEquals(Long.valueOf(31000), portsToUse.first());
         });
 
         executorService.shutdown();
@@ -136,15 +133,12 @@ public class TaskCreatorTest {
         taskCreator = new TaskCreator(request, protoOffer, scheduler);
 
         final ExecutorService executorService = Executors.newFixedThreadPool(1);
-        executorService.execute(new Runnable() {
-            @Override
-            public void run() {
-                SortedSet<Long> portsToUse = taskCreator.findPortsToUse(protoOffer, 2);
+        executorService.execute(() -> {
+            SortedSet<Long> portsToUse = taskCreator.findPortsToUse(protoOffer, 2);
 
-                assertEquals(2, portsToUse.size());
-                assertEquals(Long.valueOf(31000), portsToUse.first());
-                assertEquals(Long.valueOf(31005), portsToUse.last());
-            }
+            assertEquals(2, portsToUse.size());
+            assertEquals(Long.valueOf(31000), portsToUse.first());
+            assertEquals(Long.valueOf(31005), portsToUse.last());
         });
 
         executorService.shutdown();
@@ -246,10 +240,10 @@ public class TaskCreatorTest {
                     Boolean.TRUE,
                     useCustomDockerCommandShell,
                     customDockerCommandShell,
-                    Collections.<MesosSlaveInfo.Volume>emptyList(),
-                    Collections.<MesosSlaveInfo.Parameter>emptyList(),
+                    Collections.emptyList(),
+                    Collections.emptyList(),
                     Protos.ContainerInfo.DockerInfo.Network.HOST.name(),
-                    Collections.<MesosSlaveInfo.PortMapping>emptyList());
+                    Collections.emptyList());
         }
 
         MesosSlaveInfo mesosSlaveInfo = new MesosSlaveInfo(
@@ -277,7 +271,7 @@ public class TaskCreatorTest {
         JenkinsSlave.RequestJenkinsSlave jenkinsSlave = new JenkinsSlave.SharedResourcesFirst(
                 TEST_JENKINS_SLAVE_NAME,"label",1,
                 "linkedItem", "dummy.host-na.me", 0L,
-                0.2, TEST_JENKINS_SLAVE_MEM, Collections.<MesosSlaveInfo.PortMapping>emptySet(),"jenkins");
+                0.2, TEST_JENKINS_SLAVE_MEM, Collections.emptySet(),"jenkins");
 
 
         SlaveRequest slaveReq = new SlaveRequest(jenkinsSlave, mesosSlaveInfo);

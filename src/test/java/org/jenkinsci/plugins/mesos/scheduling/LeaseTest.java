@@ -14,8 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
 @RunWith(MockitoJUnitRunner.class)
 public class LeaseTest {
@@ -54,25 +53,25 @@ public class LeaseTest {
 
     @Test
     public void expectThatLeaseIsNotAvailableNow() {
-        assertEquals(false, lease.isAvailableNow());
+        assertFalse(lease.isAvailableNow());
     }
 
     @Test
     public void expectThatLeaseIsNotAvailableWhenStartDateIsBetweenUnavailability() {
         Date startDate = new Date(now.getTime() + TimeUnit.MINUTES.toMillis(5));
-        assertEquals(false, lease.isAvailable(startDate));
+        assertFalse(lease.isAvailable(startDate));
     }
 
     @Test
     public void expectThatLeaseIsAvailableWhenStartDateIsBeforeUnavailablityStarts() {
         Date startDate = new Date(now.getTime() - TimeUnit.MINUTES.toMillis(5));
-        assertEquals(true, lease.isAvailable(startDate));
+        assertTrue(lease.isAvailable(startDate));
     }
 
     @Test
     public void expectThatLeaseIsAvailableWhenStartDateIsAfterUnavailabilityEnds() {
         Date startDate = new Date(now.getTime() + TimeUnit.HOURS.toMillis(2));
-        assertEquals(true, lease.isAvailable(startDate));
+        assertTrue(lease.isAvailable(startDate));
     }
 
 
@@ -80,42 +79,42 @@ public class LeaseTest {
     public void expectThatLeaseIsAvailableWhenStartAndEndDateAreBeforeUnavailabilityStarts() {
         Date startDate = new Date(now.getTime() - TimeUnit.MINUTES.toMillis(5));
         long duration = TimeUnit.MINUTES.toMillis(1);
-        assertEquals(true, lease.isAvailable(startDate, duration));
+        assertTrue(lease.isAvailable(startDate, duration));
     }
 
     @Test
     public void expectThatLeaseIsNotAvailableWhenStartDateIsBeforeAndEndDateIsBetweenUnavailability() {
         Date startDate = new Date(now.getTime() - TimeUnit.MINUTES.toMillis(5));
         long duration = TimeUnit.MINUTES.toMillis(6);
-        assertEquals(false, lease.isAvailable(startDate, duration));
+        assertFalse(lease.isAvailable(startDate, duration));
     }
 
     @Test
     public void expectThatLeaseIsNotAvailableWhenStartAndEndDateIsBetweenUnavailability() {
         Date startDate = new Date(now.getTime() + TimeUnit.MINUTES.toMillis(5));
         long duration = TimeUnit.MINUTES.toMillis(6);
-        assertEquals(false, lease.isAvailable(startDate, duration));
+        assertFalse(lease.isAvailable(startDate, duration));
     }
 
     @Test
     public void expectThatLeaseIsNotAvailableWhenStartDateIsBetweenAndEndDateAfterUnavailability() {
         Date startDate = new Date(now.getTime() + TimeUnit.MINUTES.toMillis(5));
         long duration = TimeUnit.HOURS.toMillis(1);
-        assertEquals(false, lease.isAvailable(startDate, duration));
+        assertFalse(lease.isAvailable(startDate, duration));
     }
 
     @Test
     public void expectThatLeaseIsAvailableWhenStartAndEndDateAreAfterUnavailabilityEnds() {
         Date startDate = new Date(now.getTime() + TimeUnit.HOURS.toMillis(2));
         long duration = TimeUnit.MINUTES.toMillis(6);
-        assertEquals(true, lease.isAvailable(startDate, duration));
+        assertTrue(lease.isAvailable(startDate, duration));
     }
 
     @Test
     public void expectThatLeaseIsNotAvailableWhenStartIsBeforeAndEndAfterUnavailability() {
         Date startDate = new Date(now.getTime() - TimeUnit.MINUTES.toMillis(5));
         long duration = TimeUnit.HOURS.toMillis(2);
-        assertEquals(false, lease.isAvailable(startDate, duration));
+        assertFalse(lease.isAvailable(startDate, duration));
     }
 
 

@@ -32,9 +32,9 @@ public class TestUtils {
                 "-Xmx1G",
                 "-noReconnect",
                 null,
-                Collections.<MesosSlaveInfo.URI>emptyList(),
+                Collections.emptyList(),
                 null,
-                Collections.<MesosSlaveInfo.Command>emptyList()
+                Collections.emptyList()
         );
 
         SlaveRequest agentRequest = new SlaveRequest(jenkinsAgent, mesosAgentInfo);
@@ -44,7 +44,7 @@ public class TestUtils {
     }
 
     public static Request createSharedResourcesFirstRequest(double cpus, double mem, String role) {
-        return createSharedResourcesFirstRequest(cpus, mem, Collections.<MesosSlaveInfo.PortMapping>emptySet(), role);
+        return createSharedResourcesFirstRequest(cpus, mem, Collections.emptySet(), role);
     }
 
     public static Request createSharedResourcesFirstRequest(double cpus, double mem, Set<MesosSlaveInfo.PortMapping> portMappings, String role) {
@@ -65,7 +65,7 @@ public class TestUtils {
     }
 
     public static Request createRoleResourcesFirstRequest(double cpus, double mem, String role) {
-        return createRoleResourcesFirstRequest(cpus, mem, Collections.<MesosSlaveInfo.PortMapping>emptySet(), role);
+        return createRoleResourcesFirstRequest(cpus, mem, Collections.emptySet(), role);
     }
 
     public static Request createRoleResourcesFirstRequest(double cpus, double mem, Set<MesosSlaveInfo.PortMapping> portMappings, String role) {
@@ -86,7 +86,7 @@ public class TestUtils {
     }
 
     public static Request createRoleCappedRequest(double cpus, double mem, String role) {
-        return createRoleCappedRequest(cpus, mem, Collections.<MesosSlaveInfo.PortMapping>emptySet(), role);
+        return createRoleCappedRequest(cpus, mem, Collections.emptySet(), role);
     }
 
     public static Request createRoleCappedRequest(double cpus, double mem, Set<MesosSlaveInfo.PortMapping> portMappings, String role) {

@@ -33,7 +33,7 @@ public class BasicFitnessRatersTest {
 
         Set<MesosSlaveInfo.PortMapping> noPortMappings = Collections.emptySet();
 
-        Set<MesosSlaveInfo.PortMapping> assignableRolePortMappings = new LinkedHashSet<MesosSlaveInfo.PortMapping>();
+        Set<MesosSlaveInfo.PortMapping> assignableRolePortMappings = new LinkedHashSet<>();
         assignableRolePortMappings.add(new MesosSlaveInfo.PortMapping(
                 443,
                 null,
@@ -41,7 +41,7 @@ public class BasicFitnessRatersTest {
                 "HTTPS port",
                 null));
 
-        Set<MesosSlaveInfo.PortMapping> assignablePortMappings = new LinkedHashSet<MesosSlaveInfo.PortMapping>(assignableRolePortMappings);
+        Set<MesosSlaveInfo.PortMapping> assignablePortMappings = new LinkedHashSet<>(assignableRolePortMappings);
         assignablePortMappings.add(new MesosSlaveInfo.PortMapping(
                 80,
                 8080,
@@ -49,7 +49,7 @@ public class BasicFitnessRatersTest {
                 "HTTP port",
                 null));
 
-        Set<MesosSlaveInfo.PortMapping> unassignablePortMappings = new LinkedHashSet<MesosSlaveInfo.PortMapping>(assignableRolePortMappings);
+        Set<MesosSlaveInfo.PortMapping> unassignablePortMappings = new LinkedHashSet<>(assignableRolePortMappings);
         unassignablePortMappings.add(new MesosSlaveInfo.PortMapping(
                 80,
                 8081,
@@ -57,7 +57,7 @@ public class BasicFitnessRatersTest {
                 "HTTP port",
                 null));
 
-        Set<MesosSlaveInfo.PortMapping> tooManyPortMappings = new LinkedHashSet<MesosSlaveInfo.PortMapping>(assignablePortMappings);
+        Set<MesosSlaveInfo.PortMapping> tooManyPortMappings = new LinkedHashSet<>(assignablePortMappings);
         tooManyPortMappings.add(new MesosSlaveInfo.PortMapping(
                 666,
                 null,

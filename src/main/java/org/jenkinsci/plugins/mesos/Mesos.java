@@ -27,7 +27,7 @@ import org.jenkinsci.plugins.mesos.scheduling.SlaveResult;
 import java.util.*;
 
 public abstract class Mesos {
-  private static Map<MesosCloud, Mesos> clouds = new HashMap<MesosCloud, Mesos>();
+  private static Map<MesosCloud, Mesos> clouds = new HashMap<>();
 
 
   abstract public void startScheduler(String jenkinsMaster, MesosCloud mesosCloud);
@@ -73,9 +73,9 @@ public abstract class Mesos {
   }
 
   public static Collection<MesosCloud> getAllMesosClouds() {
-    List<MesosCloud> mesosClouds = new ArrayList<MesosCloud>();
+    List<MesosCloud> mesosClouds = new ArrayList<>();
 
-    Jenkins jenkins = Jenkins.getInstance();
+    Jenkins jenkins = Jenkins.get();
     for (Cloud cloud : jenkins.clouds) {
       if (cloud instanceof MesosCloud) {
         mesosClouds.add((MesosCloud) cloud);

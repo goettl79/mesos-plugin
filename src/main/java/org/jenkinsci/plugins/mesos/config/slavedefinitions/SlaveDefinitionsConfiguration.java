@@ -17,6 +17,7 @@ import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
+import javax.annotation.Nonnull;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,12 +30,13 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
   @Extension
   public static class DescriptorImpl extends Descriptor<SlaveDefinitionsConfiguration> {
 
-    List<MesosSlaveDefinitions> slaveDefinitionsEntries = new ArrayList<MesosSlaveDefinitions>();
+    List<MesosSlaveDefinitions> slaveDefinitionsEntries = new ArrayList<>();
 
     public DescriptorImpl() {
       load();
     }
 
+    @Nonnull
     @Override
     public String getDisplayName() {
       return "SlaveDefinitionsConfiguration";
@@ -61,7 +63,7 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
     @RequirePOST
     @Override
     public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
-      Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
 
       List<MesosSlaveDefinitions> futureSlaveDefinitionsEntries = null;
       if (json.has("slaveDefinitionsEntries")) {
@@ -82,7 +84,7 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
 
 
     public synchronized MesosSlaveDefinitions addSlaveDefinitionsEntry(String definitionsName, InputStream xml) {
-      Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
 
       if (slaveDefinitionsEntryExists(definitionsName)) {
         throw new Failure(Messages.SlaveDefinitionsConfiguration_DefinitionsNameAlreadyExists(definitionsName));
@@ -92,7 +94,7 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
     }
 
     public synchronized MesosSlaveDefinitions updateSlaveDefinitionsEntry(String definitionsName, InputStream xml) {
-      Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
 
       if (!slaveDefinitionsEntryExists(definitionsName)) {
         throw new Failure(Messages.SlaveDefinitionsConfiguration_DefinitionsDoesNotExist(definitionsName));
@@ -102,9 +104,9 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
     }
 
     public synchronized MesosSlaveDefinitions removeSlaveDefinitionsEntry(String definitionsName) {
-      Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
 
-      List<MesosSlaveDefinitions> futureSlaveDefinitionsEntries = new ArrayList<MesosSlaveDefinitions>(slaveDefinitionsEntries);
+      List<MesosSlaveDefinitions> futureSlaveDefinitionsEntries = new ArrayList<>(slaveDefinitionsEntries);
 
       Iterator<MesosSlaveDefinitions> it = futureSlaveDefinitionsEntries.iterator();
 
@@ -126,7 +128,7 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
       MesosSlaveDefinitions slaveDefinitionsEntryWithoutName = (MesosSlaveDefinitions) Jenkins.XSTREAM2.fromXML(xml);
       MesosSlaveDefinitions newSlaveDefinitionsEntry = new MesosSlaveDefinitions(definitionsName, slaveDefinitionsEntryWithoutName);
 
-      List<MesosSlaveDefinitions> futureSlaveDefinitionsEntries = new ArrayList<MesosSlaveDefinitions>(slaveDefinitionsEntries);
+      List<MesosSlaveDefinitions> futureSlaveDefinitionsEntries = new ArrayList<>(slaveDefinitionsEntries);
 
       MesosSlaveDefinitions result;
 
@@ -155,7 +157,7 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
 
     private void checkUsedSlaveDefinitionsRemovedOrUpdated(List<MesosSlaveDefinitions> slaveDefinitionsEntries) {
 
-      List<String> errors = new ArrayList<String>();
+      List<String> errors = new ArrayList<>();
 
       for (MesosCloud mesosCloud : Mesos.getAllMesosClouds()) {
         if (!slaveDefinitionsEntriesContainsUsedEntry(mesosCloud.getSlaveDefinitionsName(), slaveDefinitionsEntries)) {
@@ -245,7 +247,7 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
   @Override
   @SuppressWarnings("unchecked")
   public Descriptor<SlaveDefinitionsConfiguration> getDescriptor() {
-    return Jenkins.getInstance().getDescriptorOrDie(getClass());
+    return Jenkins.get().getDescriptorOrDie(getClass());
   }
 
   private DescriptorImpl getDescriptorImpl() {
@@ -253,6 +255,6 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
   }
 
   public static DescriptorImpl getDescriptorImplStatic() {
-    return (DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(SlaveDefinitionsConfiguration.class);
+    return (DescriptorImpl)Jenkins.get().getDescriptorOrDie(SlaveDefinitionsConfiguration.class);
   }
 }

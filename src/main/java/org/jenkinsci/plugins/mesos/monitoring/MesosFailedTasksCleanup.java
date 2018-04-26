@@ -27,7 +27,7 @@ public class MesosFailedTasksCleanup extends AsyncPeriodicWork {
   }
 
   private static MesosFailedTasksCleanup getInstance() {
-    return Jenkins.getInstance().getExtensionList(AsyncPeriodicWork.class).get(MesosFailedTasksCleanup.class);
+    return Jenkins.get().getExtensionList(AsyncPeriodicWork.class).get(MesosFailedTasksCleanup.class);
   }
 
   @Override

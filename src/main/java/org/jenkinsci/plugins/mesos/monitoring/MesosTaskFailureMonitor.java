@@ -34,7 +34,7 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   }
 
   private void init() {
-    this.failedSlaves = new ConcurrentHashMap<JenkinsSlave.ResultJenkinsSlave, SlaveResult.FAILED_CAUSE>();
+    this.failedSlaves = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -43,7 +43,7 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   }
 
   public static MesosTaskFailureMonitor getInstance() {
-    return Jenkins.getInstance().getExtensionList(AsynchronousAdministrativeMonitor.class).get(MesosTaskFailureMonitor.class);
+    return Jenkins.get().getExtensionList(AsynchronousAdministrativeMonitor.class).get(MesosTaskFailureMonitor.class);
   }
 
   @Override
@@ -54,7 +54,7 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   @Override
   public void fix(TaskListener taskListener) {
     PrintStream logger = taskListener.getLogger();
-    Map<JenkinsSlave.ResultJenkinsSlave, SlaveResult.FAILED_CAUSE> failedSlavesCopy = new HashMap<JenkinsSlave.ResultJenkinsSlave, SlaveResult.FAILED_CAUSE>(failedSlaves);
+    Map<JenkinsSlave.ResultJenkinsSlave, SlaveResult.FAILED_CAUSE> failedSlavesCopy = new HashMap<>(failedSlaves);
 
     for (JenkinsSlave.ResultJenkinsSlave failedSlave : failedSlavesCopy.keySet()) {
       try {
@@ -69,7 +69,7 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   }
 
   private void requestNewNode(JenkinsSlave.ResultJenkinsSlave failedSlave, PrintStream logger) {
-    Jenkins jenkins = Jenkins.getInstance();
+    Jenkins jenkins = Jenkins.get();
 
     try {
       Label label = jenkins.getLabel(failedSlave.getLabel());
@@ -93,7 +93,7 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   }
 
   private void removeExistingNode(JenkinsSlave.ResultJenkinsSlave failedSlave, PrintStream logger) {
-    Jenkins jenkins = Jenkins.getInstance();
+    Jenkins jenkins = Jenkins.get();
     Node node = jenkins.getNode(failedSlave.getName());
     if(node instanceof MesosSlave) {
       MesosSlave mesosJenkinsAgent = (MesosSlave) node;
