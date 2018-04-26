@@ -43,7 +43,7 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   }
 
   public static MesosTaskFailureMonitor getInstance() {
-    return Jenkins.get().getExtensionList(AsynchronousAdministrativeMonitor.class).get(MesosTaskFailureMonitor.class);
+    return Jenkins.getInstance().getExtensionList(AsynchronousAdministrativeMonitor.class).get(MesosTaskFailureMonitor.class);
   }
 
   @Override
@@ -69,7 +69,7 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   }
 
   private void requestNewNode(JenkinsSlave.ResultJenkinsSlave failedSlave, PrintStream logger) {
-    Jenkins jenkins = Jenkins.get();
+    Jenkins jenkins = Jenkins.getInstance();
 
     try {
       Label label = jenkins.getLabel(failedSlave.getLabel());
@@ -93,7 +93,7 @@ public class MesosTaskFailureMonitor extends AsynchronousAdministrativeMonitor {
   }
 
   private void removeExistingNode(JenkinsSlave.ResultJenkinsSlave failedSlave, PrintStream logger) {
-    Jenkins jenkins = Jenkins.get();
+    Jenkins jenkins = Jenkins.getInstance();
     Node node = jenkins.getNode(failedSlave.getName());
     if(node instanceof MesosSlave) {
       MesosSlave mesosJenkinsAgent = (MesosSlave) node;

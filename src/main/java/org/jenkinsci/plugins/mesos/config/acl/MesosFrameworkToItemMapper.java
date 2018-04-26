@@ -51,7 +51,7 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
     @RequirePOST
     @Override
     public boolean configure(StaplerRequest req, JSONObject json) throws Descriptor.FormException {
-      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+      Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
       List<ACLEntry> futureACLEntires = null;
       if (json.has("aclEntries")) {
@@ -303,7 +303,7 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
 
   @Override
   public Descriptor<MesosFrameworkToItemMapper> getDescriptor() {
-    return Jenkins.get().getDescriptorOrDie(getClass());
+    return Jenkins.getInstance().getDescriptorOrDie(getClass());
   }
 
   public DescriptorImpl getDescriptorImpl() {

@@ -173,7 +173,7 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
       return (Run)executable;
     }
 
-    if (Jenkins.get().getPlugin("workflow-durable-task-step") != null) {
+    if (Jenkins.getInstance().getPlugin("workflow-durable-task-step") != null) {
       if (executable.getParent() instanceof ExecutorStepExecution.PlaceholderTask) {
         return ((ExecutorStepExecution.PlaceholderTask) executable.getParent()).run();
       }

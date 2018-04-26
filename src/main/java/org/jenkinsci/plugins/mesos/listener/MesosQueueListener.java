@@ -50,7 +50,7 @@ public class MesosQueueListener extends QueueListener {
   public void onLeft(Queue.LeftItem li) {
     try {
       if (li.isCancelled() && li.getAssignedLabel() != null) {
-        Jenkins jenkins = Jenkins.get();
+        Jenkins jenkins = Jenkins.getInstance();
         for (Cloud cloud : jenkins.clouds) {
           if (cloud instanceof MesosCloud) {
             MesosCloud mesosCloud = (MesosCloud) cloud;
@@ -80,7 +80,7 @@ public class MesosQueueListener extends QueueListener {
     if (label != null) {
       Node future = null;
       CLOUD:
-      for (Cloud c : Jenkins.get().clouds) {
+      for (Cloud c : Jenkins.getInstance().clouds) {
         if (c.canProvision(label)) {
           if (c instanceof MesosCloud) {
             MesosCloud mesosCloud = (MesosCloud) c;

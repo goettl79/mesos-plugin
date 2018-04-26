@@ -17,7 +17,7 @@ public class RemoveACLEntryCommand extends CLICommand {
 
   @SuppressWarnings("unused")
   public RemoveACLEntryCommand() {
-    this(Jenkins.get());
+    this(Jenkins.getInstance());
   }
 
   /*package*/ RemoveACLEntryCommand(Jenkins jenkins) {

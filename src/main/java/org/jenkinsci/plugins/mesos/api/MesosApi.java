@@ -87,14 +87,14 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
       @QueryParameter(fixEmpty = true, required = true) String taskId,
       StaplerResponse rsp) {
     //TODO: make Mesos authenticate itself on Jenkins to enforce ADMINISTER permission
-    //Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+    //Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
     if(StringUtils.isBlank(taskId)) {
       rsp.setStatus(SC_BAD_REQUEST);
       return "Please specify a valid taskId";
     }
 
-    final Jenkins jenkins = Jenkins.get();
+    final Jenkins jenkins = Jenkins.getInstance();
     // check for existing connections
     Node n = jenkins.getNode(taskId);
     if (n != null) {
@@ -122,7 +122,7 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
   }
 
   private String createSlave(String taskId) throws FormException, IOException {
-    Jenkins jenkins = Jenkins.get();
+    Jenkins jenkins = Jenkins.getInstance();
     Collection<MesosCloud> mesosClouds = Mesos.getAllMesosClouds();
 
     for (MesosCloud mesosCloud : mesosClouds) {
@@ -162,10 +162,10 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
       @QueryParameter(fixEmpty = true, required = true) String itemPattern,
       @QueryParameter(fixEmpty = true, required = true) String frameworkName,
       StaplerResponse rsp) {
-    Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+    Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
     final MesosFrameworkToItemMapper.DescriptorImpl descriptor =
-        (MesosFrameworkToItemMapper.DescriptorImpl)Jenkins.get().getDescriptorOrDie(MesosFrameworkToItemMapper.class);
+        (MesosFrameworkToItemMapper.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(MesosFrameworkToItemMapper.class);
 
     try {
       ACLEntry newACLEntry = descriptor.addACLEntry(itemPattern, frameworkName);
@@ -190,10 +190,10 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
   public synchronized String doRemoveACLEntry(
       @QueryParameter(fixEmpty = true, required = true) String itemPattern,
       StaplerResponse rsp) {
-    Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+    Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
     final MesosFrameworkToItemMapper.DescriptorImpl descriptor =
-        (MesosFrameworkToItemMapper.DescriptorImpl)Jenkins.get().getDescriptorOrDie(MesosFrameworkToItemMapper.class);
+        (MesosFrameworkToItemMapper.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(MesosFrameworkToItemMapper.class);
 
     try {
       ACLEntry removedACLEntry = descriptor.removeACLEntry(itemPattern);
@@ -222,10 +222,10 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
   public synchronized String doChangeDefaultFrameworkName(
       @QueryParameter(fixEmpty = true, required = true) String frameworkName,
       StaplerResponse rsp) {
-    Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+    Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
     final MesosFrameworkToItemMapper.DescriptorImpl descriptor =
-        (MesosFrameworkToItemMapper.DescriptorImpl)Jenkins.get().getDescriptorOrDie(MesosFrameworkToItemMapper.class);
+        (MesosFrameworkToItemMapper.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(MesosFrameworkToItemMapper.class);
 
     try {
       String oldFrameworkName = descriptor.changeDefaultFrameworkName(frameworkName);
@@ -265,10 +265,10 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
       @QueryParameter(fixEmpty = true, required = true) String definitionsName,
       StaplerRequest req,
       StaplerResponse rsp) throws IOException {
-    Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+    Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
     final SlaveDefinitionsConfiguration.DescriptorImpl descriptor =
-        (SlaveDefinitionsConfiguration.DescriptorImpl)Jenkins.get().getDescriptorOrDie(SlaveDefinitionsConfiguration.class);
+        (SlaveDefinitionsConfiguration.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(SlaveDefinitionsConfiguration.class);
 
     if (isValidSlaveDefinitionsRequest(req)) {
       try {
@@ -301,10 +301,10 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
       @QueryParameter(fixEmpty = true, required = true) String definitionsName,
       StaplerRequest req,
       StaplerResponse rsp) throws IOException {
-    Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+    Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
     final SlaveDefinitionsConfiguration.DescriptorImpl descriptor =
-        (SlaveDefinitionsConfiguration.DescriptorImpl)Jenkins.get().getDescriptorOrDie(SlaveDefinitionsConfiguration.class);
+        (SlaveDefinitionsConfiguration.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(SlaveDefinitionsConfiguration.class);
 
     if (isValidSlaveDefinitionsRequest(req)) {
       try {
@@ -334,10 +334,10 @@ public class MesosApi extends AbstractModelObject implements UnprotectedRootActi
   public synchronized String doRemoveSlaveDefinitionsEntry(
       @QueryParameter(fixEmpty = true, required = true) String definitionsName,
       StaplerResponse rsp) {
-    Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+    Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
     final SlaveDefinitionsConfiguration.DescriptorImpl descriptor =
-        (SlaveDefinitionsConfiguration.DescriptorImpl)Jenkins.get().getDescriptorOrDie(SlaveDefinitionsConfiguration.class);
+        (SlaveDefinitionsConfiguration.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(SlaveDefinitionsConfiguration.class);
 
     try {
       MesosSlaveDefinitions removedSlaveDefinitions = descriptor.removeSlaveDefinitionsEntry(definitionsName);

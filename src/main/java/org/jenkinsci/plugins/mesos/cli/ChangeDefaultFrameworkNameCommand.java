@@ -16,7 +16,7 @@ public class ChangeDefaultFrameworkNameCommand extends CLICommand {
 
   @SuppressWarnings("unused")
   public ChangeDefaultFrameworkNameCommand() {
-    this(Jenkins.get());
+    this(Jenkins.getInstance());
   }
 
   /*package*/ ChangeDefaultFrameworkNameCommand(Jenkins jenkins) {

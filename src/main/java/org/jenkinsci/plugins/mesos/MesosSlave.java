@@ -102,7 +102,7 @@ public class MesosSlave extends Slave implements EphemeralNode {
         channel.close();
       }
 
-      Jenkins.get().removeNode(this);
+      Jenkins.getInstance().removeNode(this);
 
     } catch (IOException e) {
       LOGGER.log(Level.WARNING, "Failed to terminate Mesos instance: "

@@ -97,7 +97,7 @@ public abstract class JenkinsScheduler implements Scheduler {
     // This is important because MesosCloud.provision() starts a new framework whenever isRunning() is false.
     running = true;
     String targetUser = mesosCloud.getSlavesUser();
-    String webUrl = Jenkins.get().getRootUrl();
+    String webUrl = Jenkins.getInstance().getRootUrl();
     if (webUrl == null) webUrl = System.getenv("JENKINS_URL");
 
     // TODO: evaluate usage of res refinement and multi role (multi tenancy);
@@ -209,7 +209,7 @@ public abstract class JenkinsScheduler implements Scheduler {
             boolean pendingTasks = (scheduler.getNumberOfPendingTasks() > 0);
             boolean activeSlaves = false;
             boolean activeTasks = (scheduler.getNumberOfActiveTasks() > 0);
-            List<Node> slaveNodes = Jenkins.get().getNodes();
+            List<Node> slaveNodes = Jenkins.getInstance().getNodes();
             for (Node node : slaveNodes) {
               if (node instanceof MesosSlave) {
                 activeSlaves = true;
@@ -458,7 +458,7 @@ public abstract class JenkinsScheduler implements Scheduler {
     }
 
     //setData
-    MesosSlave mesosSlave = asMesosAgent(Jenkins.get().getNode(taskId.getValue()));
+    MesosSlave mesosSlave = asMesosAgent(Jenkins.getInstance().getNode(taskId.getValue()));
     if (mesosSlave != null) {
       mesosSlave.setTaskStatus(status);
     }
@@ -581,7 +581,7 @@ public abstract class JenkinsScheduler implements Scheduler {
   }
 
   private boolean isExistingAgent(Protos.TaskID taskId) {
-    for (final Computer computer : Jenkins.get().getComputers()) {
+    for (final Computer computer : Jenkins.getInstance().getComputers()) {
       if (!(computer instanceof MesosComputer)) {
         LOGGER.finest("Not a mesos computer, skipping");
         continue;

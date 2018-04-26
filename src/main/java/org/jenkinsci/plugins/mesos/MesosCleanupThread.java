@@ -64,7 +64,7 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
     }
 
     private static MesosCleanupThread getInstance() {
-        return Jenkins.get().getExtensionList(AsyncPeriodicWork.class).get(MesosCleanupThread.class);
+        return Jenkins.getInstance().getExtensionList(AsyncPeriodicWork.class).get(MesosCleanupThread.class);
     }
 
     @Override
@@ -74,7 +74,7 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
 
         int deleteCount = 0;
 
-        for (final Computer c : Jenkins.get().getComputers()) {
+        for (final Computer c : Jenkins.getInstance().getComputers()) {
           if (MesosComputer.class.isInstance(c)) {
             MesosSlave mesosSlave = (MesosSlave) c.getNode();
             if (mesosSlave != null && mesosSlave.isPendingDelete()) {

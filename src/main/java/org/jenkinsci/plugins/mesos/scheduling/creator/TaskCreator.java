@@ -81,7 +81,7 @@ public class TaskCreator {
      */
     private String getJnlpSecret(String slaveName) {
         String jnlpSecret = "";
-        if(Jenkins.get().isUseSecurity()) {
+        if(Jenkins.getInstance().isUseSecurity()) {
             jnlpSecret = String.format(JNLP_SECRET_FORMAT, jenkins.slaves.JnlpSlaveAgentProtocol.SLAVE_SECRET.mac(slaveName));
         }
         return jnlpSecret;

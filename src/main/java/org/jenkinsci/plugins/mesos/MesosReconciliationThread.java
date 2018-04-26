@@ -28,13 +28,13 @@ public class MesosReconciliationThread extends AsyncPeriodicWork {
     }
 
     private static MesosReconciliationThread getInstance() {
-        return Jenkins.get().getExtensionList(AsyncPeriodicWork.class).get(MesosReconciliationThread.class);
+        return Jenkins.getInstance().getExtensionList(AsyncPeriodicWork.class).get(MesosReconciliationThread.class);
     }
 
     @Override
     protected void execute(TaskListener listener) {
         try {
-            Jenkins jenkins = Jenkins.get();
+            Jenkins jenkins = Jenkins.getInstance();
             for (Cloud cloud : jenkins.clouds) {
                 if (cloud instanceof MesosCloud) {
                     MesosCloud mesosCloud = (MesosCloud) cloud;

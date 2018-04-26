@@ -94,7 +94,7 @@ public class MesosItemListener extends ItemListener {
             String labelName = cloud.getDefaultSlaveLabel();
             if (!StringUtils.equals(MesosCloud.DEFAULT_SLAVE_LABEL_NONE, labelName)) {
                 // TODO: check if label really exists
-                label = Jenkins.get().getLabel(cloud.getDefaultSlaveLabel());
+                label = Jenkins.getInstance().getLabel(cloud.getDefaultSlaveLabel());
             } else {
                 LOGGER.warning("No default label specified for cloud '" + cloud.getFrameworkName() + "'");
             }

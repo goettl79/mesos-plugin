@@ -54,7 +54,7 @@ public class TaskCreatorTest {
         Jenkins jenkins = Mockito.mock(Jenkins.class);
         when(jenkins.isUseSecurity()).thenReturn(false);
         PowerMockito.mockStatic(Jenkins.class);
-        Mockito.when(Jenkins.get()).thenReturn(jenkins);
+        Mockito.when(Jenkins.getInstance()).thenReturn(jenkins);
     }
 
     @Test

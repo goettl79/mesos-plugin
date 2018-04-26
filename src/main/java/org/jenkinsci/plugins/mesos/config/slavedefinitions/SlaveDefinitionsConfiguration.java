@@ -63,7 +63,7 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
     @RequirePOST
     @Override
     public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
-      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+      Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
       List<MesosSlaveDefinitions> futureSlaveDefinitionsEntries = null;
       if (json.has("slaveDefinitionsEntries")) {
@@ -84,7 +84,7 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
 
 
     public synchronized MesosSlaveDefinitions addSlaveDefinitionsEntry(String definitionsName, InputStream xml) {
-      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+      Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
       if (slaveDefinitionsEntryExists(definitionsName)) {
         throw new Failure(Messages.SlaveDefinitionsConfiguration_DefinitionsNameAlreadyExists(definitionsName));
@@ -94,7 +94,7 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
     }
 
     public synchronized MesosSlaveDefinitions updateSlaveDefinitionsEntry(String definitionsName, InputStream xml) {
-      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+      Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
       if (!slaveDefinitionsEntryExists(definitionsName)) {
         throw new Failure(Messages.SlaveDefinitionsConfiguration_DefinitionsDoesNotExist(definitionsName));
@@ -104,7 +104,7 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
     }
 
     public synchronized MesosSlaveDefinitions removeSlaveDefinitionsEntry(String definitionsName) {
-      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+      Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
       List<MesosSlaveDefinitions> futureSlaveDefinitionsEntries = new ArrayList<>(slaveDefinitionsEntries);
 
@@ -247,7 +247,7 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
   @Override
   @SuppressWarnings("unchecked")
   public Descriptor<SlaveDefinitionsConfiguration> getDescriptor() {
-    return Jenkins.get().getDescriptorOrDie(getClass());
+    return Jenkins.getInstance().getDescriptorOrDie(getClass());
   }
 
   private DescriptorImpl getDescriptorImpl() {
@@ -255,6 +255,6 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
   }
 
   public static DescriptorImpl getDescriptorImplStatic() {
-    return (DescriptorImpl)Jenkins.get().getDescriptorOrDie(SlaveDefinitionsConfiguration.class);
+    return (DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(SlaveDefinitionsConfiguration.class);
   }
 }

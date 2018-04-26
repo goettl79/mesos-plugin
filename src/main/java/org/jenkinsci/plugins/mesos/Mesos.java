@@ -75,7 +75,7 @@ public abstract class Mesos {
   public static Collection<MesosCloud> getAllMesosClouds() {
     List<MesosCloud> mesosClouds = new ArrayList<>();
 
-    Jenkins jenkins = Jenkins.get();
+    Jenkins jenkins = Jenkins.getInstance();
     for (Cloud cloud : jenkins.clouds) {
       if (cloud instanceof MesosCloud) {
         mesosClouds.add((MesosCloud) cloud);
