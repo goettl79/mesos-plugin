@@ -16,6 +16,8 @@ import java.util.logging.Level;
 
 public class JenkinsSchedulerNew extends JenkinsScheduler {
 
+    public static final String NAME = "FitnessScheduler";
+
     private final FitnessRater fitnessRater;
 
 
@@ -25,7 +27,7 @@ public class JenkinsSchedulerNew extends JenkinsScheduler {
 
 
     public JenkinsSchedulerNew(String jenkinsMaster, MesosCloud mesosCloud, FitnessRater fitnessRater) {
-        super(jenkinsMaster, mesosCloud, "JenkinsScheduler (new)");
+        super(jenkinsMaster, mesosCloud, NAME);
 
         // TODO: configurable fitness rater (on request with mapping like "FrameworkToItem"?)
         this.fitnessRater = fitnessRater;
