@@ -33,6 +33,8 @@ import hudson.util.ListBoxModel;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.mesos.MesosNativeLibrary;
 import org.jenkinsci.plugins.mesos.actions.MesosBuiltOnAction;
 import org.jenkinsci.plugins.mesos.actions.MesosBuiltOnProjectAction;
@@ -79,6 +81,8 @@ public class MesosCloud extends Cloud {
   private String slaveDefinitionsName;
 
   private String defaultSlaveLabel;
+
+  private String schedulerName;
 
   private static final Logger LOGGER = Logger.getLogger(MesosCloud.class.getName());
 
@@ -145,7 +149,8 @@ public class MesosCloud extends Cloud {
       boolean onDemandRegistration,
       String jenkinsURL,
       String grafanaDashboardURL,
-      String defaultSlaveLabel) throws NumberFormatException {
+      String defaultSlaveLabel,
+      String schedulerName) throws NumberFormatException {
     super("MesosCloud");
 
     this.nativeLibraryPath = nativeLibraryPath;
@@ -164,6 +169,7 @@ public class MesosCloud extends Cloud {
     this.setJenkinsURL(jenkinsURL);
     this.grafanaDashboardURL = grafanaDashboardURL;
     this.defaultSlaveLabel = defaultSlaveLabel;
+    this.schedulerName = schedulerName;
 
     if(!onDemandRegistration) {
 	    JenkinsScheduler.SUPERVISOR_LOCK.lock();
@@ -180,18 +186,27 @@ public class MesosCloud extends Cloud {
   // the rest of this code assumes it is unique among the Cloud objects.
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (o == null) { return false; }
+    if (o == this) { return true; }
+    if (o.getClass() != getClass()) {
+      return false;
+    }
 
     MesosCloud that = (MesosCloud) o;
-
-    if (master != null ? !master.equals(that.master) : that.master != null) return false;
-    return frameworkName != null ? StringUtils.equals(frameworkName, that.frameworkName) : that.frameworkName == null;
+    return new EqualsBuilder()
+            .append(master, that.master)
+            .append(frameworkName, that.frameworkName)
+            .append(schedulerName, that.schedulerName)
+            .isEquals();
   }
 
   @Override
   public int hashCode() {
-    return master != null ? master.hashCode() : 0;
+    return new HashCodeBuilder(11, 57)
+            .append(master)
+            .append(frameworkName)
+            .append(schedulerName)
+            .toHashCode();
   }
 
   public void restartMesos() {
@@ -627,6 +642,13 @@ public class MesosCloud extends Cloud {
 	this.jenkinsURL = jenkinsURL;
 }
 
+  public String getSchedulerName() {
+    if (StringUtils.isBlank(schedulerName)) {
+      schedulerName = JenkinsSchedulerNew.NAME;
+    }
+    return schedulerName;
+  }
+
   @Extension
   @SuppressFBWarnings
   public static class DescriptorImpl extends Descriptor<Cloud> {
@@ -647,6 +669,7 @@ public class MesosCloud extends Cloud {
     private String slaveDefinitionsName;
     private String grafanaDashboardURL;
     private String defaultSlaveLabel;
+    private String schedulerName;
 
     @Nonnull
     @Override
@@ -675,6 +698,7 @@ public class MesosCloud extends Cloud {
       slavesUser = object.getString("slavesUser");
       slaveDefinitionsName = object.getString("slaveDefinitionsName");
       defaultSlaveLabel = object.getString("defaultSlaveLabel");
+      schedulerName = object.getString("schedulerName");
 
       save();
       return super.configure(request, object);

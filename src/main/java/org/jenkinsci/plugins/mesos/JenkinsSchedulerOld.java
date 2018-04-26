@@ -15,8 +15,10 @@ import java.util.logging.Level;
 
 public class JenkinsSchedulerOld extends JenkinsScheduler {
 
+    public static final String NAME = "LegacyScheduler";
+
     public JenkinsSchedulerOld(String jenkinsMaster, MesosCloud mesosCloud) {
-        super(jenkinsMaster, mesosCloud, "JenkinsScheduler (old)");
+        super(jenkinsMaster, mesosCloud, NAME);
     }
 
     @Override
