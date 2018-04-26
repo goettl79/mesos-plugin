@@ -81,7 +81,7 @@ public class TaskCreator {
      */
     private String getJnlpSecret(String slaveName) {
         String jnlpSecret = "";
-        if(Jenkins.getInstance().isUseSecurity()) {
+        if(Jenkins.get().isUseSecurity()) {
             jnlpSecret = String.format(JNLP_SECRET_FORMAT, jenkins.slaves.JnlpSlaveAgentProtocol.SLAVE_SECRET.mac(slaveName));
         }
         return jnlpSecret;
@@ -171,7 +171,7 @@ public class TaskCreator {
             LOGGER.info(String.format("About to use custom shell: %s ", customShell));
             commandBuilder.setShell(false);
             commandBuilder.setValue(customShell);
-            List args = new ArrayList();
+            List<String> args = new ArrayList<>();
             args.add(command);
             commandBuilder.addAllArguments(args);
 
@@ -419,7 +419,7 @@ public class TaskCreator {
 
     @VisibleForTesting
     SortedSet<Long> findPortsToUse(Protos.Offer offer, int maxCount) {
-        SortedSet<Long> portsToUse = new TreeSet<Long>();
+        SortedSet<Long> portsToUse = new TreeSet<>();
         List<Protos.Value.Range> portRangesList = null;
 
         // Locate the port resource in the offer
@@ -433,7 +433,7 @@ public class TaskCreator {
         if (portRangesList != null) {
             LOGGER.fine("portRangesList=" + portRangesList);
 
-            /**
+            /*
              * We need to find maxCount ports to use.
              * We are provided a list of port ranges to use
              * We are assured by the offer check that we have enough ports to use

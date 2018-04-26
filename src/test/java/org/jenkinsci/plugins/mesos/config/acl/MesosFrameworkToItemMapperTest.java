@@ -88,7 +88,7 @@ public class MesosFrameworkToItemMapperTest {
     doReturn("My Framework").when(mockMesosCloud).getFrameworkName();
     jenkins.getInstance().clouds.add(mockMesosCloud);
 
-    List<ACLEntry> aclEntries = new ArrayList<ACLEntry>();
+    List<ACLEntry> aclEntries = new ArrayList<>();
     aclEntries.add(new ACLEntry("MyFolder/.*", "My Framework"));
 
     JSONArray aclEntriesJSON = JSONArray.fromObject(aclEntries);
@@ -119,7 +119,7 @@ public class MesosFrameworkToItemMapperTest {
     doReturn("My Framework").when(mockMesosCloud).getFrameworkName();
     jenkins.getInstance().clouds.add(mockMesosCloud);
 
-    List<ACLEntry> aclEntries = new ArrayList<ACLEntry>();
+    List<ACLEntry> aclEntries = new ArrayList<>();
     aclEntries.add(new ACLEntry("MyFolder/.*", "My Framework"));
 
     JSONArray aclEntriesJSON = JSONArray.fromObject(aclEntries);
@@ -155,7 +155,7 @@ public class MesosFrameworkToItemMapperTest {
 
   @Test(expected = Failure.class)
   public void configureFailsWithACLEntryMesosFrameworkNotFound() throws Exception {
-    List<ACLEntry> aclEntries = new ArrayList<ACLEntry>();
+    List<ACLEntry> aclEntries = new ArrayList<>();
     aclEntries.add(new ACLEntry("MyFolder/.*", "My Unconfigured Framework"));
 
     JSONArray aclEntriesJSON = JSONArray.fromObject(aclEntries);
@@ -172,7 +172,7 @@ public class MesosFrameworkToItemMapperTest {
 
   @Test(expected = Failure.class)
   public void configureFailsWithInvalidRegexForItemPattern() throws Exception {
-    List<ACLEntry> aclEntries = new ArrayList<ACLEntry>();
+    List<ACLEntry> aclEntries = new ArrayList<>();
     aclEntries.add(new ACLEntry("MyInvalidRegexp/.**", "Deny"));
 
     JSONArray aclEntriesJSON = JSONArray.fromObject(aclEntries);
@@ -191,7 +191,7 @@ public class MesosFrameworkToItemMapperTest {
   @Test
   public void addACLEntriesSuccessfullyAddsTheSpecifiedEntry() throws Exception {
     // preconfigure acl entries
-    List<ACLEntry> aclEntries = new ArrayList<ACLEntry>();
+    List<ACLEntry> aclEntries = new ArrayList<>();
     aclEntries.add(new ACLEntry("MyFolder/.*", "Deny"));
     aclEntries.add(new ACLEntry("MyOtherFolder/.*", "Deny"));
 
@@ -209,7 +209,7 @@ public class MesosFrameworkToItemMapperTest {
     String itemPattern = "MyNewFancyFolder/.*";
     String frameworkName = "Deny";
     ACLEntry excpectedACLEntry = new ACLEntry(itemPattern, frameworkName);
-    List<ACLEntry> expectedACLEntries = new ArrayList<ACLEntry>(aclEntries);
+    List<ACLEntry> expectedACLEntries = new ArrayList<>(aclEntries);
     expectedACLEntries.add(excpectedACLEntry);
 
     ACLEntry actualACLEntry = mapper.getDescriptorImpl().addACLEntry(itemPattern, frameworkName);
@@ -223,7 +223,7 @@ public class MesosFrameworkToItemMapperTest {
   @Test
   public void addACLEntriesFailsBecauseEntryWithEqualItemPatternExists() throws Exception {
     // preconfigure acl entries
-    List<ACLEntry> aclEntries = new ArrayList<ACLEntry>();
+    List<ACLEntry> aclEntries = new ArrayList<>();
     aclEntries.add(new ACLEntry("MyFolder/.*", "Deny"));
     aclEntries.add(new ACLEntry("MyOtherFolder/.*", "Deny"));
 
@@ -255,7 +255,7 @@ public class MesosFrameworkToItemMapperTest {
   @Test
   public void removeACLEntriesSuccessfullyRemovesTheEntryWithTheSpecifiedPattern() throws Exception {
     // preconfigure acl entries
-    List<ACLEntry> aclEntries = new ArrayList<ACLEntry>();
+    List<ACLEntry> aclEntries = new ArrayList<>();
     aclEntries.add(new ACLEntry("MyFolder/.*", "Deny"));
     aclEntries.add(new ACLEntry("MyOtherFolder/.*", "Deny"));
 
@@ -273,7 +273,7 @@ public class MesosFrameworkToItemMapperTest {
     String itemPattern = "MyFolder/.*";
     String frameworkName = "Deny";
     ACLEntry excpectedACLEntry = new ACLEntry(itemPattern, frameworkName);
-    List<ACLEntry> expectedACLEntries = new ArrayList<ACLEntry>(aclEntries);
+    List<ACLEntry> expectedACLEntries = new ArrayList<>(aclEntries);
     expectedACLEntries.remove(excpectedACLEntry);
 
     ACLEntry actualACLEntry = mapper.getDescriptorImpl().removeACLEntry(itemPattern);
@@ -287,7 +287,7 @@ public class MesosFrameworkToItemMapperTest {
   @Test
   public void removeACLEntriesDoesNotRemoveNonExistingItemPattern() throws Exception {
     // preconfigure acl entries
-    List<ACLEntry> aclEntries = new ArrayList<ACLEntry>();
+    List<ACLEntry> aclEntries = new ArrayList<>();
     aclEntries.add(new ACLEntry("MyFolder/.*", "Deny"));
     aclEntries.add(new ACLEntry("MyOtherFolder/.*", "Deny"));
 
@@ -303,7 +303,7 @@ public class MesosFrameworkToItemMapperTest {
 
     // actual test
     String itemPattern = "MyNonExistingFolder/.*";
-    List<ACLEntry> expectedACLEntries = new ArrayList<ACLEntry>(aclEntries);
+    List<ACLEntry> expectedACLEntries = new ArrayList<>(aclEntries);
 
     ACLEntry actualACLEntry = mapper.getDescriptorImpl().removeACLEntry(itemPattern);
     List<ACLEntry> actualACLEntries = mapper.getDescriptorImpl().getACLEntries();

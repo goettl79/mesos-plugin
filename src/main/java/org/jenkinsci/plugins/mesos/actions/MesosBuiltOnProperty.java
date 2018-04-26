@@ -8,6 +8,7 @@ import hudson.model.JobPropertyDescriptor;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
@@ -19,6 +20,7 @@ public class MesosBuiltOnProperty extends JobProperty<Job<?, ?>> implements Seri
     }
 
 
+    @Nonnull
     @Override
     @Restricted(NoExternalUse.class)
     public Collection<? extends Action> getJobActions(Job<?, ?> job) {
@@ -28,6 +30,7 @@ public class MesosBuiltOnProperty extends JobProperty<Job<?, ?>> implements Seri
     @Extension
     public static class MesosBuiltOnPropertyDescriptor extends JobPropertyDescriptor {
 
+        @Nonnull
         @Override
         public String getDisplayName() {
             return "MesosBuiltOnProperty";

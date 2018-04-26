@@ -47,7 +47,7 @@ public class MesosPluginConfiguration extends ManagementLink {
 
   @RequirePOST
   public synchronized void doConfigureMappings(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
-    BulkChange bc = new BulkChange(Jenkins.getInstance());
+    BulkChange bc = new BulkChange(Jenkins.get());
     try{
       boolean result = getMapper().getDescriptor().configure(req, req.getSubmittedForm());
       LOGGER.log(Level.FINER, "Mappings saved: " + result);
@@ -59,7 +59,7 @@ public class MesosPluginConfiguration extends ManagementLink {
 
   @RequirePOST
   public synchronized void doConfigureDefinitions(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
-    BulkChange bc = new BulkChange(Jenkins.getInstance());
+    BulkChange bc = new BulkChange(Jenkins.get());
     try{
       boolean result = getSlaveDefinitionsConfiguration().getDescriptor().configure(req, req.getSubmittedForm());
       LOGGER.log(Level.FINER, "Definitions saved: " + result);

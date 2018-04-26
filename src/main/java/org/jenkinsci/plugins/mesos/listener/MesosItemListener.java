@@ -34,7 +34,7 @@ public class MesosItemListener extends ItemListener {
      * @param item The item for which to set the default label
      */
     private void setDefaultLabel(Item item) {
-        if (item == null || !(item instanceof AbstractProject)) {
+        if (!(item instanceof AbstractProject)) {
             LOGGER.fine("Not able to set a default label for item ('" + item + "')");
             return;
         }
@@ -83,20 +83,18 @@ public class MesosItemListener extends ItemListener {
      * @return either the found label or <code>null</code> when no label has been found
      */
     private Label getDefaultLabel(String fullName) {
-        Label label = null;
-
         if (StringUtils.isBlank(fullName)) {
             LOGGER.warning("Full name of item is empty or null");
-            return label;
+            return null;
         }
 
-        // get mesos cloud
+        Label label = null;
         final MesosCloud cloud = getMesosCloud(fullName);
         if (cloud != null) {
             String labelName = cloud.getDefaultSlaveLabel();
             if (!StringUtils.equals(MesosCloud.DEFAULT_SLAVE_LABEL_NONE, labelName)) {
                 // TODO: check if label really exists
-                label = Jenkins.getInstance().getLabel(cloud.getDefaultSlaveLabel());
+                label = Jenkins.get().getLabel(cloud.getDefaultSlaveLabel());
             } else {
                 LOGGER.warning("No default label specified for cloud '" + cloud.getFrameworkName() + "'");
             }

@@ -17,7 +17,7 @@ public class UpdateSlaveDefinitionsEntryCommand extends CLICommand {
 
   @SuppressWarnings("unused")
   public UpdateSlaveDefinitionsEntryCommand() {
-    this(Jenkins.getInstance());
+    this(Jenkins.get());
   }
 
   /*package*/ UpdateSlaveDefinitionsEntryCommand(Jenkins jenkins) {

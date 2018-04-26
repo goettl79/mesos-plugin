@@ -65,7 +65,7 @@ public class JenkinsSchedulerNew extends JenkinsScheduler {
     private List<Protos.Offer> launchAssignments(SchedulerDriver driver, List<Lease> leases) {
         // launch tasks / decline other offers/leases
         // TODO: what if launchMesosTask/declineOffer goes awry? -> add requests of unhandled leases back to requests as well
-        List<Protos.Offer> offersToDecline = new ArrayList<Protos.Offer>();
+        List<Protos.Offer> offersToDecline = new ArrayList<>();
 
         for (Lease lease : leases) {
             try {
@@ -95,7 +95,7 @@ public class JenkinsSchedulerNew extends JenkinsScheduler {
     }
 
     private List<Request> assignRequests(@Nonnull List<Request> currentRequests, @Nonnull List<Lease> leases) {
-        List<Request> unassignedRequests = new ArrayList<Request>();
+        List<Request> unassignedRequests = new ArrayList<>();
 
         // try to assign requests to a lease
         for (Request request : currentRequests) {
@@ -148,7 +148,7 @@ public class JenkinsSchedulerNew extends JenkinsScheduler {
     }
 
     private List<Lease> createLeases(List<Protos.Offer> offers) {
-        List<Lease> leases = new ArrayList<Lease>(offers.size());
+        List<Lease> leases = new ArrayList<>(offers.size());
 
         for (Protos.Offer offer : offers) {
             leases.add(new Lease(offer));

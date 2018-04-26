@@ -35,12 +35,7 @@ public class MesosQueueListener extends QueueListener {
 
   public void forceProvisionInNewThreadIfPossible(final Label label, final Queue.BuildableItem bi) {
     if (label != null) {
-      Thread t = new Thread(new Runnable() {
-        @Override
-        public void run() {
-          forceProvisionIfPossible(label, bi);
-        }
-      }, "ForceNewMesosNode for " + label.getName());
+      Thread t = new Thread(() -> forceProvisionIfPossible(label, bi), "ForceNewMesosNode for " + label.getName());
       t.start();
     }
   }
@@ -55,7 +50,7 @@ public class MesosQueueListener extends QueueListener {
   public void onLeft(Queue.LeftItem li) {
     try {
       if (li.isCancelled() && li.getAssignedLabel() != null) {
-        Jenkins jenkins = Jenkins.getInstance();
+        Jenkins jenkins = Jenkins.get();
         for (Cloud cloud : jenkins.clouds) {
           if (cloud instanceof MesosCloud) {
             MesosCloud mesosCloud = (MesosCloud) cloud;
@@ -85,7 +80,7 @@ public class MesosQueueListener extends QueueListener {
     if (label != null) {
       Node future = null;
       CLOUD:
-      for (Cloud c : Jenkins.getInstance().clouds) {
+      for (Cloud c : Jenkins.get().clouds) {
         if (c.canProvision(label)) {
           if (c instanceof MesosCloud) {
             MesosCloud mesosCloud = (MesosCloud) c;

@@ -7,9 +7,12 @@ import hudson.slaves.Cloud;
 import jenkins.model.Jenkins;
 
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @Extension
 public class MesosReconciliationThread extends AsyncPeriodicWork {
+
+    private static final Logger LOGGER = Logger.getLogger(MesosReconciliationThread.class.getName());
 
     public MesosReconciliationThread() {
         super("Mesos Reconciliation");
@@ -25,13 +28,13 @@ public class MesosReconciliationThread extends AsyncPeriodicWork {
     }
 
     private static MesosReconciliationThread getInstance() {
-        return Jenkins.getInstance().getExtensionList(AsyncPeriodicWork.class).get(MesosReconciliationThread.class);
+        return Jenkins.get().getExtensionList(AsyncPeriodicWork.class).get(MesosReconciliationThread.class);
     }
 
     @Override
     protected void execute(TaskListener listener) {
         try {
-            Jenkins jenkins = Jenkins.getInstance();
+            Jenkins jenkins = Jenkins.get();
             for (Cloud cloud : jenkins.clouds) {
                 if (cloud instanceof MesosCloud) {
                     MesosCloud mesosCloud = (MesosCloud) cloud;
@@ -40,7 +43,7 @@ public class MesosReconciliationThread extends AsyncPeriodicWork {
                 }
             }
         } catch (Exception e) {
-            logger.log(Level.FINE, "Error while reconciling tasks: " + e.getMessage(), e);
+            LOGGER.log(Level.FINE, "Error while reconciling tasks:", e);
         }
     }
 }

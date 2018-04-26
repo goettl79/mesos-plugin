@@ -17,7 +17,7 @@ public class AddACLEntryCommand extends CLICommand {
 
   @SuppressWarnings("unused")
   public AddACLEntryCommand() {
-    this(Jenkins.getInstance());
+    this(Jenkins.get());
   }
 
   /*package*/ AddACLEntryCommand(Jenkins jenkins) {

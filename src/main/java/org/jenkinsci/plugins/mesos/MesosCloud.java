@@ -99,7 +99,7 @@ public class MesosCloud extends Cloud {
 
   @Initializer(after=InitMilestone.JOB_LOADED)
   public static void init() {
-    Jenkins jenkins = Jenkins.getInstance();
+    Jenkins jenkins = Jenkins.get();
     List<Node> slaves = jenkins.getNodes();
 
     // Turning the AUTOMATIC_SLAVE_LAUNCH flag off because the below slave removals
@@ -186,9 +186,7 @@ public class MesosCloud extends Cloud {
     MesosCloud that = (MesosCloud) o;
 
     if (master != null ? !master.equals(that.master) : that.master != null) return false;
-    if (frameworkName != null ? !frameworkName.equals(that.frameworkName) : that.frameworkName != null) return false;
-
-    return true;
+    return frameworkName != null ? StringUtils.equals(frameworkName, that.frameworkName) : that.frameworkName == null;
   }
 
   @Override
@@ -216,7 +214,7 @@ public class MesosCloud extends Cloud {
     }
 
     // Default to root URL in Jenkins global configuration.
-    String jenkinsRootURL = Jenkins.getInstance().getRootUrl();
+    String jenkinsRootURL = Jenkins.get().getRootUrl();
 
     // If 'jenkinsURL' parameter is provided in mesos plugin configuration, then that should take precedence.
     if(StringUtils.isNotBlank(jenkinsURL)) {
@@ -251,7 +249,7 @@ public class MesosCloud extends Cloud {
    * @param requestedLabel the label of the buildable items, or null for every label
    */
   private void requestAMesosSlaveForEveryBuildableItem(Label requestedLabel) {
-    Jenkins jenkins = Jenkins.getInstance();
+    Jenkins jenkins = Jenkins.get();
     Queue queue = jenkins.getQueue();
     List<Queue.BuildableItem> buildableItems = queue.getBuildableItems();
 
@@ -266,7 +264,7 @@ public class MesosCloud extends Cloud {
   }
 
   private String expandJenkinsUrlWithEnvVars() {
-    Jenkins instance = Jenkins.getInstance();
+    Jenkins instance = Jenkins.get();
     DescribableList<NodeProperty<?>, NodePropertyDescriptor> globalNodeProperties = instance.getGlobalNodeProperties();
     if (globalNodeProperties == null) {
       return jenkinsURL;
@@ -297,7 +295,7 @@ public class MesosCloud extends Cloud {
       LOGGER.log(Level.WARNING, "Error while jenkins tried to provision a Slave for " + label.getDisplayName(), e);
     }
 
-    return new ArrayList<PlannedNode>();
+    return new ArrayList<>();
   }
 
   public void requestNodes(Label label, int excessWorkload, String linkedItem) {
@@ -305,7 +303,7 @@ public class MesosCloud extends Cloud {
     final MesosSlaveInfo slaveInfo = getSlaveInfo(slaveInfos, label);
 
     try {
-      while (excessWorkload > 0 && !Jenkins.getInstance().isQuietingDown())  {
+      while (excessWorkload > 0 && !Jenkins.get().isQuietingDown())  {
         // Start the scheduler if it's not already running.
         if (onDemandRegistration) {
           JenkinsScheduler.SUPERVISOR_LOCK.lock();
@@ -366,11 +364,11 @@ public class MesosCloud extends Cloud {
 
   private Job asJob(String linkedItem) {
     try (ACLContext original = ACL.as(ACL.SYSTEM)) {
-      return Jenkins.getInstance().getItemByFullName(linkedItem, Job.class);
+      return Jenkins.get().getItemByFullName(linkedItem, Job.class);
     }
   }
 
-  private void sendSlaveRequest(int numExecutors, MesosSlaveInfo slaveInfo, String linkedItem) throws Descriptor.FormException, IOException {
+  private void sendSlaveRequest(int numExecutors, MesosSlaveInfo slaveInfo, String linkedItem) {
     String name = slaveInfo.getLabelString() + "-" + UUID.randomUUID().toString();
     double cpus = slaveInfo.getSlaveCpus() + (numExecutors * slaveInfo.getExecutorCpus());
     double memory = (slaveInfo.getSlaveMem() + (numExecutors * slaveInfo.getExecutorMem())) * (1 + JVM_MEM_OVERHEAD_FACTOR);
@@ -392,7 +390,7 @@ public class MesosCloud extends Cloud {
   }
 
   public void removeSlaveFromJenkins(JenkinsSlave.ResultJenkinsSlave slave) {
-    Jenkins jenkins = Jenkins.getInstance();
+    Jenkins jenkins = Jenkins.get();
     Node n = jenkins.getNode(slave.getName());
     if(n != null) {
       Computer computer = n.toComputer();
@@ -414,7 +412,7 @@ public class MesosCloud extends Cloud {
   public boolean isItemForMyFramework(String buildableItem) {
       //MesosFrameworkToItemMapper mesosFrameworkToItemMapper = new MesosFrameworkToItemMapper();
     MesosFrameworkToItemMapper.DescriptorImpl descriptor =
-        (MesosFrameworkToItemMapper.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(MesosFrameworkToItemMapper.class);
+        (MesosFrameworkToItemMapper.DescriptorImpl)Jenkins.get().getDescriptorOrDie(MesosFrameworkToItemMapper.class);
     String foundFramework = descriptor.findFrameworkName(buildableItem);
     return StringUtils.equals(frameworkName, foundFramework);
   }
@@ -566,7 +564,7 @@ public class MesosCloud extends Cloud {
   }
 
   public static MesosCloud get() {
-    return Jenkins.getInstance().clouds.get(MesosCloud.class);
+    return Jenkins.get().clouds.get(MesosCloud.class);
   }
 
   /**
@@ -650,6 +648,7 @@ public class MesosCloud extends Cloud {
     private String grafanaDashboardURL;
     private String defaultSlaveLabel;
 
+    @Nonnull
     @Override
     public String getDisplayName() {
       return "Mesos Cloud";

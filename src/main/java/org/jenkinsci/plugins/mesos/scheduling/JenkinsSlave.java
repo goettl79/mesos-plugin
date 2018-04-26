@@ -13,7 +13,7 @@ public abstract class JenkinsSlave {
     public static class RoleCapped extends RequestJenkinsSlave {
 
         public RoleCapped(String name, String label, Integer numExecutors, String linkedItem, String lastBuildHostname, Long estimatedDuration, Double cpus, Double mem, Set<MesosSlaveInfo.PortMapping> portMappings, String role) {
-            super(name, label, numExecutors, linkedItem, lastBuildHostname, estimatedDuration, cpus, mem, portMappings, new LinkedHashSet<String>(Arrays.asList(SHARED_ROLE, role)));
+            super(name, label, numExecutors, linkedItem, lastBuildHostname, estimatedDuration, cpus, mem, portMappings, new LinkedHashSet<>(Arrays.asList(SHARED_ROLE, role)));
         }
 
     }
@@ -21,7 +21,7 @@ public abstract class JenkinsSlave {
     public static class RoleResourcesFirst extends RequestJenkinsSlave {
 
         public RoleResourcesFirst(String name, String label, Integer numExecutors, String linkedItem, String lastBuildHostname, Long estimatedDuration, Double cpus, Double mem, Set<MesosSlaveInfo.PortMapping> portMappings, String role) {
-            super(name, label, numExecutors, linkedItem, lastBuildHostname, estimatedDuration, cpus, mem, portMappings, new LinkedHashSet<String>(Arrays.asList(SHARED_ROLE, role)));
+            super(name, label, numExecutors, linkedItem, lastBuildHostname, estimatedDuration, cpus, mem, portMappings, new LinkedHashSet<>(Arrays.asList(SHARED_ROLE, role)));
         }
 
     }
@@ -29,7 +29,7 @@ public abstract class JenkinsSlave {
     public static class SharedResourcesFirst extends RequestJenkinsSlave {
 
         public SharedResourcesFirst(String name, String label, Integer numExecutors, String linkedItem, String lastBuildHostname, Long estimatedDuration, Double cpus, Double mem, Set<MesosSlaveInfo.PortMapping> portMappings, String role) {
-            super(name, label, numExecutors, linkedItem, lastBuildHostname, estimatedDuration, cpus, mem, portMappings, new LinkedHashSet<String>(Arrays.asList(SHARED_ROLE, role)));
+            super(name, label, numExecutors, linkedItem, lastBuildHostname, estimatedDuration, cpus, mem, portMappings, new LinkedHashSet<>(Arrays.asList(SHARED_ROLE, role)));
         }
 
     }
@@ -73,13 +73,11 @@ public abstract class JenkinsSlave {
 
         @Override
         public String toString() {
-            return new StringBuilder()
-                    .append("Agent request: ").append(this.getClass().getSimpleName())
-                    .append(", name: ").append(getName())
-                    .append(", label:").append(getLabel())
-                    .append(", lastHost: ").append(lastBuildHostname)
-                    .append(", estimatedDuration: ").append(estimatedDuration)
-                    .toString();
+            return "Agent request: " + this.getClass().getSimpleName() +
+                    ", name: " + getName() +
+                    ", label:" + getLabel() +
+                    ", lastHost: " + lastBuildHostname +
+                    ", estimatedDuration: " + estimatedDuration;
         }
     }
 
@@ -90,7 +88,7 @@ public abstract class JenkinsSlave {
         private final String requestJenkinsClass;
 
         public ResultJenkinsSlave(RequestJenkinsSlave requestJenkinsSlave) {
-            this(requestJenkinsSlave, StringUtils.EMPTY, Collections.<MesosSlaveInfo.PortMapping>emptySet());
+            this(requestJenkinsSlave, StringUtils.EMPTY, Collections.emptySet());
         }
 
         public ResultJenkinsSlave(RequestJenkinsSlave requestJenkinsSlave, String hostname, Set<MesosSlaveInfo.PortMapping> actualPortMappings) {
