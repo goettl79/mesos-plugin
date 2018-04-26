@@ -82,6 +82,16 @@ public abstract class JenkinsScheduler implements Scheduler {
     this.finishedTasks = Collections.newSetFromMap(new ConcurrentHashMap<>());
   }
 
+  public static JenkinsScheduler createScheduler(String jenkinsMaster, MesosCloud mesosCloud) {
+    String schedulerName = mesosCloud.getSchedulerName();
+
+    if (StringUtils.equals(schedulerName, JenkinsSchedulerOld.NAME)) {
+      return new JenkinsSchedulerOld(jenkinsMaster, mesosCloud);
+    } else {
+      return new JenkinsSchedulerNew(jenkinsMaster, mesosCloud);
+    }
+  }
+
   public synchronized void init() {
     // This is to ensure that isRunning() returns true even when the driver is not yet inside run().
     // This is important because MesosCloud.provision() starts a new framework whenever isRunning() is false.

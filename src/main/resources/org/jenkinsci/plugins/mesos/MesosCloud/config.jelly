@@ -49,6 +49,13 @@
     </f:entry>
 
     <f:advanced>
+        <f:entry title="${%Scheduler}" description="${%Choose a scheduling mechanism}">
+            <f:radio name="schedulerName" value="LegacyScheduler" checked="${instance.schedulerName == 'LegacyScheduler'}" id="schedulerName.legacy"/>
+            <st:nbsp/>${%Legacy Scheduler}
+            <f:radio name="schedulerName" value="FitnessScheduler" checked="${instance.schedulerName == 'FitnessScheduler'}" id="schedulerName.fitness"/>
+            <st:nbsp/>${%Fitness Scheduler}
+        </f:entry>
+
         <f:entry title="${%Checkpointing}" description="${%Enable Mesos framework checkpointing?}">
             <f:radio name="checkpoint" value="true" checked="${instance.checkpoint == true}" id="checkpoint.true"/>
             <st:nbsp/>${%Yes}
