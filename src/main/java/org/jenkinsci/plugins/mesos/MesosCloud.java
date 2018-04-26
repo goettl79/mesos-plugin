@@ -242,11 +242,25 @@ public class MesosCloud extends Cloud {
   }
 
   public void requestAMesosSlaveForEveryBuildableItemInQueue() {
+    requestAMesosSlaveForEveryBuildableItem(null);
+  }
+
+  /**
+   * Requests a Mesos Jenkins agent for every buildable item in the queue depending on the label.
+   *
+   * @param requestedLabel the label of the buildable items, or null for every label
+   */
+  private void requestAMesosSlaveForEveryBuildableItem(Label requestedLabel) {
     Jenkins jenkins = Jenkins.getInstance();
-    for(Queue.BuildableItem buildableItem : jenkins.getQueue().getBuildableItems()) {
-      Label label = buildableItem.getAssignedLabel();
-      if(canProvision(label) && this.isItemForMyFramework(buildableItem)) {
-        this.requestNodes(label, 1, getFullNameOfItem(buildableItem));
+    Queue queue = jenkins.getQueue();
+    List<Queue.BuildableItem> buildableItems = queue.getBuildableItems();
+
+    for(Queue.BuildableItem buildableItem : buildableItems) {
+      Label assignedLabel = buildableItem.getAssignedLabel();
+      if (requestedLabel == null || requestedLabel.equals(assignedLabel)) {
+        if (canProvision(assignedLabel) && this.isItemForMyFramework(buildableItem)) {
+          this.requestNodes(assignedLabel, 1, getFullNameOfItem(buildableItem));
+        }
       }
     }
   }
@@ -276,21 +290,7 @@ public class MesosCloud extends Cloud {
 
       if (mesosSlaveInfo != null) {
         if (!mesosSlaveInfo.isUseSlaveOnce()) {
-          Queue queue = Queue.getInstance();
-          int buildablesInQueueCount = queue.countBuildableItemsFor(label);
-
-          //we need the scheduler to get known requests for the label.
-          JenkinsScheduler jenkinsScheduler = (JenkinsScheduler) Mesos.getInstance(this).getScheduler();
-          //our "softlimit" for provisioning slaves. Jenkins shouldn't provision more slaves than needet.
-          int requestsForLabelCount = jenkinsScheduler.getRequestsMatchingLabel(label).size();
-
-          int legalWorkload = Math.min(excessWorkload, (buildablesInQueueCount - requestsForLabelCount));
-
-          if (legalWorkload > 0) {
-            requestNodes(label, legalWorkload, null);
-          } else {
-            LOGGER.info("Ignore Jenkins provisioning request. There are enough requests to mesos (legalWorkLoad: " + legalWorkload+")");
-          }
+          requestAMesosSlaveForEveryBuildableItem(label);
         }
       }
     } catch (Exception e) {
