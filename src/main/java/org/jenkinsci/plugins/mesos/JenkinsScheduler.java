@@ -77,9 +77,9 @@ public abstract class JenkinsScheduler implements Scheduler {
     this.mesosCloud = mesosCloud;
     this.displayName = displayName;
 
-    this.requests = new LinkedBlockingQueue<Request>();
-    this.results = new HashMap<TaskID, Result>();
-    this.finishedTasks = Collections.newSetFromMap(new ConcurrentHashMap<TaskID, Boolean>());
+    this.requests = new LinkedBlockingQueue<>();
+    this.results = new HashMap<>();
+    this.finishedTasks = Collections.newSetFromMap(new ConcurrentHashMap<>());
   }
 
   public synchronized void init() {
@@ -87,7 +87,7 @@ public abstract class JenkinsScheduler implements Scheduler {
     // This is important because MesosCloud.provision() starts a new framework whenever isRunning() is false.
     running = true;
     String targetUser = mesosCloud.getSlavesUser();
-    String webUrl = Jenkins.getInstance().getRootUrl();
+    String webUrl = Jenkins.get().getRootUrl();
     if (webUrl == null) webUrl = System.getenv("JENKINS_URL");
     // Have Mesos fill in the current user.
     FrameworkInfo framework = FrameworkInfo.newBuilder()
@@ -119,31 +119,29 @@ public abstract class JenkinsScheduler implements Scheduler {
       driver = new MesosSchedulerDriver(JenkinsScheduler.this, framework, mesosCloud.getMaster());
     }
     // Start the framework.
-    new Thread(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          Status runStatus = driver.run();
-          if (runStatus != Status.DRIVER_STOPPED) {
-            LOGGER.severe("The Mesos driver was aborted! Status code: " + runStatus.getNumber());
-          } else {
-            LOGGER.info("The Mesos driver was stopped.");
-          }
-        } catch(RuntimeException e) {
-          LOGGER.log(Level.SEVERE, "Caught a RuntimeException", e);
-        } finally {
-          SUPERVISOR_LOCK.lock();
-          if (driver != null) {
-            driver.abort();
-          }
-          driver = null;
-          running = false;
-          SUPERVISOR_LOCK.unlock();
+    new Thread(() -> {
+      try {
+        Status runStatus = driver.run();
+        if (runStatus != Status.DRIVER_STOPPED) {
+          LOGGER.severe("The Mesos driver was aborted! Status code: " + runStatus.getNumber());
+        } else {
+          LOGGER.info("The Mesos driver was stopped.");
         }
+      } catch(RuntimeException e) {
+        LOGGER.log(Level.SEVERE, "Caught a RuntimeException", e);
+      } finally {
+        SUPERVISOR_LOCK.lock();
+        if (driver != null) {
+          driver.abort();
+        }
+        driver = null;
+        running = false;
+        SUPERVISOR_LOCK.unlock();
       }
     }, "Framework " + mesosCloud.getFrameworkName() + " thread").start();
   }
 
+  @SuppressWarnings("DeprecatedIsStillUsed")
   @Deprecated
   private void debugLogOffers(List<Offer> offers) {
     // DEBUG INFO start
@@ -190,7 +188,7 @@ public abstract class JenkinsScheduler implements Scheduler {
             boolean pendingTasks = (scheduler.getNumberOfPendingTasks() > 0);
             boolean activeSlaves = false;
             boolean activeTasks = (scheduler.getNumberOfActiveTasks() > 0);
-            List<Node> slaveNodes = Jenkins.getInstance().getNodes();
+            List<Node> slaveNodes = Jenkins.get().getNodes();
             for (Node node : slaveNodes) {
               if (node instanceof MesosSlave) {
                 activeSlaves = true;
@@ -354,7 +352,7 @@ public abstract class JenkinsScheduler implements Scheduler {
       Request request = assignment.getValue();
 
       List<Protos.ContainerInfo.DockerInfo.PortMapping> actualDockerPortMappings = taskInfo.getContainer().getDocker().getPortMappingsList();
-      Set<MesosSlaveInfo.PortMapping> actualPortMappings = new LinkedHashSet<MesosSlaveInfo.PortMapping>();
+      Set<MesosSlaveInfo.PortMapping> actualPortMappings = new LinkedHashSet<>();
       for (Protos.ContainerInfo.DockerInfo.PortMapping actualDockerPortMapping : actualDockerPortMappings) {
         MesosSlaveInfo.PortMapping requestedPortMapping = request.getRequest().getSlave().getPortMapping(actualDockerPortMapping.getContainerPort());
 
@@ -417,6 +415,14 @@ public abstract class JenkinsScheduler implements Scheduler {
     LOGGER.info("Rescinded offer " + offerId);
   }
 
+  private MesosSlave asMesosAgent(Node node) {
+    if (node instanceof MesosSlave) {
+      return (MesosSlave) node;
+    }
+
+    return null;
+  }
+
   @Override
   public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
     TaskID taskId = status.getTaskId();
@@ -431,11 +437,8 @@ public abstract class JenkinsScheduler implements Scheduler {
     }
 
     //setData
-    Node node = Jenkins.getInstance().getNode(taskId.getValue());
-    MesosSlave mesosSlave = null;
-
-    if(node != null) {
-      mesosSlave = (MesosSlave) node;
+    MesosSlave mesosSlave = asMesosAgent(Jenkins.get().getNode(taskId.getValue()));
+    if (mesosSlave != null) {
       mesosSlave.setTaskStatus(status);
     }
 
@@ -557,24 +560,22 @@ public abstract class JenkinsScheduler implements Scheduler {
   }
 
   private boolean isExistingAgent(Protos.TaskID taskId) {
-    for (final Computer computer : Jenkins.getInstance().getComputers()) {
-      if (!MesosComputer.class.isInstance(computer)) {
+    for (final Computer computer : Jenkins.get().getComputers()) {
+      if (!(computer instanceof MesosComputer)) {
         LOGGER.finest("Not a mesos computer, skipping");
         continue;
       }
 
       MesosComputer mesosComputer = (MesosComputer) computer;
 
-      if (mesosComputer == null) {
-        LOGGER.finest("The mesos computer is null, skipping");
-        continue;
-      }
-
       MesosSlave mesosSlave = mesosComputer.getNode();
-
-      if (StringUtils.equals(taskId.getValue(), computer.getName()) && mesosSlave.isPendingDelete()) {
-        LOGGER.fine("This mesos task " + taskId.getValue() + " is pending deletion. Not launching another task");
-        return true;
+      if (mesosSlave != null) {
+        if (StringUtils.equals(taskId.getValue(), computer.getName()) && mesosSlave.isPendingDelete()) {
+          LOGGER.fine("This mesos task " + taskId.getValue() + " is pending deletion. Not launching another task");
+          return true;
+        }
+      } else {
+        LOGGER.warning("Unable to get node object for computer '" + computer + "'");
       }
     }
 
@@ -591,7 +592,7 @@ public abstract class JenkinsScheduler implements Scheduler {
 
 
   protected List<Request> drainRequests() {
-    List<Request> currentRequests = new ArrayList(requests.size());
+    List<Request> currentRequests = new ArrayList<>(requests.size());
     requests.drainTo(currentRequests);
     return currentRequests;
   }
@@ -601,7 +602,7 @@ public abstract class JenkinsScheduler implements Scheduler {
   }
 
   public List<Request> getRequestsMatchingLabel(Label label) {
-    List<Request> foundRequests = new ArrayList<Request>();
+    List<Request> foundRequests = new ArrayList<>();
     try {
       for (Request request : requests) {
         String requestedLabelString = request.getRequest().getSlaveInfo().getLabelString();

@@ -13,6 +13,7 @@ import hudson.slaves.OfflineCause;
 import jenkins.model.Jenkins;
 
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  This file is part of the JCloud Jenkins Plugin. (https://github.com/jenkinsci/jclouds-plugin)
@@ -47,13 +48,15 @@ import java.util.logging.Level;
 @Extension
 public class MesosCleanupThread extends AsyncPeriodicWork {
 
+    private static final Logger LOGGER = Logger.getLogger(MesosCleanupThread.class.getName());
+
     public MesosCleanupThread() {
         super("Mesos pending deletion slave cleanup");
     }
 
     @Override
     public long getRecurrencePeriod() {
-        return MIN * 1;
+        return MIN;
     }
 
     public static void invoke() {
@@ -61,49 +64,47 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
     }
 
     private static MesosCleanupThread getInstance() {
-        return Jenkins.getInstance().getExtensionList(AsyncPeriodicWork.class).get(MesosCleanupThread.class);
+        return Jenkins.get().getExtensionList(AsyncPeriodicWork.class).get(MesosCleanupThread.class);
     }
 
     @Override
     protected void execute(TaskListener listener) {
-        final ImmutableList.Builder<ListenableFuture<?>> deletedNodesBuilder = ImmutableList.<ListenableFuture<?>>builder();
+        final ImmutableList.Builder<ListenableFuture<?>> deletedNodesBuilder = ImmutableList.builder();
         ListeningExecutorService executor = MoreExecutors.listeningDecorator(Computer.threadPoolForRemoting);
 
         int deleteCount = 0;
 
-        for (final Computer c : Jenkins.getInstance().getComputers()) {
+        for (final Computer c : Jenkins.get().getComputers()) {
           if (MesosComputer.class.isInstance(c)) {
             MesosSlave mesosSlave = (MesosSlave) c.getNode();
             if (mesosSlave != null && mesosSlave.isPendingDelete()) {
               final MesosComputer comp = (MesosComputer) c;
-              logger.log(Level.INFO, "Marked " + comp.getName() + " for deletion");
+              LOGGER.log(Level.INFO, "Marked " + comp.getName() + " for deletion");
               if(comp.isIdle()) { //only delete it if it is really idle
-                ListenableFuture<?> f = executor.submit(new Runnable() {
-                  public void run() {
-                    logger.log(Level.INFO, "Deleting pending node " + comp.getName());
-                    if(comp.isOffline() && comp.getChannel() == null) {
-                      //maybe slave was never online.. delete it from Jenkins instance
-                      comp.deleteSlave();
-                    } else {
-                      //disconnect slave so the task at mesos can finish and dont get killed.
-                      comp.disconnect(OfflineCause.create(Messages._deletedCause()));
-                    }
+                ListenableFuture<?> f = executor.submit(() -> {
+                    LOGGER.log(Level.INFO, "Deleting pending node " + comp.getName());
+                  if(comp.isOffline() && comp.getChannel() == null) {
+                    //maybe slave was never online.. delete it from Jenkins instance
+                    comp.deleteSlave();
+                  } else {
+                    //disconnect slave so the task at mesos can finish and dont get killed.
+                    comp.disconnect(OfflineCause.create(Messages._deletedCause()));
                   }
                 });
                 deletedNodesBuilder.add(f);
                 deleteCount++;
               }
             } else {
-              logger.log(Level.FINE, c.getName() + " with slave " + mesosSlave +
+                LOGGER.log(Level.FINE, c.getName() + " with slave " + mesosSlave +
                       " is not pending deletion or the slave is null");
             }
 
           } else {
-            logger.log(Level.FINER, c.getName() + " is not a mesos computer, it is a " + c.getClass().getName());
+              LOGGER.log(Level.FINER, c.getName() + " is not a mesos computer, it is a " + c.getClass().getName());
           }
         }
 
-        logger.log(Level.INFO, "Deleted Nodes: " + deleteCount);
+        LOGGER.log(Level.INFO, "Deleted Nodes: " + deleteCount);
         Futures.getUnchecked(Futures.successfulAsList(deletedNodesBuilder.build()));
     }
 }

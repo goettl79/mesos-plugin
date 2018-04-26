@@ -33,6 +33,7 @@ public class MesosSlaveInfo {
   private final boolean useSlaveOnce;
   private final String jvmArgs;
   private final String jnlpArgs;
+  @SuppressWarnings("DeprecatedIsStillUsed")
   @Deprecated
   private transient JSONObject slaveAttributes;
   private String slaveAttributesString;
@@ -328,12 +329,12 @@ public class MesosSlaveInfo {
                          List<PortMapping> portMappings) {
       this(type, dockerImage, dockerPrivilegedMode, dockerForcePullImage,
               useCustomDockerCommandShell, customDockerCommandShell, volumes, parameters,
-              networking, new LinkedHashSet<PortMapping>(portMappings));
+              networking, new LinkedHashSet<>(portMappings));
     }
 
 
     private void initPortMappings() {
-      this.portMappingsMap = new HashMap<Network, Set<PortMapping>>();
+      this.portMappingsMap = new HashMap<>();
       this.portMappingsMap.put(Network.valueOf(networking),this.portMappings);
     }
 

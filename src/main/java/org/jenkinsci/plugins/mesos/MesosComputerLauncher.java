@@ -16,7 +16,6 @@ package org.jenkinsci.plugins.mesos;
 
 import hudson.slaves.JNLPLauncher;
 
-
 import java.util.logging.Logger;
 
 public class MesosComputerLauncher extends JNLPLauncher {
@@ -32,7 +31,8 @@ public class MesosComputerLauncher extends JNLPLauncher {
   private final String name;
 
   public MesosComputerLauncher(MesosCloud cloud, String _name) {
-    super();
+    // TODO: consider enabling workdir: https://github.com/jenkinsci/remoting/blob/master/docs/workDir.md
+    super(false);
     LOGGER.info("Constructing MesosComputerLauncher");
     this.cloud = cloud;
     this.state = State.INIT;

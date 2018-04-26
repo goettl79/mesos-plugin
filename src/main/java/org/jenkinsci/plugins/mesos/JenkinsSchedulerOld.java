@@ -99,7 +99,7 @@ public class JenkinsSchedulerOld extends JenkinsScheduler {
     private boolean matches(Protos.Offer offer, Request request) {
         double cpus = 0;
         double mem = 0;
-        List<Protos.Value.Range> ports = new ArrayList<Protos.Value.Range>();
+        List<Protos.Value.Range> ports = new ArrayList<>();
 
         for (Protos.Resource resource : offer.getResourcesList()) {
             String resourceRole = resource.getRole();
@@ -114,28 +114,34 @@ public class JenkinsSchedulerOld extends JenkinsScheduler {
             // End: Not needed, b/c FW only gets resources of * and framework.setRole()
 
             // Add resources of * and role
-            if (resource.getName().equals("cpus")) {
-                if (resource.getType().equals(Protos.Value.Type.SCALAR)) {
-                    cpus += resource.getScalar().getValue();
-                } else {
-                    LOGGER.severe("Cpus resource was not a scalar: " + resource.getType().toString());
-                }
-            } else if (resource.getName().equals("mem")) {
-                if (resource.getType().equals(Protos.Value.Type.SCALAR)) {
-                    mem += resource.getScalar().getValue();
-                } else {
-                    LOGGER.severe("Mem resource was not a scalar: " + resource.getType().toString());
-                }
-            } else if (resource.getName().equals("disk")) {
-                LOGGER.fine("Ignoring disk resources from offer");
-            } else if (resource.getName().equals("ports")) {
-                if (resource.getType().equals(Protos.Value.Type.RANGES)) {
-                    ports.addAll(resource.getRanges().getRangeList());
-                } else {
-                    LOGGER.severe("Ports resource was not a range: " + resource.getType().toString());
-                }
-            } else {
-                LOGGER.warning("Ignoring unknown resource type: " + resource.getName());
+            switch (resource.getName()) {
+                case "cpus":
+                    if (resource.getType().equals(Protos.Value.Type.SCALAR)) {
+                        cpus += resource.getScalar().getValue();
+                    } else {
+                        LOGGER.severe("Cpus resource was not a scalar: " + resource.getType().toString());
+                    }
+                    break;
+                case "mem":
+                    if (resource.getType().equals(Protos.Value.Type.SCALAR)) {
+                        mem += resource.getScalar().getValue();
+                    } else {
+                        LOGGER.severe("Mem resource was not a scalar: " + resource.getType().toString());
+                    }
+                    break;
+                case "disk":
+                    LOGGER.fine("Ignoring disk resources from offer");
+                    break;
+                case "ports":
+                    if (resource.getType().equals(Protos.Value.Type.RANGES)) {
+                        ports.addAll(resource.getRanges().getRangeList());
+                    } else {
+                        LOGGER.severe("Ports resource was not a range: " + resource.getType().toString());
+                    }
+                    break;
+                default:
+                    LOGGER.warning("Ignoring unknown resource type: " + resource.getName());
+                    break;
             }
         }
 
@@ -193,7 +199,7 @@ public class JenkinsSchedulerOld extends JenkinsScheduler {
         boolean slaveTypeMatch = true;
 
         //Collect the list of attributes from the offer as key-value pairs
-        Map<String, String> attributesMap = new HashMap<String, String>();
+        Map<String, String> attributesMap = new HashMap<>();
         for (Protos.Attribute attribute : offer.getAttributesList()) {
             attributesMap.put(attribute.getName(), attribute.getText().getValue());
         }

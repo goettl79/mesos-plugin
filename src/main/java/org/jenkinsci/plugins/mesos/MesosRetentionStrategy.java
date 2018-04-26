@@ -26,6 +26,7 @@ import org.jenkinsci.plugins.mesos.actions.MesosBuiltOnProperty;
 import org.jenkinsci.plugins.workflow.support.steps.ExecutorStepExecution;
 import org.joda.time.DateTimeUtils;
 
+import javax.annotation.Nonnull;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -59,7 +60,7 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
   }
 
   @Override
-  public long check(MesosComputer c) {
+  public long check(@Nonnull MesosComputer c) {
     if (!computerCheckLock.tryLock()) {
       return 1;
     } else {
@@ -142,7 +143,7 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
    * Try to connect to it ASAP to launch the slave agent.
    */
   @Override
-  public void start(MesosComputer c) {
+  public void start(@Nonnull MesosComputer c) {
     c.connect(false);
   }
 
@@ -186,7 +187,7 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
     return null;
   }
 
-  private synchronized void addBuiltOnActionOrProperty(Job job) {
+  private synchronized void addBuiltOnActionOrProperty(Job<?, ?> job) {
     if (job instanceof AbstractProject) {
       try {
         if (job.getProperty(MesosBuiltOnProperty.class) == null) {
@@ -208,7 +209,11 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
   public void taskAccepted(Executor executor, Queue.Task task) {
     try {
       Run run = getCurrentRun(executor.getCurrentExecutable());
-      LOGGER.finest("The current build: " + run);
+
+      if (run == null) {
+        LOGGER.warning("Unable to find build for executor '" + executor + "'");
+        return;
+      }
 
       addBuiltOnActionOrProperty(run.getParent());
 
@@ -256,10 +261,13 @@ public class MesosRetentionStrategy extends RetentionStrategy<MesosComputer> imp
    * that we provision automatically.
    */
   public static class DescriptorImpl extends Descriptor<RetentionStrategy<?>> {
+
+    @Nonnull
     @Override
     public String getDisplayName() {
       return "MESOS";
     }
+
   }
 
   boolean isTerminable() {

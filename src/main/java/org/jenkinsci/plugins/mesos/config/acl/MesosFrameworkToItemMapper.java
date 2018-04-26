@@ -18,6 +18,7 @@ import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
+import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -34,13 +35,14 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
 
     private static final ListBoxModel.Option DENY_OPTION = new ListBoxModel.Option("Deny");
 
-    private List<ACLEntry> aclEntries = new ArrayList<ACLEntry>();
+    private List<ACLEntry> aclEntries = new ArrayList<>();
     private String defaultFrameworkName = "Deny";
 
     public DescriptorImpl() {
       load();
     }
 
+    @Nonnull
     @Override
     public String getDisplayName() {
       return "FrameworkToItemMapper";
@@ -49,7 +51,7 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
     @RequirePOST
     @Override
     public boolean configure(StaplerRequest req, JSONObject json) throws Descriptor.FormException {
-      Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
 
       List<ACLEntry> futureACLEntires = null;
       if (json.has("aclEntries")) {
@@ -83,8 +85,7 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
      * @return the newly generated ACL entry if adding it to the ACL entries was successful
      */
     public ACLEntry addACLEntry(String itemPattern, String frameworkName) {
-      List<ACLEntry> futureACLEntries = new ArrayList<ACLEntry>();
-      futureACLEntries.addAll(this.aclEntries);
+      List<ACLEntry> futureACLEntries = new ArrayList<>(this.aclEntries);
 
       ACLEntry newACLEntry = new ACLEntry(itemPattern, frameworkName);
       futureACLEntries.add(newACLEntry);
@@ -102,7 +103,7 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
      */
     public ACLEntry removeACLEntry(String itemPattern) {
       ACLEntry removedACLEntry = null;
-      List<ACLEntry> futureACLEntries = new ArrayList<ACLEntry>(this.aclEntries.size());
+      List<ACLEntry> futureACLEntries = new ArrayList<>(this.aclEntries.size());
       futureACLEntries.addAll(this.aclEntries);
 
       Iterator<ACLEntry> it = futureACLEntries.iterator();
@@ -302,7 +303,7 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
 
   @Override
   public Descriptor<MesosFrameworkToItemMapper> getDescriptor() {
-    return Jenkins.getInstance().getDescriptorOrDie(getClass());
+    return Jenkins.get().getDescriptorOrDie(getClass());
   }
 
   public DescriptorImpl getDescriptorImpl() {

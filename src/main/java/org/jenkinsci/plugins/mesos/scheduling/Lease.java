@@ -50,13 +50,13 @@ public class Lease {
         this.hostname = hostname;
         this.offers = Arrays.asList(offers);
 
-        this.assignments = new LinkedHashMap<Protos.TaskInfo, Request>();
+        this.assignments = new LinkedHashMap<>();
 
-        this.availableScalarResources = new LinkedHashMap<String, Map<String, Double>>();
-        this.availableRangeResources = new LinkedHashMap<String, Map<String, List<Protos.Value.Range>>>();
+        this.availableScalarResources = new LinkedHashMap<>();
+        this.availableRangeResources = new LinkedHashMap<>();
         initializeAvailableResources();
 
-        this.availableAttributes = new LinkedHashMap<String, String>();
+        this.availableAttributes = new LinkedHashMap<>();
         initializeAttributes();
     }
 
@@ -134,7 +134,7 @@ public class Lease {
     private void addAvailableScalarResource(Protos.Resource resource) {
         Map<String, Double> availableResources = availableScalarResources.get(resource.getName());
         if (availableResources == null) {
-            availableResources = new HashMap<String, Double>();
+            availableResources = new HashMap<>();
         }
 
         Double availableValue = availableResources.get(resource.getRole());
@@ -152,14 +152,14 @@ public class Lease {
     private void addAvailableRangeResource(Protos.Resource resource) {
         Map<String, List<Protos.Value.Range>> availableResources = availableRangeResources.get(resource.getName());
         if (availableResources == null) {
-            availableResources = new HashMap<String, List<Protos.Value.Range>>();
+            availableResources = new HashMap<>();
         }
 
         List<Protos.Value.Range> availableRanges = availableResources.get(resource.getRole());
 
         List<Protos.Value.Range> currentRanges = resource.getRanges().getRangeList();
         if (availableRanges == null) {
-            availableRanges = new ArrayList<Protos.Value.Range>(currentRanges);
+            availableRanges = new ArrayList<>(currentRanges);
         } else {
             availableRanges.addAll(currentRanges);
         }
@@ -173,7 +173,7 @@ public class Lease {
     }
 
     public List<Protos.OfferID> getOfferIds() {
-        List<Protos.OfferID> offerIds = new ArrayList<Protos.OfferID>(offers.size());
+        List<Protos.OfferID> offerIds = new ArrayList<>(offers.size());
 
         for (Protos.Offer offer : offers) {
             offerIds.add(offer.getId());
@@ -206,7 +206,7 @@ public class Lease {
     public List<Protos.Value.Range> getAvailableRangeResources(String name, Set<String> roles) {
         Map<String, List<Protos.Value.Range>> availableResources = availableRangeResources.get(name);
 
-        List<Protos.Value.Range> result = new ArrayList<Protos.Value.Range>();
+        List<Protos.Value.Range> result = new ArrayList<>();
         if (availableResources != null) {
             for (String role : roles) {
                 List<Protos.Value.Range> currentRange = availableResources.get(role);
@@ -220,7 +220,7 @@ public class Lease {
     }
 
     public List<Protos.Value.Range> getTotalAvailableRangeResources(String name) {
-        Set<String> roles = availableRangeResources.containsKey(name) ? availableRangeResources.get(name).keySet() : Collections.<String>emptySet();
+        Set<String> roles = availableRangeResources.containsKey(name) ? availableRangeResources.get(name).keySet() : Collections.emptySet();
         return getAvailableRangeResources(name, roles);
     }
 
@@ -229,7 +229,7 @@ public class Lease {
     }
 
     public List<Protos.Value.Range> getAvailablePortResources(String role) {
-        return getAvailablePortResources(new LinkedHashSet<String>(Collections.singletonList(role)));
+        return getAvailablePortResources(new LinkedHashSet<>(Collections.singletonList(role)));
     }
 
     public List<Protos.Value.Range> getAvailablePortResources(Set<String> roles) {
@@ -266,7 +266,7 @@ public class Lease {
     }
 
     public Double getTotalAvailableScalarResources(String name) {
-        Set<String> roles = availableScalarResources.containsKey(name) ? availableScalarResources.get(name).keySet() : Collections.<String>emptySet();
+        Set<String> roles = availableScalarResources.containsKey(name) ? availableScalarResources.get(name).keySet() : Collections.emptySet();
         return getAvailableScalarResources(name, roles);
     }
 
@@ -279,7 +279,7 @@ public class Lease {
     }
 
     public Double getAvailableCpus(String role) {
-        return getAvailableCpus(new LinkedHashSet<String>(Collections.singletonList(role)));
+        return getAvailableCpus(new LinkedHashSet<>(Collections.singletonList(role)));
     }
 
     public Double getAvailableCpus(Set<String> roles) {
@@ -287,7 +287,7 @@ public class Lease {
     }
 
     public Double getAvailableMem(String role) {
-        return getAvailableMem(new LinkedHashSet<String>(Collections.singletonList(role)));
+        return getAvailableMem(new LinkedHashSet<>(Collections.singletonList(role)));
     }
 
     public Double getAvailableMem(Set<String> roles) {
@@ -342,7 +342,7 @@ public class Lease {
         }
 
         Map<String, List<Protos.Value.Range>> availableResources = tempAvailableRangeResources.get(name);
-        List<Protos.Value.Range> availableRanges = new ArrayList<Protos.Value.Range>(availableResources.get(role));
+        List<Protos.Value.Range> availableRanges = new ArrayList<>(availableResources.get(role));
 
         Set<Long> unifiedAvailableRanges = getUnifiedSetOfRanges(availableRanges);
         Set<Long> unifiedRequestedRanges = getUnifiedSetOfRanges(requestedRanges);
@@ -354,12 +354,12 @@ public class Lease {
 
         // assign
         unifiedAvailableRanges.removeAll(unifiedRequestedRanges);
-        availableResources.put(role, createRangeList(new TreeSet<Long>(unifiedAvailableRanges)));
+        availableResources.put(role, createRangeList(new TreeSet<>(unifiedAvailableRanges)));
         return true;
     }
 
     private List<Protos.Value.Range> createRangeList(SortedSet<Long> sortedRanges) {
-        ArrayList<Protos.Value.Range> resultRangeList = new ArrayList<Protos.Value.Range>();
+        ArrayList<Protos.Value.Range> resultRangeList = new ArrayList<>();
 
         if (!sortedRanges.isEmpty()) {
             mutateRangeAndAddToListWhileRangesConnect(sortedRanges, resultRangeList, sortedRanges.first());
@@ -384,7 +384,7 @@ public class Lease {
 
 
     private Set<Long> getUnifiedSetOfRanges(List<Protos.Value.Range> listOfRanges) {
-        Set<Long> setOfRanges = new HashSet<Long>();
+        Set<Long> setOfRanges = new HashSet<>();
         for (Protos.Value.Range range : listOfRanges) {
             for (long i = range.getBegin(); i <= range.getEnd(); i++) {
                 setOfRanges.add(i);
@@ -395,9 +395,9 @@ public class Lease {
 
 
     private <K, V> Map<K, Map<K, V>> createTempMap(Map<K, Map<K, V>> source) {
-        Map<K, Map<K, V>> target = new LinkedHashMap<K, Map<K, V>>();
+        Map<K, Map<K, V>> target = new LinkedHashMap<>();
         for (Map.Entry<K, Map<K, V>> entry : source.entrySet()) {
-            target.put(entry.getKey(), new LinkedHashMap<K, V>(entry.getValue()));
+            target.put(entry.getKey(), new LinkedHashMap<>(entry.getValue()));
         }
         return target;
     }
@@ -427,7 +427,7 @@ public class Lease {
 
             if (!assigned) {
                 LOGGER.severe("Unable to assign resource type '" + resource.getType() + "' to Lease '" + id + "' for task '" + taskInfo.getTaskId().getValue() + "'");
-                allAssigned &= assigned;
+                allAssigned = assigned;
             }
         }
 

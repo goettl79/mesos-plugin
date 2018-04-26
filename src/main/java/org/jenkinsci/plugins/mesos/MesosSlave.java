@@ -25,12 +25,12 @@ import hudson.model.queue.CauseOfBlockage;
 import hudson.remoting.VirtualChannel;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.EphemeralNode;
-import hudson.slaves.NodeProperty;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang.StringUtils;
 import org.apache.mesos.Protos;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.logging.Level;
@@ -60,7 +60,7 @@ public class MesosSlave extends Slave implements EphemeralNode {
           slaveInfo.getLabelString(), // Label.
           new MesosComputerLauncher(cloud, name),
           new MesosRetentionStrategy(slaveInfo.getIdleTerminationMinutes(), slaveInfo.getMaximumTimeToLiveMinutes()),
-          Collections.<NodeProperty<?>> emptyList());
+          Collections.emptyList());
     this.cloud = cloud;
     this.slaveInfo = slaveInfo;
     this.linkedItem = linkedItem;
@@ -102,7 +102,7 @@ public class MesosSlave extends Slave implements EphemeralNode {
         channel.close();
       }
 
-      Jenkins.getInstance().removeNode(this);
+      Jenkins.get().removeNode(this);
 
     } catch (IOException e) {
       LOGGER.log(Level.WARNING, "Failed to terminate Mesos instance: "
@@ -123,6 +123,8 @@ public class MesosSlave extends Slave implements EphemeralNode {
 
   @Extension
   public static class DescriptorImpl extends SlaveDescriptor {
+
+    @Nonnull
     @Override
     public String getDisplayName() {
       return "Mesos Slave";
