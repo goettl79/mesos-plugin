@@ -49,7 +49,7 @@ public class JenkinsSchedulerNew extends JenkinsScheduler {
             List<Request> unassignedRequests = assignRequests(currentRequests, leases);
 
             // add still unassigned requests back to requests (finally block?)
-            addRequests(unassignedRequests);
+            enqueueRequests(unassignedRequests);
 
             offersToDecline = launchAssignments(driver, leases);
         } else {
@@ -58,6 +58,7 @@ public class JenkinsSchedulerNew extends JenkinsScheduler {
             // starvation when running a lot of frameworks.
             declineOfferDuration = getNoRequestsDeclineOfferDuration();
             LOGGER.info("No requests in queue, framework '" + getMesosCloud().getFrameworkName() + "' rejects offers for " + declineOfferDuration + "s");
+
             offersToDecline = offers;
         }
 
