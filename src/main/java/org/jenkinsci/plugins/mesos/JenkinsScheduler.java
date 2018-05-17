@@ -261,7 +261,7 @@ public abstract class JenkinsScheduler implements Scheduler {
       return;
     }
 
-    requests.add(request);
+    enqueueRequest(request);
 
     if (driver != null) {
       // Ask mesos to send all offers, even the those we declined earlier.
@@ -607,21 +607,33 @@ public abstract class JenkinsScheduler implements Scheduler {
     return currentRequests;
   }
 
-  protected boolean addRequests(@Nonnull List<Request> requests) {
-    return this.requests.addAll(requests);
+  protected void enqueueRequest(@Nonnull Request request) {
+    try {
+      requests.add(request);
+    } catch (Exception e) {
+      LOGGER.log(Level.SEVERE, "Unable to enqueue request '" + request + "':", e);
+    }
+  }
+
+  protected void enqueueRequests(@Nonnull List<Request> requests) {
+    for (Request request : requests) {
+      enqueueRequest(request);
+    }
   }
 
   public List<Request> getRequestsMatchingLabel(Label label) {
     List<Request> foundRequests = new ArrayList<>();
-    try {
-      for (Request request : requests) {
+
+    for (Request request : requests) {
+      try {
         String requestedLabelString = request.getRequest().getSlaveInfo().getLabelString();
+
         if (StringUtils.equals(requestedLabelString, label.getDisplayName())) {
           foundRequests.add(request);
         }
+      } catch (Exception e) {
+          LOGGER.log(Level.WARNING, "Error while trying to find a request matching with label '" + label + "'", e);
       }
-    } catch (Exception e) {
-      LOGGER.log(Level.WARNING, "Error while trying to find a request matching with label '" + label + "'", e);
     }
 
     return foundRequests;
@@ -636,7 +648,7 @@ public abstract class JenkinsScheduler implements Scheduler {
         }
       }
     } catch (Exception e) {
-      LOGGER.log(Level.WARNING, "Error while finding request: ", e);
+      LOGGER.log(Level.WARNING, "Error while finding request for '" + linkedItem + "':", e);
     }
     return null;
   }

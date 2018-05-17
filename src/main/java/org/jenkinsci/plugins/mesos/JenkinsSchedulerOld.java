@@ -78,7 +78,7 @@ public class JenkinsSchedulerOld extends JenkinsScheduler {
             }
         } finally {
             // re-add unprocessed requests
-            addRequests(requests);
+            enqueueRequests(requests);
         }
     }
 
