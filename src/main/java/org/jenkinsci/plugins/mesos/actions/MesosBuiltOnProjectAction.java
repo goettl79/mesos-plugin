@@ -14,6 +14,15 @@ public class MesosBuiltOnProjectAction extends InvisibleAction {
         this.job = job;
     }
 
+    /*
+    * this tackles the fact that we might not have a a MesosBuiltOnAction in job.lastBuild yet.
+    * We believe (have faith!) that this is only the case with concurrent builds which in turn should not use
+    * node-affinity in conjunction with (persistent) WS mounts. (we could make scheduler-type configurable though)
+    *
+    * as this code assumes we're using node affinity everywhere, lastCompletedBuild should (in most cases) contain the
+    * same (and thus _probably_ correct) builtOn information.
+    *
+    */
     private MesosBuiltOnAction getFirstActionOrNull(@Nonnull Run... runs) {
         for (Run run : runs) {
             if (run != null) {

@@ -295,8 +295,8 @@ public class Lease {
     }
 
 
-    private boolean isAssignable(Double newValue) {
-        return !(newValue < 0.0);
+    private boolean isAssignableScalar(Double newValue) {
+        return newValue >= 0.0;
     }
 
      /**
@@ -319,7 +319,7 @@ public class Lease {
 
         Double newValue = availableValue - requestedAmount;
 
-        boolean assignable = isAssignable(newValue);
+        boolean assignable = isAssignableScalar(newValue);
         if (assignable) {
             availableResources.put(role, newValue);
         }

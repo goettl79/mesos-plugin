@@ -264,7 +264,7 @@ public abstract class JenkinsScheduler implements Scheduler {
     enqueueRequest(request);
 
     if (driver != null) {
-      // Ask mesos to send all offers, even the those we declined earlier.
+      // Ask mesos to send all offers, even those we declined earlier.
       // See comment in resourceOffers() for further details.
       // TODO: wait for lock to release (when declining offers), dont do this when not needed (no declined offers)?
       driver.reviveOffers();
