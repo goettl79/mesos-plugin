@@ -1,8 +1,5 @@
 package org.jenkinsci.plugins.mesos.scheduling;
 
-import com.google.common.annotations.VisibleForTesting;
-
-@VisibleForTesting
 public class Request {
     private final SlaveRequest slaveRequest;
     private final SlaveResult slaveResult;
