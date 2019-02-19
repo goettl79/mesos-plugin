@@ -14,11 +14,22 @@
  */
 package org.jenkinsci.plugins.mesos;
 
+import com.cloudbees.plugins.credentials.CredentialsMatchers;
+import com.cloudbees.plugins.credentials.CredentialsProvider;
+import com.cloudbees.plugins.credentials.CredentialsScope;
+import com.cloudbees.plugins.credentials.SystemCredentialsProvider;
+import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
+import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
+import com.cloudbees.plugins.credentials.common.UsernamePasswordCredentials;
+import com.cloudbees.plugins.credentials.domains.DomainRequirement;
+import com.cloudbees.plugins.credentials.domains.URIRequirementBuilder;
+import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
+import hudson.model.Queue;
 import hudson.model.*;
 import hudson.security.ACL;
 import hudson.security.ACLContext;
@@ -30,6 +41,7 @@ import hudson.slaves.NodeProvisioner.PlannedNode;
 import hudson.util.DescribableList;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
+import hudson.util.Secret;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
@@ -45,18 +57,18 @@ import org.jenkinsci.plugins.mesos.config.slavedefinitions.SlaveDefinitionsConfi
 import org.jenkinsci.plugins.mesos.scheduling.JenkinsSlave;
 import org.jenkinsci.plugins.mesos.scheduling.SlaveRequest;
 import org.jenkinsci.plugins.mesos.scheduling.SlaveResult;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.DoNotUse;
+import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -69,8 +81,17 @@ public class MesosCloud extends Cloud {
   private double maxCpus;
   private int maxMem;
   private String slavesUser;
-  private String principal;
-  private String secret;
+  private String credentialsId;
+  /**
+   * @deprecated Create credentials then use credentialsId instead.
+   */
+  @Deprecated
+  private transient String principal;
+  /**
+   * @deprecated Create credentials then use credentialsId instead.
+   */
+  @Deprecated
+  private transient String secret;  
   private final boolean checkpoint; // Set true to enable checkpointing. False by default.
   private boolean onDemandRegistration; // If set true, this framework disconnects when there are no builds in the queue and re-registers when there are.
   private String jenkinsURL;
@@ -142,6 +163,7 @@ public class MesosCloud extends Cloud {
       double maxCpus,
       int maxMem,
       String slavesUser,
+      String credentialsId,
       String principal,
       String secret,
       String slaveDefinitionsName,
@@ -161,8 +183,10 @@ public class MesosCloud extends Cloud {
     this.maxCpus = maxCpus;
     this.maxMem = maxMem;
     this.slavesUser = slavesUser;
+    this.credentialsId = credentialsId;
     this.principal = principal;
     this.secret = secret;
+    migrateToCredentials();
     this.slaveDefinitionsName = slaveDefinitionsName;
     this.checkpoint = checkpoint;
     this.onDemandRegistration = onDemandRegistration;
@@ -293,6 +317,26 @@ public class MesosCloud extends Cloud {
       return StringUtils.defaultIfBlank(envVars.expand(this.jenkinsURL),instance.getRootUrl());
     } else {
       return jenkinsURL;
+    }
+  }
+
+  /**
+   * Returns the credentials object associated with the stored credentialsId.
+   *
+   * @return The credentials object associated with the stored credentialsId. May be null if credentialsId is null or
+   * if there is no credentials associated with the given id.
+   */
+  public StandardUsernamePasswordCredentials getCredentials() {
+    if (credentialsId == null) {
+      return null;
+    } else {
+      List<DomainRequirement> domainRequirements = (master == null) ? Collections.<DomainRequirement>emptyList()
+              : URIRequirementBuilder.fromUri(master.trim()).build();
+      Jenkins jenkins = Jenkins.get();
+      return CredentialsMatchers.firstOrNull(CredentialsProvider
+                      .lookupCredentials(StandardUsernamePasswordCredentials.class, jenkins, ACL.SYSTEM, domainRequirements),
+              CredentialsMatchers.withId(credentialsId)
+      );
     }
   }
 
@@ -537,21 +581,54 @@ public class MesosCloud extends Cloud {
     this.slavesUser = slavesUser;
   }
 
+  /**
+   * @deprecated Use MesosCloud#getCredentials().getUsername() instead.
+   * @return
+   */
+  @Deprecated
   public String getPrincipal() {
-        return principal;
-    }
+    StandardUsernamePasswordCredentials credentials = getCredentials();
+    return credentials == null ? "jenkins" : credentials.getUsername();
+  }
 
+  /**
+   * @deprecated Define credentials and use MesosCloud#setCredentialsId instead.
+   * @param principal
+   */
+  @Deprecated
   public void setPrincipal(String principal) {
-        this.principal = principal;
-    }
+    this.principal = principal;
+  }
 
+  /**
+   * @return The credentialsId to use for this mesos cloud
+   */
+  public String getCredentialsId() {
+    return credentialsId;
+  }
+
+  public void setCredentialsId(String credentialsId) {
+    this.credentialsId = credentialsId;
+  }
+
+  /**
+   * @deprecated Use MesosCloud#getCredentials().getPassword() instead.
+   * @return
+   */
+  @Deprecated
   public String getSecret() {
-        return secret;
-    }
+    StandardUsernamePasswordCredentials credentials = getCredentials();
+    return credentials == null ? "" : Secret.toString(credentials.getPassword());
+  }
 
+  /**
+   * @deprecated Define credentials and use MesosCloud#setCredentialsId instead.
+   * @param secret
+   */
+  @Deprecated
   public void setSecret(String secret) {
-        this.secret = secret;
-    }
+    this.secret = secret;
+  }
 
   public boolean isOnDemandRegistration() {
     return onDemandRegistration;
@@ -634,6 +711,47 @@ public class MesosCloud extends Cloud {
     return null;
   }
 
+  protected Object readResolve() {
+    migrateToCredentials();
+    if (role == null) {
+      role = "*";
+    }
+    return this;
+  }
+
+  /**
+   * Migrate principal/secret to credentials
+   */
+  private void migrateToCredentials() {
+    if (principal != null) {
+      List<DomainRequirement> domainRequirements = (master == null) ? Collections.<DomainRequirement>emptyList()
+        : URIRequirementBuilder.fromUri(master.trim()).build();
+      Jenkins jenkins = Jenkins.get();
+      // Look up existing credentials with the same username.
+      List<StandardUsernamePasswordCredentials> credentials = CredentialsMatchers.filter(CredentialsProvider
+        .lookupCredentials(StandardUsernamePasswordCredentials.class, jenkins, ACL.SYSTEM, domainRequirements),
+        CredentialsMatchers.withUsername(principal)
+      );
+      for (StandardUsernamePasswordCredentials cred: credentials) {
+        if (StringUtils.equals(secret, Secret.toString(cred.getPassword()))) {
+          // If some credentials have the same username/password, use those.
+          this.credentialsId = cred.getId();
+          break;
+        }
+      }
+      if (credentialsId == null) {
+        // If we couldn't find any existing credentials,
+        // create new credentials with the principal and secret and use it.
+        StandardUsernamePasswordCredentials newCredentials = new UsernamePasswordCredentialsImpl(
+          CredentialsScope.SYSTEM, null, null, principal, secret);
+        SystemCredentialsProvider.getInstance().getCredentials().add(newCredentials);
+        this.credentialsId = newCredentials.getId();
+      }
+      principal = null;
+      secret = null;
+    }
+  }
+
   public String getJenkinsURL() {
 	  return jenkinsURL;
   }
@@ -652,24 +770,7 @@ public class MesosCloud extends Cloud {
   @Extension
   @SuppressFBWarnings
   public static class DescriptorImpl extends Descriptor<Cloud> {
-    private String nativeLibraryPath;
-    private String master;
-    private String description;
-    private String frameworkName;
-    private String role;
-    private double maxCpus;
-    private int maxMem;
-    private String slavesUser;
-    private String principal;
-    private String secret;
-    private String slaveAttributes;
-    private boolean checkpoint;
-    private String jenkinsURL;
-    private int provisioningThreshold;
-    private String slaveDefinitionsName;
-    private String grafanaDashboardURL;
-    private String defaultSlaveLabel;
-    private String schedulerName;
+
 
     @Nonnull
     @Override
@@ -677,31 +778,17 @@ public class MesosCloud extends Cloud {
       return "Mesos Cloud";
     }
 
-    @Override
-    public boolean configure(StaplerRequest request, JSONObject object)
-        throws FormException {
-      LOGGER.info(object.toString());
-      nativeLibraryPath = object.getString("nativeLibraryPath");
-      master = object.getString("master");
-      description = object.getString("description");
-      frameworkName = object.getString("frameworkName");
-      role = object.getString("role");
-      maxCpus = object.getDouble("maxCpus");
-      maxMem = object.getInt("maxMem");
-      principal = object.getString("principal");
-      secret = object.getString("secret");
-      slaveAttributes = object.getString("slaveAttributes");
-      checkpoint = object.getBoolean("checkpoint");
-      jenkinsURL = object.getString("jenkinsURL");
-      grafanaDashboardURL = object.getString("grafanaDashboardURL");
-      provisioningThreshold = object.getInt("provisioningThreshold");
-      slavesUser = object.getString("slavesUser");
-      slaveDefinitionsName = object.getString("slaveDefinitionsName");
-      defaultSlaveLabel = object.getString("defaultSlaveLabel");
-      schedulerName = object.getString("schedulerName");
-
-      save();
-      return super.configure(request, object);
+    @Restricted(DoNotUse.class) // Stapler only.
+    @SuppressWarnings("unused") // Used by stapler.
+    @RequirePOST
+    public ListBoxModel doFillCredentialsIdItems(@AncestorInPath Item item, @QueryParameter String master) {
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+      List<DomainRequirement> domainRequirements = (master == null) ? Collections.<DomainRequirement>emptyList()
+        : URIRequirementBuilder.fromUri(master.trim()).build();
+      return new StandardListBoxModel().withEmptySelection().withMatching(
+        CredentialsMatchers.instanceOf(UsernamePasswordCredentials.class),
+        CredentialsProvider.lookupCredentials(StandardUsernamePasswordCredentials.class, item, null, domainRequirements)
+      );
     }
 
     /**
@@ -711,10 +798,12 @@ public class MesosCloud extends Cloud {
      * @param nativeLibraryPath path to the native library on the Jenkins master
      * @return whether or not the connection test succeeded
      */
+    @RequirePOST
     @SuppressWarnings("unused")
     public FormValidation doTestConnection(
         @QueryParameter("master") String master,
         @QueryParameter("nativeLibraryPath") String nativeLibraryPath) {
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
       master = master.trim();
 
       if (master.equals("local")) {
@@ -756,6 +845,7 @@ public class MesosCloud extends Cloud {
     @SuppressWarnings("unused")
     public FormValidation doCheckMaxExecutors(@QueryParameter("maxExecutors") final String strMaxExecutors,
                                               @QueryParameter("useSlaveOnce") final String strUseSlaveOnce) {
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
       int maxExecutors;
       boolean useSlaveOnce;
       try {
@@ -780,6 +870,7 @@ public class MesosCloud extends Cloud {
     }
 
     private FormValidation doCheckCpus(@QueryParameter String value) {
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
       boolean valid = true;
       String errorMessage = "Invalid CPUs value, it should be a positive decimal.";
 
@@ -799,13 +890,17 @@ public class MesosCloud extends Cloud {
 
     @SuppressWarnings("unused")
     public FormValidation doCheckRemoteFSRoot(@QueryParameter String value) {
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
       String errorMessage = "Invalid Remote FS Root - should be non-empty. It will be defaulted to \"jenkins\".";
 
       return StringUtils.isNotBlank(value) ? FormValidation.ok() : FormValidation.error(errorMessage);
     }
 
-    @SuppressWarnings("unused")
-    public ListBoxModel doFillSlaveDefinitionsNameItems() {
+    @Restricted(DoNotUse.class) // Stapler only.
+    @SuppressWarnings("unused") // Used by stapler.
+    @RequirePOST
+    public ListBoxModel doFillSlaveDefinitionsNameItems(@QueryParameter String selection) {
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
       ListBoxModel slaveDefinitionsNamesItems = new ListBoxModel();
 
       List<MesosSlaveDefinitions> slaveDefinitionsEntries =
@@ -813,7 +908,8 @@ public class MesosCloud extends Cloud {
 
       for (MesosSlaveDefinitions slaveDefinitionsEntry : slaveDefinitionsEntries) {
         String currentSlaveDefinitionsName = slaveDefinitionsEntry.getDefinitionsName();
-        boolean selected = StringUtils.equals(currentSlaveDefinitionsName, slaveDefinitionsName);
+
+        boolean selected = StringUtils.equals(currentSlaveDefinitionsName, selection);
         slaveDefinitionsNamesItems.add(new ListBoxModel.Option(
             currentSlaveDefinitionsName,
             currentSlaveDefinitionsName,
@@ -824,9 +920,11 @@ public class MesosCloud extends Cloud {
       return slaveDefinitionsNamesItems;
     }
 
-    @SuppressWarnings("unused")
-    public ListBoxModel doFillDefaultSlaveLabelItems(@QueryParameter String slaveDefinitionsName) {
-
+    @Restricted(DoNotUse.class) // Stapler only.
+    @SuppressWarnings("unused") // Used by stapler.
+    @RequirePOST
+    public ListBoxModel doFillDefaultSlaveLabelItems(@QueryParameter String slaveDefinitionsName, @QueryParameter String selection) {
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
       ListBoxModel defaultSlaveLabelItems = new ListBoxModel();
       defaultSlaveLabelItems.add(DEFAULT_SLAVE_LABEL_NONE, DEFAULT_SLAVE_LABEL_NONE);
 
@@ -835,7 +933,7 @@ public class MesosCloud extends Cloud {
       if (mesosSlaveInfos != null) {
         for (MesosSlaveInfo mesosSlaveInfo : mesosSlaveInfos) {
           String currentMesosSlaveInfoName = mesosSlaveInfo.getLabelString();
-          boolean selected = StringUtils.equals(currentMesosSlaveInfoName, defaultSlaveLabel);
+          boolean selected = StringUtils.equals(currentMesosSlaveInfoName, selection);
           defaultSlaveLabelItems.add(new ListBoxModel.Option(
                   currentMesosSlaveInfoName,
                   currentMesosSlaveInfoName,
