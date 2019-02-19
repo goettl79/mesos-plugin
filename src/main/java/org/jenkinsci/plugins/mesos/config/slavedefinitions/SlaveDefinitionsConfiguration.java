@@ -214,6 +214,7 @@ public class SlaveDefinitionsConfiguration implements Describable<SlaveDefinitio
 
     @SuppressWarnings("unused")
     public FormValidation doCheckItemPattern(@QueryParameter String definitionsName) {
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
       try {
         checkDefinitionsName(definitionsName);
         return FormValidation.ok();

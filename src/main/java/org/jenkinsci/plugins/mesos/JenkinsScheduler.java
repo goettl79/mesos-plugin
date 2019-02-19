@@ -16,11 +16,12 @@
 package org.jenkinsci.plugins.mesos;
 
 
+import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.protobuf.ByteString;
 import hudson.model.Computer;
 import hudson.model.Label;
 import hudson.model.Node;
+import hudson.util.Secret;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
@@ -30,8 +31,8 @@ import org.apache.mesos.Protos.*;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 import org.jenkinsci.plugins.mesos.config.slavedefinitions.MesosSlaveInfo;
-import org.jenkinsci.plugins.mesos.scheduling.*;
 import org.jenkinsci.plugins.mesos.scheduling.Request;
+import org.jenkinsci.plugins.mesos.scheduling.*;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -99,29 +100,32 @@ public abstract class JenkinsScheduler implements Scheduler {
     String targetUser = mesosCloud.getSlavesUser();
     String webUrl = Jenkins.get().getRootUrl();
     if (webUrl == null) webUrl = System.getenv("JENKINS_URL");
+    StandardUsernamePasswordCredentials credentials = mesosCloud.getCredentials();
+    String principal = credentials == null ? "jenkins" : credentials.getUsername();
+    String secret = credentials == null ? "" : Secret.toString(credentials.getPassword());
     // Have Mesos fill in the current user.
     FrameworkInfo framework = FrameworkInfo.newBuilder()
       .setUser(targetUser == null ? "" : targetUser)
       .setName(mesosCloud.getFrameworkName())
       .setRole(mesosCloud.getRole())
-      .setPrincipal(mesosCloud.getPrincipal())
+      .setPrincipal(principal)
       .setCheckpoint(mesosCloud.isCheckpoint())
-      .setWebuiUrl(webUrl != null ? webUrl :  "")
+      .setWebuiUrl(webUrl != null ? webUrl : "")
       .setFailoverTimeout(DEFAULT_FAILOVER_TIMEOUT)
       .build();
 
     LOGGER.info("Initializing the Mesos driver with options"
       + "\n" + "Framework Name: " + framework.getName()
-      + "\n" + "Principal: " + mesosCloud.getPrincipal()
+      + "\n" + "Principal: " + principal
       + "\n" + "Checkpointing: " + framework.getCheckpoint()
     );
 
-    if (StringUtils.isNotBlank(mesosCloud.getSecret())) {
+    if (StringUtils.isNotBlank(secret)) {
+      
       Credential credential = Credential.newBuilder()
-        .setPrincipal(mesosCloud.getPrincipal())
-        .setSecretBytes(ByteString.copyFromUtf8(mesosCloud.getSecret()))
+        .setPrincipal(principal)
+        .setSecret(secret)
         .build();
-
 
       LOGGER.info("Authenticating with Mesos master with principal " + credential.getPrincipal());
       driver = new MesosSchedulerDriver(JenkinsScheduler.this, framework, mesosCloud.getMaster(), credential);

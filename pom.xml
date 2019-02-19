@@ -104,6 +104,11 @@
   <dependencies>
       <!-- jenkins plugins -->
       <dependency>
+          <groupId>org.jenkins-ci.plugins</groupId>
+          <artifactId>credentials</artifactId>
+          <version>2.1.18</version>
+      </dependency>
+      <dependency>
           <groupId>org.jenkins-ci.plugins.workflow</groupId>
           <artifactId>workflow-durable-task-step</artifactId>
           <version>2.19</version>

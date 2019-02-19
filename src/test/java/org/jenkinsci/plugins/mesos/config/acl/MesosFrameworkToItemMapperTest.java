@@ -1,5 +1,6 @@
 package org.jenkinsci.plugins.mesos.config.acl;
 
+import hudson.ExtensionList;
 import hudson.model.Failure;
 import hudson.model.ManagementLink;
 import net.sf.json.JSONArray;
@@ -35,7 +36,10 @@ public class MesosFrameworkToItemMapperTest {
 
   @Before
   public void setUp() {
-    mapper = ManagementLink.all().get(MesosPluginConfiguration.class).getMapper();
+    jenkins.getInstance().getManagementLinks();
+    ExtensionList<ManagementLink> list = ManagementLink.all();
+    MesosPluginConfiguration config = list.get(MesosPluginConfiguration.class);
+    mapper = config.getMapper();
   }
 
   @Test

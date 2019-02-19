@@ -196,6 +196,7 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
 
     @SuppressWarnings("unused")
     public FormValidation doCheckItemPattern(@QueryParameter String itemPattern) {
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
       try {
         checkItemPattern(itemPattern);
         return FormValidation.ok();
@@ -218,6 +219,7 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
 
     @SuppressWarnings("unused")
     public FormValidation doCheckFrameworkName(@QueryParameter String frameworkName) {
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
       try {
         checkFrameworkName(frameworkName);
         return FormValidation.ok();
@@ -228,6 +230,8 @@ public class MesosFrameworkToItemMapper implements Describable<MesosFrameworkToI
 
     @SuppressWarnings("unused")
     public ListBoxModel doFillFrameworkNameItems(@QueryParameter String frameworkName) {
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+
       ListBoxModel frameworkNameItems = new ListBoxModel();
       frameworkNameItems.add(DENY_OPTION);
 
