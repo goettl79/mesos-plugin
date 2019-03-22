@@ -12,8 +12,8 @@
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Mesos+Plugin</url>
 
   <scm>
-    <connection>scm:git:ssh://github.com/infonova/mesos-plugin.git</connection>
-    <developerConnection>scm:git:ssh://github.com/infonova/mesos-plugin.git</developerConnection>
+    <connection>scm:git:https://github.com/infonova/mesos-plugin.git</connection>
+    <developerConnection>scm:git:https://github.com/infonova/mesos-plugin.git</developerConnection>
     <url>https://github.com/infonova/mesos-plugin</url>
     <tag>HEAD</tag>
   </scm>
