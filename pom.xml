@@ -93,7 +93,7 @@
   <properties>
     <jenkins.version>2.107.2</jenkins.version>
     <java.level>8</java.level>
-    <mesos.version>1.7.1</mesos.version>
+    <mesos.version>1.7.2</mesos.version>
     <protobuf.version>3.6.1</protobuf.version>
     <mockito.version>1.10.19</mockito.version>
     <powermock.version>1.6.2</powermock.version>
